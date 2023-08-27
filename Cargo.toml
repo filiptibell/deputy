@@ -1,0 +1,37 @@
+[package]
+name = "aftman-lsp"
+version = "0.0.1"
+edition = "2021"
+description = "A language server for Aftman"
+keywords = ["lsp", "language-server", "tower"]
+categories = ["asynchronous"]
+repository = "https://github.com/filiptibell/aftman-lsp"
+license = "MPL-2.0"
+publish = false
+
+[dependencies]
+futures = "0.3"
+regex = "1.9"
+nom = "7.0"
+
+async-lsp = { version = "0.0.5", features = ["tokio"] }
+lsp-types = { version = "0.94", features = ["proposed"] }
+
+tokio = { version = "1.32", features = [
+    "io-std",
+    "io-util",
+    "macros",
+    "process",
+    "rt-multi-thread",
+    "time",
+] }
+
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+tower = "0.4"
+tower-layer = "0.3"
+tower-service = "0.3"
+
+[target.'cfg(not(unix))'.dependencies]
+tokio-util = { version = "0.7", features = ["compat"] }
