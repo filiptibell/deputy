@@ -1,6 +1,6 @@
 use logos::Logos;
 
-use super::Token;
+use super::token::Token;
 
 #[test]
 pub fn parse_header() {
@@ -24,7 +24,7 @@ pub fn parse_manifest() {
         r#"
         [tools] # A comment
         tool-name = "scope/name@1.2.3"
-        super_alpha_rc = "scope/name@0.0.1-alpha.rc.1"
+        super_alpha_rc = 'scope/name@0.0.1-alpha.rc.1'
         "#,
     );
 
@@ -34,9 +34,9 @@ pub fn parse_manifest() {
     assert_eq!(lex.next(), Some(Ok(Token::Comment)));
     assert_eq!(lex.next(), Some(Ok(Token::Identifier)));
     assert_eq!(lex.next(), Some(Ok(Token::Equals)));
-    assert_eq!(lex.next(), Some(Ok(Token::DoubleQuoteString)));
+    assert_eq!(lex.next(), Some(Ok(Token::StringBasic)));
     assert_eq!(lex.next(), Some(Ok(Token::Identifier)));
     assert_eq!(lex.next(), Some(Ok(Token::Equals)));
-    assert_eq!(lex.next(), Some(Ok(Token::DoubleQuoteString)));
+    assert_eq!(lex.next(), Some(Ok(Token::StringLiteral)));
     assert_eq!(lex.next(), None);
 }
