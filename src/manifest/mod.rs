@@ -1,11 +1,8 @@
 use std::ops::Range;
 
+use crate::toml::*;
+
 mod parser;
-mod token;
-
-#[cfg(test)]
-mod tests;
-
 use parser::*;
 
 #[derive(Debug, Clone)]
@@ -34,7 +31,7 @@ pub struct Manifest {
 }
 
 impl Manifest {
-    pub fn parse(source: impl Into<String>) -> Result<Self, ParserError> {
+    pub fn parse(source: impl Into<String>) -> ParserResult<Self> {
         let source = source.into();
 
         let tokens = ParsedTokens::new(&source)?;

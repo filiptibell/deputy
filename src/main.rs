@@ -11,6 +11,7 @@ use async_lsp::{
 mod manifest;
 mod server;
 mod stdio;
+mod toml;
 mod util;
 
 #[tokio::main]
