@@ -13,6 +13,7 @@ mod manifest;
 mod server;
 mod state;
 mod stdio;
+mod util;
 
 #[tokio::main]
 async fn main() {

@@ -10,9 +10,7 @@ use super::*;
 pub enum ParserError {
     #[error("Failed to parse manifest")]
     ParsingFailed,
-    #[error("Failed to parse manifest - incomplete input")]
-    ParsingIncomplete,
-    #[error("Failed to parse manifest - missing 'tools' section")]
+    #[error("Missing 'tools' section")]
     MissingTools,
 }
 
@@ -94,7 +92,7 @@ impl ParsedTokens {
     }
 }
 
-pub fn find_tools(
+pub(super) fn find_tools(
     parsed_tokens: &ParsedTokens,
 ) -> Result<(ManifestToolsHeader, ManifestToolsMap), ParserError> {
     let mut header_index_offset = 0;

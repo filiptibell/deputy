@@ -17,14 +17,7 @@ logos = "0.13"
 async-lsp = { version = "0.0.5", features = ["tokio"] }
 lsp-types = { version = "0.94", features = ["proposed"] }
 
-tokio = { version = "1.32", features = [
-    "io-std",
-    "io-util",
-    "macros",
-    "process",
-    "rt-multi-thread",
-    "time",
-] }
+tokio = { version = "1.32", features = ["full"] }
 
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

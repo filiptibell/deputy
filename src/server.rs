@@ -1,5 +1,4 @@
 use std::ops::ControlFlow;
-use std::time::Duration;
 
 use futures::future::BoxFuture;
 use tracing::info;
@@ -7,11 +6,13 @@ use tracing::info;
 use async_lsp::{LanguageServer, ResponseError, Result};
 
 use lsp_types::{
-    DidChangeConfigurationParams, Hover, HoverContents, HoverParams, HoverProviderCapability,
-    InitializeParams, InitializeResult, MarkedString, ServerCapabilities,
+    DidChangeConfigurationParams, DidChangeTextDocumentParams, DidOpenTextDocumentParams, Hover,
+    HoverContents, HoverParams, HoverProviderCapability, InitializeParams, InitializeResult,
+    MarkedString, ServerCapabilities,
 };
 
 use crate::state::*;
+use crate::util::*;
 
 impl LanguageServer for ServerState {
     type Error = ResponseError;
@@ -34,17 +35,15 @@ impl LanguageServer for ServerState {
         })
     }
 
-    fn hover(&mut self, _: HoverParams) -> BoxFuture<'static, Result<Option<Hover>, Self::Error>> {
-        let counter = self.counter;
-        Box::pin(async move {
-            tokio::time::sleep(Duration::from_secs(1)).await;
-            Ok(Some(Hover {
-                contents: HoverContents::Scalar(MarkedString::String(format!(
-                    "I am hover text {counter}!"
-                ))),
-                range: None,
-            }))
-        })
+    fn did_open(&mut self, params: DidOpenTextDocumentParams) -> ControlFlow<Result<()>> {
+        self.update_document(params.text_document.uri, params.text_document.text)
+    }
+
+    fn did_change(&mut self, mut params: DidChangeTextDocumentParams) -> ControlFlow<Result<()>> {
+        self.update_document(
+            params.text_document.uri,
+            params.content_changes.pop().unwrap().text,
+        )
     }
 
     fn did_change_configuration(
@@ -52,5 +51,50 @@ impl LanguageServer for ServerState {
         _: DidChangeConfigurationParams,
     ) -> ControlFlow<Result<()>> {
         ControlFlow::Continue(())
+    }
+
+    fn hover(
+        &mut self,
+        params: HoverParams,
+    ) -> BoxFuture<'static, Result<Option<Hover>, Self::Error>> {
+        let position_params = params.text_document_position_params;
+
+        let manifest_uri = position_params.text_document.uri;
+        let manifest = match self.manifests.get(&manifest_uri) {
+            None => return Box::pin(async move { Ok(None) }),
+            Some(manifest) => manifest,
+        };
+
+        let offset = position_to_offset(&manifest.source, position_params.position);
+        let found = manifest.tools_map.tools.iter().find_map(|tool| {
+            let hovering_key = offset >= tool.key_span.start && offset <= tool.key_span.end;
+            let hovering_val = offset >= tool.val_span.start && offset <= tool.val_span.end;
+
+            if hovering_key || hovering_val {
+                let spec = tool.val_text.clone();
+                let span = if hovering_key {
+                    tool.key_span.clone()
+                } else {
+                    tool.val_span.clone()
+                };
+                let range = offset_range_to_range(&manifest.source, span);
+                Some((range, spec))
+            } else {
+                None
+            }
+        });
+
+        Box::pin(async move {
+            match found {
+                None => Ok(None),
+                Some((range, spec)) => {
+                    // TODO: Parse spec, fetch info about tool
+                    Ok(Some(Hover {
+                        range: Some(range),
+                        contents: HoverContents::Scalar(MarkedString::String(spec)),
+                    }))
+                }
+            }
+        })
     }
 }

@@ -1,20 +1,26 @@
-use std::{ops::ControlFlow, time::Duration};
+use std::{collections::HashMap, ops::ControlFlow, time::Duration};
 
 use tokio::time;
 use tracing::debug;
 
 use async_lsp::{router::Router, ClientSocket, Result};
 
+use lsp_types::Url;
+
 use crate::events::*;
+use crate::manifest::*;
 
 pub struct ServerState {
     pub client: ClientSocket,
-    pub counter: i32,
+    pub manifests: HashMap<Url, Manifest>,
 }
 
 impl ServerState {
     pub fn new(client: ClientSocket) -> Self {
-        let mut this = Self { client, counter: 0 };
+        let mut this = Self {
+            client,
+            manifests: HashMap::new(),
+        };
         this.spawn_tick();
         this
     }
@@ -40,7 +46,15 @@ impl ServerState {
 
     fn on_tick(&mut self, _: TickEvent) -> ControlFlow<Result<()>> {
         debug!("tick");
-        self.counter += 1;
+        ControlFlow::Continue(())
+    }
+
+    pub fn update_document(&mut self, uri: Url, contents: String) -> ControlFlow<Result<()>> {
+        if uri.path().contains("aftman.toml") {
+            if let Ok(m) = Manifest::parse(contents) {
+                self.manifests.insert(uri, m);
+            }
+        }
         ControlFlow::Continue(())
     }
 }
