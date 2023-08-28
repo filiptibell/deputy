@@ -12,6 +12,7 @@ publish = false
 [dependencies]
 regex = "1.9"
 logos = "0.13"
+thiserror = "1.0"
 
 async-lsp = { version = "0.0.5", features = ["tokio"] }
 lsp-types = { version = "0.94", features = ["proposed"] }
@@ -20,7 +21,7 @@ futures = { version = "0.3.28", default-features = false, features = [
     "async-await",
     "std",
 ] }
-tokio = { version = "1.27.0", features = [
+tokio = { version = "1.27.0", default-features = false, features = [
     "io-std",
     "io-util",
     "macros",
@@ -35,7 +36,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tower = "0.4"
 tower-layer = "0.3"
 tower-service = "0.3"
-thiserror = "1.0.47"
 
 [target.'cfg(not(unix))'.dependencies]
-tokio-util = { version = "0.7", features = ["compat"] }
+tokio-util = { version = "0.7", default-features = false, features = [
+    "compat",
+] }
