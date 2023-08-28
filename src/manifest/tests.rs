@@ -71,5 +71,11 @@ fn parse_manifest() {
 
     assert_eq!(manifest.tools_map.tools.len(), 2);
 
-    panic!("Oops")
+    let first_tool = &manifest.tools_map.tools[0];
+    assert_eq!(first_tool.key_text, r#"tool-name"#);
+    assert_eq!(first_tool.val_text, r#""scope/name@1.2.3""#);
+
+    let second_tool = &manifest.tools_map.tools[1];
+    assert_eq!(second_tool.key_text, r#"super_alpha_rc"#);
+    assert_eq!(second_tool.val_text, r#"'scope/name@0.0.1-alpha.rc.1'"#);
 }
