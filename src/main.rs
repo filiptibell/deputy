@@ -8,10 +8,8 @@ use async_lsp::{
     panic::CatchUnwindLayer, server::LifecycleLayer, tracing::TracingLayer, MainLoop,
 };
 
-mod events;
 mod manifest;
 mod server;
-mod state;
 mod stdio;
 mod util;
 
@@ -39,7 +37,7 @@ async fn main() {
             .layer(CatchUnwindLayer::default())
             .layer(ConcurrencyLayer::default())
             .layer(ClientProcessMonitorLayer::new(client.clone()))
-            .service(state::ServerState::new(client).into_router())
+            .service(server::Server::new(client).into_router())
     });
 
     // Run it communicating over stdio, until the end of time

@@ -7,15 +7,15 @@ use async_lsp::{router::Router, ClientSocket, Result};
 
 use lsp_types::Url;
 
-use crate::events::*;
+use super::events::*;
 use crate::manifest::*;
 
-pub struct ServerState {
+pub struct Server {
     pub client: ClientSocket,
     pub manifests: HashMap<Url, Manifest>,
 }
 
-impl ServerState {
+impl Server {
     pub fn new(client: ClientSocket) -> Self {
         let mut this = Self {
             client,

@@ -11,10 +11,10 @@ use lsp_types::{
     MarkedString, ServerCapabilities,
 };
 
-use crate::state::*;
+use super::state::*;
 use crate::util::*;
 
-impl LanguageServer for ServerState {
+impl LanguageServer for Server {
     type Error = ResponseError;
     type NotifyResult = ControlFlow<Result<()>>;
 
@@ -67,18 +67,11 @@ impl LanguageServer for ServerState {
 
         let offset = position_to_offset(&manifest.source, position_params.position);
         let found = manifest.tools_map.tools.iter().find_map(|tool| {
-            let hovering_key = offset >= tool.key_span.start && offset <= tool.key_span.end;
-            let hovering_val = offset >= tool.val_span.start && offset <= tool.val_span.end;
-
-            if hovering_key || hovering_val {
-                let spec = tool.val_text.clone();
-                let span = if hovering_key {
-                    tool.key_span.clone()
-                } else {
-                    tool.val_span.clone()
-                };
-                let range = offset_range_to_range(&manifest.source, span);
-                Some((range, spec))
+            if offset >= tool.val_span.start && offset <= tool.val_span.end {
+                Some((
+                    offset_range_to_range(&manifest.source, tool.val_span.clone()),
+                    tool.val_text.clone(),
+                ))
             } else {
                 None
             }
