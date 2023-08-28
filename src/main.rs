@@ -14,7 +14,7 @@ mod stdio;
 mod toml;
 mod util;
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     // Set up logging - LSP uses stdout for communication,
     // meaning we must use stderr for all of our logging
