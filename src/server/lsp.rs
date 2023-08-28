@@ -8,7 +8,7 @@ use async_lsp::{LanguageServer, ResponseError, Result};
 use lsp_types::{
     DidChangeConfigurationParams, DidChangeTextDocumentParams, DidOpenTextDocumentParams, Hover,
     HoverContents, HoverParams, HoverProviderCapability, InitializeParams, InitializeResult,
-    MarkedString, ServerCapabilities,
+    MarkedString, PositionEncodingKind, ServerCapabilities,
 };
 
 use super::state::*;
@@ -27,6 +27,7 @@ impl LanguageServer for Server {
             Ok(InitializeResult {
                 capabilities: ServerCapabilities {
                     hover_provider: Some(HoverProviderCapability::Simple(true)),
+                    position_encoding: Some(PositionEncodingKind::UTF8),
                     ..ServerCapabilities::default()
                 },
                 server_info: None,
