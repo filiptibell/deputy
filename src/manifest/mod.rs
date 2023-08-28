@@ -4,6 +4,9 @@ use itertools::Itertools;
 
 use crate::toml::*;
 
+#[cfg(test)]
+mod tests;
+
 #[derive(Debug, Clone)]
 pub struct ManifestToolsHeader {
     pub span: Range<usize>,
@@ -40,25 +43,33 @@ impl Manifest {
 
         let tools_section = tokens_no_comments.iter().enumerate().tuple_windows().find(
             |((_, token_lb), (_, token_key), (_, token_rb))| {
-                token_lb.kind.is_left_brace()
+                token_lb.kind.is_left_bracket()
                     && token_key.kind.is_string()
                     && token_key.value.as_string() == "tools"
-                    && token_rb.kind.is_right_brace()
+                    && token_rb.kind.is_right_bracket()
             },
         );
 
         if let Some(section) = tools_section {
-            let found_tools = tokens_no_comments
-                .iter()
-                .skip(section.2 .0 + 1)
-                .step_by(3)
-                .tuple_windows()
-                .take_while(|(token_lhs, token_eq, token_rhs)| {
-                    token_lhs.kind.is_string()
-                        && token_eq.kind.is_equals()
-                        && token_rhs.kind.is_string()
-                })
-                .collect::<Vec<_>>();
+            let mut found_tools = Vec::new();
+
+            let start = section.2 .0;
+            let end = tokens_no_comments.len() - 2;
+            for index in start..end {
+                let token_lhs = &tokens_no_comments[index];
+                if !token_lhs.kind.is_string() {
+                    continue;
+                }
+                let token_eq = &tokens_no_comments[index + 1];
+                if !token_eq.kind.is_equals() {
+                    continue;
+                }
+                let token_rhs = &tokens_no_comments[index + 2];
+                if !token_rhs.kind.is_string() {
+                    continue;
+                }
+                found_tools.push((token_lhs, token_eq, token_rhs))
+            }
 
             Ok(Manifest {
                 source,
