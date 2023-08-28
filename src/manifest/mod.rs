@@ -2,9 +2,6 @@ use std::ops::Range;
 
 use crate::toml::*;
 
-mod parser;
-use parser::*;
-
 #[derive(Debug, Clone)]
 pub struct ManifestToolsHeader {
     pub span: Range<usize>,
@@ -32,15 +29,8 @@ pub struct Manifest {
 
 impl Manifest {
     pub fn parse(source: impl Into<String>) -> ParserResult<Self> {
-        let source = source.into();
+        let _source = source.into();
 
-        let tokens = ParsedTokens::new(&source)?;
-        let (tools_header, tools_map) = find_tools(&tokens)?;
-
-        Ok(Self {
-            source,
-            tools_header,
-            tools_map,
-        })
+        Err(ParserError::external("unimplemented"))
     }
 }
