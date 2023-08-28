@@ -26,6 +26,7 @@ dependencies = [
  "logos",
  "lsp-types",
  "regex",
+ "thiserror",
  "tokio",
  "tokio-util",
  "tower",

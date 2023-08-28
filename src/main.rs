@@ -9,7 +9,7 @@ use async_lsp::{
 };
 
 mod events;
-mod parser;
+mod manifest;
 mod server;
 mod state;
 mod stdio;

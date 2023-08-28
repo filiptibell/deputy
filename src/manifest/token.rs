@@ -56,7 +56,8 @@ fn read_comment(lex: &mut Lexer<Token>) -> bool {
     true
 }
 
-#[derive(Logos, Debug, PartialEq)]
+// TODO: Move this token struct into toml module in root
+#[derive(Logos, Debug, PartialEq, Eq, Clone, Copy)]
 #[logos(skip r"[ \t\n\f]+")]
 pub enum Token {
     #[token("[")]
@@ -86,10 +87,8 @@ pub enum Token {
     IntegerUnsigned(u64),
 
     #[token("'", read_string_literal)]
-    StringLiteral,
-
     #[token("\"", read_string_basic)]
-    StringBasic,
+    String,
 
     #[regex(r"#.*", read_comment)]
     Comment,
