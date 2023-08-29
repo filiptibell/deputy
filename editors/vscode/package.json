@@ -1,0 +1,50 @@
+{
+    "name": "tooling-language-server",
+    "displayName": "Tooling Language Server",
+    "description": "A language server for tooling",
+    "version": "0.0.1",
+    "license": "MPL-2.0",
+    "publisher": "filiptibell",
+    "author": {
+        "name": "Filip Tibell",
+        "email": "filip.tibell@gmail.com",
+        "url": "https://github.com/filiptibell/"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/filiptibell/tooling-language-server.git"
+    },
+    "engines": {
+        "vscode": "^1.81.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "activationEvents": [],
+    "main": "./out/extension.js",
+    "contributes": {},
+    "scripts": {
+        "vscode:prepublish": "npm run esbuild -- --minify",
+        "esbuild": "esbuild ./src/extension.js --bundle --outfile=out/extension.js --external:vscode --platform=node --target=node16.13 --sourcemap",
+        "esbuild-watch": "npm run esbuild -- --watch",
+        "compile": "tsc -p ./ && npm run esbuild",
+        "watch": "tsc -p ./ && npm run esbuild-watch",
+        "lint": "eslint src --ext ts"
+    },
+    "devDependencies": {
+        "@types/mocha": "^10.0.1",
+        "@types/node": "16.x",
+        "@types/vscode": "^1.81.0",
+        "@typescript-eslint/eslint-plugin": "^5.56.0",
+        "@typescript-eslint/parser": "^5.56.0",
+        "@vscode/test-electron": "^2.3.0",
+        "esbuild": "^0.17.18",
+        "eslint": "^8.36.0",
+        "glob": "^8.1.0",
+        "mocha": "^10.2.0",
+        "typescript": "^4.9.5"
+    },
+    "dependencies": {
+        "vscode-languageclient": "^8.1.0"
+    }
+}
