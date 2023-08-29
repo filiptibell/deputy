@@ -40,11 +40,20 @@ impl Server {
                 Some((range, Ok(spec))) => {
                     trace!("Hovering: {spec}");
 
-                    // TODO: Fetch info about tool such as desc using the GitHub API
-
                     let mut lines = Vec::new();
                     lines.push(format!("## {}", spec.name));
                     lines.push(format!("By **{}** - **{}**", spec.author, spec.version));
+
+                    if let Ok(metrics) = octocrab::instance()
+                        .repos(&spec.author, &spec.name)
+                        .get_community_profile_metrics()
+                        .await
+                    {
+                        if let Some(description) = metrics.description {
+                            lines.push(String::new());
+                            lines.push(description.to_string());
+                        }
+                    }
 
                     Ok(Some(Hover {
                         range: Some(range),

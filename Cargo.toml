@@ -16,30 +16,16 @@ path = "src/main.rs"
 [dependencies]
 itertools = "0.11.0"
 logos = "0.13"
+octocrab = "0.29"
 regex = "1.9"
 semver = "1.0"
 thiserror = "1.0"
 
-async-lsp = { git = "https://github.com/oxalica/async-lsp", rev = "48c4c724e85df0e6f1348aa89fd60446c7b9bb62", features = [
-    "tokio",
-] }
+async-lsp = { version = "0.0.5", features = ["tokio"] }
 lsp-types = { version = "0.94", features = ["proposed"] }
 
-tokio = { version = "1.27.0", features = [
-    "fs",
-    "io-util",
-    "io-std",
-    "macros",
-    "net",
-    "rt",
-    "rt-multi-thread",
-    "sync",
-    "time",
-] }
-futures = { version = "0.3.28", default-features = false, features = [
-    "async-await",
-    "std",
-] }
+tokio = { version = "1.27", features = ["full"] }
+futures = "0.3"
 
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
