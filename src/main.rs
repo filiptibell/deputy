@@ -18,11 +18,15 @@ async fn main() {
     let tracing_filter = EnvFilter::builder()
         .with_default_directive(LevelFilter::INFO.into())
         .from_env_lossy();
+    let tracing_target_enabled = matches!(
+        tracing_filter.max_level_hint(),
+        Some(LevelFilter::TRACE | LevelFilter::DEBUG)
+    );
     tracing_subscriber::fmt()
         .compact()
         .with_env_filter(tracing_filter)
         .without_time()
-        .with_target(true)
+        .with_target(tracing_target_enabled)
         .with_level(true)
         .with_ansi(false) // Editor output does not support ANSI ... yet?
         .with_writer(std::io::stderr)
