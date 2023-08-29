@@ -50,7 +50,7 @@ impl Server {
     }
 
     fn on_tick(&mut self, _: TickEvent) -> ControlFlow<Result<()>> {
-        debug!("tick");
+        trace!("tick");
         ControlFlow::Continue(())
     }
 
@@ -127,9 +127,10 @@ fn parse_and_insert(
         }
     };
 
-    // FUTURE: Parse differently depending on file
+    // FUTURE: Parse differently depending on file?
     match Manifest::parse(file_contents) {
         Err(err) => {
+            // FUTURE: Surface parsing error as diagnostic
             warn!(
                 "Failed to parse file at '{}'\n{err}",
                 file_path_absolute.display()

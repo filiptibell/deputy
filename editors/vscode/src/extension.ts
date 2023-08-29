@@ -1,8 +1,11 @@
+/* eslint-disable @typescript-eslint/naming-convention */
+
 import * as vscode from "vscode";
 import * as os from "os";
 
 import {
 	Executable,
+	ExecutableOptions,
 	LanguageClient,
 	LanguageClientOptions,
 	ServerOptions,
@@ -26,8 +29,6 @@ export async function activate(context: vscode.ExtensionContext) {
 	let outputChannel = vscode.window.createOutputChannel(
 		"Tooling Language Server"
 	);
-
-	outputChannel.appendLine("Starting language server");
 
 	// Find which executable was bundled with the extension - either debug or release
 
@@ -59,11 +60,14 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// Create args for language server
 
-	let args = command === exeDebug.fsPath ? ["RUST_LOG=debug"] : [];
+	let isDebug = command === exeDebug.fsPath;
+	let options: ExecutableOptions = isDebug
+		? { env: { RUST_LOG: "debug" } }
+		: {};
 	let server: Executable = {
 		transport: TransportKind.stdio,
 		command,
-		args,
+		options,
 	};
 
 	// Create language server & client config
@@ -75,22 +79,21 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	let clientOptions: LanguageClientOptions = {
 		stdioEncoding: "utf8",
-		documentSelector: [{ scheme: "file", language: "toml" }],
+		documentSelector: [{ scheme: "file", pattern: "*.toml" }],
+		diagnosticCollectionName: "Tooling Language Server",
 		outputChannel,
-		diagnosticPullOptions: {
-			onChange: true,
-			onSave: true,
-		},
 		synchronize: {
-			fileEvents: [
-				vscode.workspace.createFileSystemWatcher("aftman.toml"),
-				vscode.workspace.createFileSystemWatcher("foreman.toml"),
-				vscode.workspace.createFileSystemWatcher("wally.toml"),
-			],
+			fileEvents: vscode.workspace.createFileSystemWatcher("*.toml"),
 		},
 	};
 
 	// Start the language client
+
+	if (isDebug) {
+		outputChannel.appendLine("Starting language server (debug)");
+	} else {
+		outputChannel.appendLine("Starting language server");
+	}
 
 	client = new LanguageClient(
 		"tooling-language-server",
