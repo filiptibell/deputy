@@ -19,7 +19,9 @@ logos = "0.13"
 regex = "1.9"
 thiserror = "1.0"
 
-async-lsp = { version = "0.0.5", features = ["tokio"] }
+async-lsp = { git = "https://github.com/oxalica/async-lsp", rev = "48c4c724e85df0e6f1348aa89fd60446c7b9bb62", features = [
+    "tokio",
+] }
 lsp-types = { version = "0.94", features = ["proposed"] }
 
 tokio = { version = "1.27.0", features = [

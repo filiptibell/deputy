@@ -31,6 +31,9 @@ pub fn offset_to_position(source: impl AsRef<str>, offset: usize) -> Position {
             newline_count += 1;
             newline_last_idx = index;
         }
+        if index >= offset {
+            break;
+        }
     }
 
     Position::new(newline_count, (offset - newline_last_idx) as u32)
