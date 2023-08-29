@@ -17,6 +17,7 @@ path = "src/main.rs"
 itertools = "0.11.0"
 logos = "0.13"
 regex = "1.9"
+semver = "1.0"
 thiserror = "1.0"
 
 async-lsp = { git = "https://github.com/oxalica/async-lsp", rev = "48c4c724e85df0e6f1348aa89fd60446c7b9bb62", features = [

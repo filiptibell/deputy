@@ -1,5 +1,6 @@
 use std::{fmt, str::FromStr};
 
+use semver::Version;
 use thiserror::Error;
 
 #[derive(Debug, Error, Clone)]
@@ -16,7 +17,7 @@ pub enum ManifestToolSpecError {
     InvalidName(char),
     #[error("tool version contains invalid character '{0}'")]
     InvalidVersion(char),
-    #[error("tool version '{0}' is not a valid semver")]
+    #[error("tool version contains invalid semver - {0}")]
     InvalidSemver(String),
 }
 
@@ -103,8 +104,9 @@ fn validate_version(version: impl AsRef<str>) -> Result<String, ManifestToolSpec
     }
     if let Some(invalid_char) = version.chars().find(|c| !is_valid_version_char(*c)) {
         Err(ManifestToolSpecError::InvalidVersion(invalid_char))
+    } else if let Err(semver_err) = Version::parse(version) {
+        Err(ManifestToolSpecError::InvalidSemver(semver_err.to_string()))
     } else {
-        // TODO: Verify semver version
         Ok(version.to_string())
     }
 }
