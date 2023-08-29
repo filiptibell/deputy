@@ -9,6 +9,10 @@ repository = "https://github.com/filiptibell/tooling-language-server"
 license = "MPL-2.0"
 publish = false
 
+[[bin]]
+name = "server"
+path = "src/main.rs"
+
 [dependencies]
 itertools = "0.11.0"
 logos = "0.13"

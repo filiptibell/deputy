@@ -20,7 +20,9 @@
     "categories": [
         "Other"
     ],
-    "activationEvents": [],
+    "activationEvents": [
+        "onLanguage:toml"
+    ],
     "main": "./out/extension.js",
     "contributes": {},
     "scripts": {
