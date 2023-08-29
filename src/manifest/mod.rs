@@ -1,8 +1,11 @@
-use std::ops::Range;
+use std::{ops::Range, str::FromStr};
 
 use itertools::Itertools;
 
 use crate::toml::*;
+
+mod tool_spec;
+use tool_spec::*;
 
 #[cfg(test)]
 mod tests;
@@ -23,6 +26,19 @@ pub struct ManifestTool {
     pub key_text: String,
     pub val_span: Range<usize>,
     pub val_text: String,
+}
+
+impl ManifestTool {
+    pub fn spec(&self) -> Result<ManifestToolSpec, ManifestToolSpecError> {
+        let len = self.val_text.len();
+        if len == 2 {
+            ManifestToolSpec::from_str("")
+        } else if self.val_text.starts_with('\"') || self.val_text.starts_with('\'') {
+            ManifestToolSpec::from_str(&self.val_text[1..len - 2])
+        } else {
+            panic!("Unknown string char")
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

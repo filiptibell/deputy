@@ -67,44 +67,18 @@ impl Server {
 }
 
 fn diagnose_tool_spec(items: &mut Vec<Diagnostic>, manifest: &Manifest, tool: &ManifestTool) {
-    let idx_slash = tool.val_text.chars().enumerate().find(|(_, c)| c == &'/');
-    if idx_slash.is_none() {
-        items.push(Diagnostic {
-            range: offset_range_to_range(&manifest.source, tool.val_span.clone()),
-            message: String::from("Missing tool author"),
-            severity: Some(DiagnosticSeverity::ERROR),
-            ..Default::default()
-        });
-        return;
+    match tool.spec() {
+        Err(err) => {
+            items.push(Diagnostic {
+                source: Some(String::from("Tools")),
+                range: offset_range_to_range(&manifest.source, tool.val_span.clone()),
+                message: err.to_string(),
+                severity: Some(DiagnosticSeverity::ERROR),
+                ..Default::default()
+            });
+        }
+        Ok(spec) => {
+            trace!("Found tool - {spec}");
+        }
     }
-
-    let idx_at = tool.val_text.chars().enumerate().find(|(_, c)| c == &'@');
-    if idx_at.is_none() {
-        items.push(Diagnostic {
-            range: offset_range_to_range(&manifest.source, tool.val_span.clone()),
-            message: String::from("Missing tool name"),
-            severity: Some(DiagnosticSeverity::ERROR),
-            ..Default::default()
-        });
-        return;
-    }
-
-    let idx_slash = idx_slash.unwrap().0;
-    let idx_at = idx_at.unwrap().0;
-
-    if idx_at == tool.val_text.len() - 1 {
-        items.push(Diagnostic {
-            range: offset_range_to_range(&manifest.source, tool.val_span.clone()),
-            message: String::from("Missing version"),
-            severity: Some(DiagnosticSeverity::ERROR),
-            ..Default::default()
-        });
-        return;
-    }
-
-    let tool_author = &tool.val_text[..idx_slash];
-    let tool_name = &tool.val_text[idx_slash + 1..idx_at];
-    let tool_version = &tool.val_text[idx_at + 1..];
-
-    trace!("Found tool - {tool_author}/{tool_name}@{tool_version}");
 }
