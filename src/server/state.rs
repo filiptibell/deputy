@@ -6,10 +6,12 @@ use tracing::{debug, trace, warn};
 
 use async_lsp::{router::Router, ClientSocket, Result};
 
-use lsp_types::Url;
+use lsp_types::notification::PublishDiagnostics;
+use lsp_types::{Diagnostic, DiagnosticSeverity, PublishDiagnosticsParams, Url};
 
 use super::events::*;
 use crate::manifest::*;
+use crate::util::position::*;
 
 const KNOWN_FILE_NAMES: &[&str] = &["aftman.toml", "foreman.toml", "wally.toml"];
 
@@ -60,12 +62,13 @@ impl Server {
 
         debug!("Updating document: {}", file_path.display());
 
+        let mut client = self.client.clone();
         let manifests = Arc::clone(&self.manifests);
         tokio::task::spawn(async move {
             let mut manifests = manifests.lock().await;
             if let Some(file_name) = file_path.file_name().and_then(|n| n.to_str()) {
                 if KNOWN_FILE_NAMES.contains(&file_name) {
-                    parse_and_insert(&mut manifests, file_path, Ok(contents));
+                    parse_and_insert(&mut client, &mut manifests, file_path, Ok(contents));
                 }
             }
         });
@@ -81,6 +84,7 @@ impl Server {
 
         debug!("Updating workspace documents: {}", uri_fs_path.display());
 
+        let mut client = self.client.clone();
         let manifests = Arc::clone(&self.manifests);
         tokio::task::spawn(async move {
             let file_paths = KNOWN_FILE_NAMES
@@ -96,13 +100,14 @@ impl Server {
 
             let mut manifests = manifests.lock().await;
             for (file_path, file_result) in file_paths.into_iter().zip(file_results) {
-                parse_and_insert(&mut manifests, file_path, file_result);
+                parse_and_insert(&mut client, &mut manifests, file_path, file_result);
             }
         });
     }
 }
 
 fn parse_and_insert(
+    client: &mut ClientSocket,
     manifests: &mut HashMap<Url, Manifest>,
     file_path_absolute: PathBuf,
     file_result: Result<String, std::io::Error>,
@@ -131,10 +136,37 @@ fn parse_and_insert(
             );
         }
         Ok(manifest) => {
-            manifests.insert(
-                Url::from_file_path(file_path_absolute).expect("File path passed was not absolute"),
-                manifest,
-            );
+            let uri =
+                Url::from_file_path(file_path_absolute).expect("File path passed was not absolute");
+
+            let mut diagnostics = Vec::new();
+            for tool in &manifest.tools_map.tools {
+                if let Some(diag) = diagnose_tool_spec(&manifest, tool) {
+                    diagnostics.push(diag);
+                }
+            }
+
+            let _ = client.notify::<PublishDiagnostics>(PublishDiagnosticsParams {
+                uri: uri.clone(),
+                diagnostics,
+                version: None,
+            });
+
+            manifests.insert(uri, manifest);
         }
+    }
+}
+
+fn diagnose_tool_spec(manifest: &Manifest, tool: &ManifestTool) -> Option<Diagnostic> {
+    if let Err(err) = tool.spec() {
+        Some(Diagnostic {
+            source: Some(String::from("Tools")),
+            range: offset_range_to_range(&manifest.source, tool.val_span.clone()),
+            message: err.to_string(),
+            severity: Some(DiagnosticSeverity::ERROR),
+            ..Default::default()
+        })
+    } else {
+        None
     }
 }

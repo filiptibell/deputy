@@ -5,9 +5,8 @@ use futures::future::BoxFuture;
 use async_lsp::{LanguageServer, ResponseError, Result};
 
 use lsp_types::{
-    DidChangeConfigurationParams, DidChangeTextDocumentParams, DidOpenTextDocumentParams,
-    DocumentDiagnosticParams, DocumentDiagnosticReportResult, Hover, HoverParams, InitializeParams,
-    InitializeResult,
+    DidChangeConfigurationParams, DidChangeTextDocumentParams, DidOpenTextDocumentParams, Hover,
+    HoverParams, InitializeParams, InitializeResult,
 };
 
 use super::state::*;
@@ -51,13 +50,5 @@ impl LanguageServer for Server {
             position_params.text_document.uri.clone(),
             position_params.position,
         )
-    }
-
-    fn document_diagnostic(
-        &mut self,
-        params: DocumentDiagnosticParams,
-    ) -> BoxFuture<'static, Result<DocumentDiagnosticReportResult, Self::Error>> {
-        let uri = params.text_document.uri.clone();
-        self.respond_to_document_diagnostic(uri)
     }
 }
