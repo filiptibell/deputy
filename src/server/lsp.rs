@@ -1,18 +1,20 @@
 use std::ops::ControlFlow;
 
 use futures::future::BoxFuture;
-use tracing::info;
+use tracing::{debug, info, trace};
 
 use async_lsp::{LanguageServer, ResponseError, Result};
 
 use lsp_types::{
     DidChangeConfigurationParams, DidChangeTextDocumentParams, DidOpenTextDocumentParams, Hover,
     HoverContents, HoverParams, HoverProviderCapability, InitializeParams, InitializeResult,
-    MarkedString, PositionEncodingKind, ServerCapabilities,
+    MarkedString, ServerCapabilities, ServerInfo,
 };
 
+use crate::util::negotiation::*;
+use crate::util::position::*;
+
 use super::state::*;
-use crate::util::*;
 
 impl LanguageServer for Server {
     type Error = ResponseError;
@@ -22,16 +24,38 @@ impl LanguageServer for Server {
         &mut self,
         params: InitializeParams,
     ) -> BoxFuture<'static, Result<InitializeResult, Self::Error>> {
-        info!("Initializing server with params: {params:?}");
+        trace!("Initializing server with params: {params:#?}");
+        // Output info about the client
+        if let Some(info) = &params.client_info {
+            if let Some(version) = &info.version {
+                info!("Client connected - {} v{}", info.name, version);
+            } else {
+                info!("Client connected - {}", info.name);
+            }
+        }
+        // Negotiate encodings, attempting to use utf8 if possible
+        let position_encoding = negotiate_position_encoding(&params);
+        let offset_encoding = negotiate_offset_encoding(&params);
+        info!(
+            "Negotiated position encoding \"{}\"",
+            position_encoding.as_str()
+        );
+        info!("Negotiated offset encoding \"{}\"", offset_encoding);
+        // TODO: Read known manifest files in workspace folders in the background
+
+        // Respond with negotiated encoding, server info, capabilities
         Box::pin(async move {
             Ok(InitializeResult {
+                offset_encoding: Some(offset_encoding),
+                server_info: Some(ServerInfo {
+                    name: env!("CARGO_PKG_NAME").to_string(),
+                    version: Some(env!("CARGO_PKG_VERSION").to_string()),
+                }),
                 capabilities: ServerCapabilities {
                     hover_provider: Some(HoverProviderCapability::Simple(true)),
-                    position_encoding: Some(PositionEncodingKind::UTF8),
+                    position_encoding: Some(position_encoding),
                     ..ServerCapabilities::default()
                 },
-                server_info: None,
-                offset_encoding: None,
             })
         })
     }
@@ -62,7 +86,13 @@ impl LanguageServer for Server {
 
         let manifest_uri = position_params.text_document.uri;
         let manifest = match self.manifests.get(&manifest_uri) {
-            None => return Box::pin(async move { Ok(None) }),
+            None => {
+                debug!(
+                    "Got hover request for document {} - no manifest",
+                    manifest_uri.path()
+                );
+                return Box::pin(async move { Ok(None) });
+            }
             Some(manifest) => manifest,
         };
 
@@ -77,6 +107,20 @@ impl LanguageServer for Server {
                 None
             }
         });
+
+        if found.is_some() {
+            debug!(
+                "Got hover request for document {} at {}",
+                manifest_uri.path(),
+                offset
+            );
+        } else {
+            debug!(
+                "Got hover request for document {} at {} (tool found)",
+                manifest_uri.path(),
+                offset
+            );
+        }
 
         Box::pin(async move {
             match found {

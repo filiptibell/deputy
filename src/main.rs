@@ -1,7 +1,4 @@
-use tracing_subscriber::{
-    filter::{EnvFilter, LevelFilter},
-    fmt::time::uptime,
-};
+use tracing_subscriber::filter::{EnvFilter, LevelFilter};
 
 use async_lsp::{
     client_monitor::ClientProcessMonitorLayer, concurrency::ConcurrencyLayer,
@@ -24,9 +21,10 @@ async fn main() {
     tracing_subscriber::fmt()
         .compact()
         .with_env_filter(tracing_filter)
+        .without_time()
         .with_target(true)
-        .with_timer(uptime())
         .with_level(true)
+        .with_ansi(false) // Editor output does not support ANSI ... yet?
         .with_writer(std::io::stderr)
         .init();
 

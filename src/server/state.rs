@@ -50,7 +50,12 @@ impl Server {
     }
 
     pub fn update_document(&mut self, uri: Url, contents: String) -> ControlFlow<Result<()>> {
-        if uri.path().contains("aftman.toml") {
+        debug!("Got text document {}", uri.path());
+        if uri.path().contains("aftman.toml")
+            || uri.path().contains("foreman.toml")
+            || uri.path().contains("wally.toml")
+        {
+            debug!("Updating text document {}", uri.path());
             if let Ok(m) = Manifest::parse(contents) {
                 self.manifests.insert(uri, m);
             }
