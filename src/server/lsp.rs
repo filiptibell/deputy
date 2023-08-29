@@ -5,8 +5,8 @@ use futures::future::BoxFuture;
 use async_lsp::{LanguageServer, ResponseError, Result};
 
 use lsp_types::{
-    DidChangeConfigurationParams, DidChangeTextDocumentParams, DidOpenTextDocumentParams, Hover,
-    HoverParams, InitializeParams, InitializeResult,
+    DidChangeConfigurationParams, DidChangeTextDocumentParams, DidOpenTextDocumentParams,
+    DidSaveTextDocumentParams, Hover, HoverParams, InitializeParams, InitializeResult,
 };
 
 use super::state::*;
@@ -29,7 +29,18 @@ impl LanguageServer for Server {
     fn did_change(&mut self, mut params: DidChangeTextDocumentParams) -> ControlFlow<Result<()>> {
         self.update_document(
             params.text_document.uri,
-            params.content_changes.pop().unwrap().text,
+            params
+                .content_changes
+                .pop()
+                .expect("Missing content changes in change notification")
+                .text,
+        )
+    }
+
+    fn did_save(&mut self, params: DidSaveTextDocumentParams) -> ControlFlow<Result<()>> {
+        self.update_document(
+            params.text_document.uri,
+            params.text.expect("Missing text in save notification"),
         )
     }
 

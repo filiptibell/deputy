@@ -7,10 +7,14 @@ use lsp_types::{Position, Range as LspRange};
 pub fn position_to_offset(source: impl AsRef<str>, position: Position) -> usize {
     let source = source.as_ref();
 
+    if position.line == 0 {
+        return 1 + position.character as usize;
+    }
+
     let last_newline_offset = source
         .char_indices()
         .filter(|&(_, c)| c == '\n')
-        .nth(position.line as usize)
+        .nth((position.line - 1) as usize)
         .map(|(index, _)| index)
         .expect("Invalid position");
 
@@ -27,16 +31,16 @@ pub fn offset_to_position(source: impl AsRef<str>, offset: usize) -> Position {
     let mut newline_count = 0;
     let mut newline_last_idx = 0;
     for (index, char) in source.char_indices() {
+        if index >= offset {
+            break;
+        }
         if char == '\n' {
             newline_count += 1;
             newline_last_idx = index;
         }
-        if index >= offset {
-            break;
-        }
     }
 
-    Position::new(newline_count, (offset - newline_last_idx) as u32)
+    Position::new(newline_count, (offset - newline_last_idx - 1) as u32)
 }
 
 pub fn offset_range_to_range(source: impl AsRef<str>, range: Range<usize>) -> LspRange {

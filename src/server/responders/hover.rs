@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use futures::future::BoxFuture;
-use tracing::debug;
+use tracing::trace;
 
 use async_lsp::{ResponseError, Result};
-use lsp_types::{Hover, HoverContents, MarkedString, Position, Url};
+use lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind, Position, Url};
 
 use crate::server::Server;
 use crate::util::position::*;
@@ -20,13 +20,7 @@ impl Server {
             let manifests = manifests.lock().await;
 
             let manifest = match manifests.get(&uri) {
-                None => {
-                    debug!(
-                        "Got hover request for document {} - no manifest",
-                        uri.path()
-                    );
-                    return Ok(None);
-                }
+                None => return Ok(None),
                 Some(manifest) => manifest,
             };
 
@@ -35,7 +29,7 @@ impl Server {
                 if offset >= tool.val_span.start && offset <= tool.val_span.end {
                     Some((
                         offset_range_to_range(&manifest.source, tool.val_span.clone()),
-                        tool.val_text.clone(),
+                        tool.spec(),
                     ))
                 } else {
                     None
@@ -43,26 +37,24 @@ impl Server {
             });
 
             match found {
-                None => {
-                    debug!(
-                        "Got hover request for document {} at {}",
-                        uri.path(),
-                        offset
-                    );
-                    Ok(None)
-                }
-                Some((range, spec)) => {
-                    debug!(
-                        "Got hover request for document {} at {} (tool found)",
-                        uri.path(),
-                        offset
-                    );
-                    // TODO: Parse spec, fetch info about tool
+                Some((range, Ok(spec))) => {
+                    trace!("Hovering: {spec}");
+
+                    // TODO: Fetch info about tool such as desc using the GitHub API
+
+                    let mut lines = Vec::new();
+                    lines.push(format!("## {}", spec.name));
+                    lines.push(format!("By **{}** - **{}**", spec.author, spec.version));
+
                     Ok(Some(Hover {
                         range: Some(range),
-                        contents: HoverContents::Scalar(MarkedString::String(spec)),
+                        contents: HoverContents::Markup(MarkupContent {
+                            kind: MarkupKind::Markdown,
+                            value: lines.join("\n"),
+                        }),
                     }))
                 }
+                _ => Ok(None),
             }
         })
     }

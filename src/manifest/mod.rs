@@ -34,7 +34,7 @@ impl ManifestTool {
         if len == 2 {
             ManifestToolSpec::from_str("")
         } else if self.val_text.starts_with('\"') || self.val_text.starts_with('\'') {
-            ManifestToolSpec::from_str(&self.val_text[1..len - 2])
+            ManifestToolSpec::from_str(&self.val_text[1..len - 1])
         } else {
             panic!("Unknown string char")
         }

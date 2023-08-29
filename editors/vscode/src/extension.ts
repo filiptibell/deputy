@@ -79,12 +79,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	let clientOptions: LanguageClientOptions = {
 		stdioEncoding: "utf8",
-		documentSelector: [{ scheme: "file", pattern: "*.toml" }],
+		documentSelector: [{ scheme: "file", language: "toml" }],
 		diagnosticCollectionName: "Tooling Language Server",
 		outputChannel,
-		synchronize: {
-			fileEvents: vscode.workspace.createFileSystemWatcher("*.toml"),
-		},
 	};
 
 	// Start the language client

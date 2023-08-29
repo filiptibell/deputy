@@ -4,8 +4,9 @@ use tracing::{info, trace};
 
 use async_lsp::{ResponseError, Result};
 use lsp_types::{
-    HoverProviderCapability, InitializeParams, InitializeResult, PositionEncodingKind,
-    ServerCapabilities, ServerInfo,
+    HoverProviderCapability, InitializeParams, InitializeResult, PositionEncodingKind, SaveOptions,
+    ServerCapabilities, ServerInfo, TextDocumentSyncCapability, TextDocumentSyncKind,
+    TextDocumentSyncOptions, TextDocumentSyncSaveOptions,
 };
 
 use crate::server::Server;
@@ -39,6 +40,16 @@ impl Server {
                 capabilities: ServerCapabilities {
                     hover_provider: Some(HoverProviderCapability::Simple(true)),
                     position_encoding: Some(position_encoding),
+                    text_document_sync: Some(TextDocumentSyncCapability::Options(
+                        TextDocumentSyncOptions {
+                            change: Some(TextDocumentSyncKind::FULL),
+                            save: Some(TextDocumentSyncSaveOptions::SaveOptions(SaveOptions {
+                                include_text: Some(true),
+                            })),
+                            open_close: Some(true),
+                            ..Default::default()
+                        },
+                    )),
                     ..ServerCapabilities::default()
                 },
             })

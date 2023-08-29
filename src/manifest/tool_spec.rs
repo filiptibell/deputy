@@ -16,6 +16,8 @@ pub enum ManifestToolSpecError {
     InvalidName(char),
     #[error("tool version contains invalid character '{0}'")]
     InvalidVersion(char),
+    #[error("tool version '{0}' is not a valid semver")]
+    InvalidSemver(String),
 }
 
 #[derive(Debug, Default, Clone)]
@@ -95,7 +97,10 @@ fn validate_name(name: impl AsRef<str>) -> Result<String, ManifestToolSpecError>
 }
 
 fn validate_version(version: impl AsRef<str>) -> Result<String, ManifestToolSpecError> {
-    let version = version.as_ref();
+    let mut version = version.as_ref();
+    if version.starts_with('v') {
+        version = &version[1..]
+    }
     if let Some(invalid_char) = version.chars().find(|c| !is_valid_version_char(*c)) {
         Err(ManifestToolSpecError::InvalidVersion(invalid_char))
     } else {
