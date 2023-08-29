@@ -37,13 +37,21 @@ impl fmt::Display for ManifestToolSpec {
 impl FromStr for ManifestToolSpec {
     type Err = ManifestToolSpecError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let idx_slash = s.chars().enumerate().find(|(_, c)| c == &'/');
-        if idx_slash.is_none() {
-            validate_author(s)?;
+        if s.is_empty() {
             return Err(ManifestToolSpecError::MissingAuthor);
         }
 
+        let idx_slash = s.chars().enumerate().find(|(_, c)| c == &'/');
+        if idx_slash.is_none() {
+            validate_author(s)?;
+            return Err(ManifestToolSpecError::MissingName);
+        }
+
         let idx_slash = idx_slash.unwrap().0;
+        if idx_slash == s.len() - 1 {
+            return Err(ManifestToolSpecError::MissingName);
+        }
+
         let tool_author = validate_author(&s[..idx_slash])?;
 
         let idx_at = s.chars().enumerate().find(|(_, c)| c == &'@');
@@ -51,7 +59,7 @@ impl FromStr for ManifestToolSpec {
             if idx_slash > s.len() - 1 {
                 validate_name(&s[idx_slash + 1..])?;
             }
-            return Err(ManifestToolSpecError::MissingName);
+            return Err(ManifestToolSpecError::MissingVersion);
         }
 
         let idx_at = idx_at.unwrap().0;
