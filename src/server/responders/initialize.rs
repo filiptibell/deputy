@@ -12,7 +12,7 @@ use lsp_types::{
 use crate::server::Server;
 
 impl Server {
-    pub(crate) fn respond_to_init(
+    pub(crate) fn respond_to_initalize(
         &self,
         params: InitializeParams,
     ) -> BoxFuture<'static, Result<InitializeResult, ResponseError>> {

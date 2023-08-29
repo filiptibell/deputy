@@ -19,7 +19,7 @@ impl LanguageServer for Server {
         &mut self,
         params: InitializeParams,
     ) -> BoxFuture<'static, Result<InitializeResult, Self::Error>> {
-        self.respond_to_init(params)
+        self.respond_to_initalize(params)
     }
 
     fn did_open(&mut self, params: DidOpenTextDocumentParams) -> ControlFlow<Result<()>> {

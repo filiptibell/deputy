@@ -1,2 +1,2 @@
 pub mod hover;
-pub mod init;
+pub mod initialize;
