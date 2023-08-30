@@ -9,7 +9,7 @@ use lsp_types::{
     TextDocumentSyncOptions, TextDocumentSyncSaveOptions,
 };
 
-use crate::server::Server;
+use crate::server::*;
 
 impl Server {
     pub(crate) fn respond_to_initalize(

@@ -6,8 +6,8 @@ use tracing::trace;
 use async_lsp::{ResponseError, Result};
 use lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind, Position, Url};
 
-use crate::server::Server;
-use crate::util::position::*;
+use crate::server::*;
+use crate::util::*;
 
 impl Server {
     pub(crate) fn respond_to_hover(
@@ -15,6 +15,7 @@ impl Server {
         uri: Url,
         position: Position,
     ) -> BoxFuture<'static, Result<Option<Hover>, ResponseError>> {
+        let github = self.github.clone();
         let manifests = Arc::clone(&self.manifests);
         Box::pin(async move {
             let manifests = manifests.lock().await;
@@ -36,35 +37,37 @@ impl Server {
                 }
             });
 
-            match found {
-                Some((range, Ok(spec))) => {
-                    trace!("Hovering: {spec}");
+            let (found_range, found_spec) = match found {
+                Some((range, Ok(spec))) => (range, spec),
+                _ => return Ok(None),
+            };
 
-                    let mut lines = Vec::new();
-                    lines.push(format!("## {}", spec.name));
-                    lines.push(format!("By **{}** - **{}**", spec.author, spec.version));
+            trace!("Hovering: {found_spec}");
 
-                    if let Ok(metrics) = octocrab::instance()
-                        .repos(&spec.author, &spec.name)
-                        .get_community_profile_metrics()
-                        .await
-                    {
-                        if let Some(description) = metrics.description {
-                            lines.push(String::new());
-                            lines.push(description.to_string());
-                        }
-                    }
+            let mut lines = Vec::new();
+            lines.push(format!("## {}", found_spec.name));
+            lines.push(format!(
+                "By **{}** - **{}**",
+                found_spec.author, found_spec.version
+            ));
 
-                    Ok(Some(Hover {
-                        range: Some(range),
-                        contents: HoverContents::Markup(MarkupContent {
-                            kind: MarkupKind::Markdown,
-                            value: lines.join("\n"),
-                        }),
-                    }))
+            if let Ok(metrics) = github
+                .get_repository_metrics(found_spec.author, found_spec.name)
+                .await
+            {
+                if let Some(description) = metrics.description {
+                    lines.push(String::new());
+                    lines.push(description.to_string());
                 }
-                _ => Ok(None),
             }
+
+            Ok(Some(Hover {
+                range: Some(found_range),
+                contents: HoverContents::Markup(MarkupContent {
+                    kind: MarkupKind::Markdown,
+                    value: lines.join("\n"),
+                }),
+            }))
         })
     }
 }

@@ -1,1 +1,3 @@
-pub mod position;
+mod position;
+
+pub use position::*;

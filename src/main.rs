@@ -5,6 +5,7 @@ use async_lsp::{
     panic::CatchUnwindLayer, server::LifecycleLayer, tracing::TracingLayer, MainLoop,
 };
 
+mod github;
 mod manifest;
 mod server;
 mod stdio;

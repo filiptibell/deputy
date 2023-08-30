@@ -10,13 +10,15 @@ use lsp_types::notification::PublishDiagnostics;
 use lsp_types::{Diagnostic, DiagnosticSeverity, PublishDiagnosticsParams, Url};
 
 use super::events::*;
+use crate::github::*;
 use crate::manifest::*;
-use crate::util::position::*;
+use crate::util::*;
 
 const KNOWN_FILE_NAMES: &[&str] = &["aftman.toml", "foreman.toml", "wally.toml"];
 
 pub struct Server {
     pub client: ClientSocket,
+    pub github: GithubWrapper,
     pub manifests: Arc<AsyncMutex<HashMap<Url, Manifest>>>,
 }
 
@@ -24,6 +26,7 @@ impl Server {
     pub fn new(client: ClientSocket) -> Self {
         let mut this = Self {
             client,
+            github: GithubWrapper::new(),
             manifests: Arc::new(AsyncMutex::new(HashMap::new())),
         };
         this.spawn_tick();
