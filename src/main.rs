@@ -5,6 +5,7 @@ mod github;
 mod manifest;
 mod server;
 mod toml;
+mod tools;
 mod util;
 
 use server::Backend;
