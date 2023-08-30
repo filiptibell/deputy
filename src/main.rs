@@ -12,10 +12,14 @@ mod server;
 mod toml;
 mod util;
 
+use cli::{Cli, Transport};
+use server::Server;
+
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-    // Set up logging - LSP uses stdout for communication,
-    // meaning we must use stderr for all of our logging
+    let cli = Cli::new();
+
+    // Set up logging / tracing
     let tracing_filter = EnvFilter::builder()
         .with_default_directive(LevelFilter::INFO.into())
         .from_env_lossy()
@@ -23,24 +27,17 @@ async fn main() {
         .add_directive("rustls=warn".parse().unwrap())
         .add_directive("tower=warn".parse().unwrap())
         .add_directive("octocrab=warn".parse().unwrap());
-    let tracing_target_enabled = matches!(
-        tracing_filter.max_level_hint(),
-        Some(LevelFilter::TRACE | LevelFilter::DEBUG)
-    );
     tracing_subscriber::fmt()
         .compact()
         .with_env_filter(tracing_filter)
         .without_time()
-        .with_target(tracing_target_enabled)
+        .with_target(false)
         .with_level(true)
         .with_ansi(false) // Editor output does not support ANSI ... yet?
-        .with_writer(std::io::stderr)
+        .with_writer(std::io::stderr) // Stdio transport takes up stdout, so emit output to stderr
         .init();
 
-    // Create our language server, parse cli args
-    let cli = cli::Cli::new();
-    cli.emit_debug();
-
+    // Create our language server
     let (server, _) = MainLoop::new_server(|client| {
         tower::ServiceBuilder::new()
             .layer(TracingLayer::default())
@@ -48,14 +45,25 @@ async fn main() {
             .layer(CatchUnwindLayer::default())
             .layer(ConcurrencyLayer::default())
             .layer(ClientProcessMonitorLayer::new(client.clone()))
-            .service(server::Server::new(client, &cli).into_router())
+            .service(Server::new(client, &cli).into_router())
     });
 
-    // Run it communicating over stdio, until the end of time
-    // FUTURE: Support other kinds of transport (ipc, pipe, socket)
-    let (stdin, stdout) = util::create_stdio();
-    server
-        .run_buffered(stdin, stdout)
-        .await
-        .expect("unexpected language server error");
+    // Run the server over the preferred transport protocol
+    // FUTURE: Support pipe transport
+    match cli.transport {
+        Transport::Socket(port) => {
+            let (read, write) = util::create_socket(port).await;
+            server
+                .run_buffered(read, write)
+                .await
+                .expect("unexpected language server error");
+        }
+        Transport::Stdio => {
+            let (stdin, stdout) = util::create_stdio();
+            server
+                .run_buffered(stdin, stdout)
+                .await
+                .expect("unexpected language server error");
+        }
+    }
 }

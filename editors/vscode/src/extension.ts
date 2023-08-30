@@ -9,7 +9,6 @@ import {
 	LanguageClient,
 	LanguageClientOptions,
 	ServerOptions,
-	TransportKind,
 } from "vscode-languageclient/node";
 
 import { promptAuthForGitHub } from "./auth";
@@ -93,7 +92,6 @@ export async function activate(extensionContext: vscode.ExtensionContext) {
 		options.env["GITHUB_TOKEN"] = githubAuthToken;
 	}
 	let server: Executable = {
-		transport: TransportKind.stdio,
 		command,
 		options,
 	};
