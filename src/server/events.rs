@@ -17,7 +17,7 @@ pub enum RateLimitEvent {
     GitHub,
 }
 
-impl Server {
+impl Backend {
     pub(super) fn spawn_rate_limit(&mut self) {
         let client = self.client.clone();
         let github = self.github.clone();

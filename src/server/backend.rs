@@ -12,14 +12,14 @@ use crate::github::*;
 use super::document::*;
 use super::notifications::*;
 
-pub struct Server {
+pub struct Backend {
     pub client: ClientSocket,
     pub github: GithubWrapper,
     pub documents: Arc<AsyncMutex<HashMap<Url, Document>>>,
     pub workspace_folders: Vec<(String, Url)>,
 }
 
-impl Server {
+impl Backend {
     pub fn new(client: ClientSocket, cli: &Cli) -> Self {
         let mut github = GithubWrapper::new();
         if let Some(token) = &cli.github_token {

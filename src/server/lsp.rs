@@ -10,9 +10,9 @@ use lsp_types::{
     HoverParams, InitializeParams, InitializeResult,
 };
 
-use super::state::*;
+use super::backend::*;
 
-impl LanguageServer for Server {
+impl LanguageServer for Backend {
     type Error = ResponseError;
     type NotifyResult = ControlFlow<Result<()>>;
 

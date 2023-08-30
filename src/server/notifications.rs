@@ -7,7 +7,7 @@ use tracing::{debug, warn};
 use async_lsp::Result;
 use lsp_types::notification::Notification;
 
-use super::Server;
+use super::Backend;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum RateLimitNotificationKind {
@@ -42,7 +42,7 @@ impl Notification for RateLimitNotification {
     type Params = Self;
 }
 
-impl Server {
+impl Backend {
     pub(super) fn on_notified_rate_limit(
         &mut self,
         notif: RateLimitNotification,

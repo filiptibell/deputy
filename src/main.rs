@@ -13,7 +13,7 @@ mod toml;
 mod util;
 
 use cli::{Cli, Transport};
-use server::Server;
+use server::Backend;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
@@ -45,7 +45,7 @@ async fn main() {
             .layer(CatchUnwindLayer::default())
             .layer(ConcurrencyLayer::default())
             .layer(ClientProcessMonitorLayer::new(client.clone()))
-            .service(Server::new(client, &cli).into_router())
+            .service(Backend::new(client, &cli).into_router())
     });
 
     // Run the server over the preferred transport protocol

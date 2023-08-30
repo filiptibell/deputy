@@ -7,7 +7,7 @@ use crate::server::*;
 
 use super::super::actions::*;
 
-impl Server {
+impl Backend {
     pub(crate) fn respond_to_code_action(
         &self,
         params: CodeActionParams,

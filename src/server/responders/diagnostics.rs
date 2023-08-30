@@ -23,7 +23,7 @@ use super::super::*;
 
 const KNOWN_FILE_NAMES: &[&str] = &["aftman.toml", "foreman.toml", "wally.toml"];
 
-impl Server {
+impl Backend {
     pub fn update_document(
         &self,
         uri: Url,

@@ -11,7 +11,7 @@ use lsp_types::{
 
 use crate::server::*;
 
-impl Server {
+impl Backend {
     pub(crate) fn respond_to_initalize(
         &self,
         params: InitializeParams,

@@ -9,7 +9,7 @@ use lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind, Position, Url};
 use crate::server::*;
 use crate::util::*;
 
-impl Server {
+impl Backend {
     pub(crate) fn respond_to_hover(
         &self,
         uri: Url,
