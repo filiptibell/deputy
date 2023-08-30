@@ -1,3 +1,4 @@
+mod actions;
 mod document;
 mod events;
 mod lsp;

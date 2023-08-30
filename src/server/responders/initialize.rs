@@ -4,9 +4,9 @@ use tracing::{info, trace};
 
 use async_lsp::{ResponseError, Result};
 use lsp_types::{
-    HoverProviderCapability, InitializeParams, InitializeResult, PositionEncodingKind,
-    ServerCapabilities, ServerInfo, TextDocumentSyncCapability, TextDocumentSyncKind,
-    TextDocumentSyncOptions,
+    CodeActionProviderCapability, HoverProviderCapability, InitializeParams, InitializeResult,
+    PositionEncodingKind, ServerCapabilities, ServerInfo, TextDocumentSyncCapability,
+    TextDocumentSyncKind, TextDocumentSyncOptions,
 };
 
 use crate::server::*;
@@ -31,7 +31,6 @@ impl Server {
                     version: Some(env!("CARGO_PKG_VERSION").to_string()),
                 }),
                 capabilities: ServerCapabilities {
-                    hover_provider: Some(HoverProviderCapability::Simple(true)),
                     position_encoding: Some(position_encoding),
                     text_document_sync: Some(TextDocumentSyncCapability::Options(
                         TextDocumentSyncOptions {
@@ -40,6 +39,8 @@ impl Server {
                             ..Default::default()
                         },
                     )),
+                    hover_provider: Some(HoverProviderCapability::Simple(true)),
+                    code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
                     ..ServerCapabilities::default()
                 },
             })

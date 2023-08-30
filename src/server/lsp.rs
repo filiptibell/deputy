@@ -5,8 +5,9 @@ use futures::future::BoxFuture;
 use async_lsp::{LanguageServer, ResponseError, Result};
 
 use lsp_types::{
-    DidChangeConfigurationParams, DidChangeTextDocumentParams, DidCloseTextDocumentParams,
-    DidOpenTextDocumentParams, Hover, HoverParams, InitializeParams, InitializeResult,
+    CodeActionOrCommand, CodeActionParams, DidChangeConfigurationParams,
+    DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams, Hover,
+    HoverParams, InitializeParams, InitializeResult,
 };
 
 use super::state::*;
@@ -70,5 +71,12 @@ impl LanguageServer for Server {
             position_params.text_document.uri.clone(),
             position_params.position,
         )
+    }
+
+    fn code_action(
+        &mut self,
+        params: CodeActionParams,
+    ) -> BoxFuture<'static, Result<Option<Vec<CodeActionOrCommand>>, Self::Error>> {
+        self.respond_to_code_action(params)
     }
 }

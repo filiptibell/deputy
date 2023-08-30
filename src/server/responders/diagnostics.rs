@@ -17,6 +17,7 @@ use crate::github::*;
 use crate::manifest::*;
 use crate::util::*;
 
+use super::super::actions::*;
 use super::super::document::*;
 use super::super::*;
 
@@ -170,7 +171,7 @@ fn parse_and_insert(
             tokio::task::spawn(async move {
                 let diags = tools
                     .iter()
-                    .map(|(tool, range)| diagnose_tool_version(&github, tool, range))
+                    .map(|(tool, range)| diagnose_tool_version(&github, &uri, tool, range))
                     .collect::<Vec<_>>();
 
                 let _ = client.notify::<Progress>(ProgressParams {
@@ -222,6 +223,7 @@ fn diagnose_tool_spec(tool: &ManifestTool, range: &Range) -> Option<Diagnostic> 
 
 async fn diagnose_tool_version(
     github: &GithubWrapper,
+    uri: &Url,
     tool: &ManifestTool,
     range: &Range,
 ) -> Option<Diagnostic> {
@@ -241,6 +243,12 @@ async fn diagnose_tool_version(
     };
 
     if latest_version > spec.version {
+        let metadata = CodeActionMetadata::LatestVersion {
+            source_uri: uri.clone(),
+            source_text: tool.val_text.to_string(),
+            version_current: spec.version.to_string(),
+            version_latest: latest_version.to_string(),
+        };
         Some(Diagnostic {
             source: Some(String::from("Tools")),
             range: *range,
@@ -249,6 +257,7 @@ async fn diagnose_tool_version(
                 \nThe latest version is `{latest_version}`"
             ),
             severity: Some(DiagnosticSeverity::INFORMATION),
+            data: Some(metadata.into()),
             ..Default::default()
         })
     } else {
