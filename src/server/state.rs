@@ -1,8 +1,8 @@
-use std::{collections::HashMap, ops::ControlFlow, path::PathBuf, sync::Arc, time::Duration};
+use std::{collections::HashMap, ops::ControlFlow, path::PathBuf, sync::Arc};
 
 use futures::future::join_all;
 use semver::Version;
-use tokio::{sync::Mutex as AsyncMutex, time};
+use tokio::sync::Mutex as AsyncMutex;
 use tracing::{debug, trace, warn};
 
 use async_lsp::{router::Router, ClientSocket, Result};
@@ -10,7 +10,6 @@ use async_lsp::{router::Router, ClientSocket, Result};
 use lsp_types::notification::PublishDiagnostics;
 use lsp_types::{Diagnostic, DiagnosticSeverity, PublishDiagnosticsParams, Range, Url};
 
-use super::events::*;
 use crate::github::*;
 use crate::manifest::*;
 use crate::util::*;
@@ -30,32 +29,16 @@ impl Server {
             github: GithubWrapper::new(),
             manifests: Arc::new(AsyncMutex::new(HashMap::new())),
         };
+        this.spawn_rate_limit();
         this.spawn_tick();
         this
     }
 
     pub fn into_router(self) -> Router<Self> {
         let mut router = Router::from_language_server(self);
+        router.event(Self::on_rate_limit);
         router.event(Self::on_tick);
         router
-    }
-
-    fn spawn_tick(&mut self) {
-        let client = self.client.clone();
-        tokio::spawn(async move {
-            let mut interval = time::interval(Duration::from_secs(30));
-            loop {
-                interval.tick().await;
-                if client.emit(TickEvent).is_err() {
-                    break;
-                }
-            }
-        });
-    }
-
-    fn on_tick(&mut self, _: TickEvent) -> ControlFlow<Result<()>> {
-        trace!("tick");
-        ControlFlow::Continue(())
     }
 
     pub fn update_document(&self, uri: Url, contents: String) -> ControlFlow<Result<()>> {

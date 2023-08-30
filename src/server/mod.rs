@@ -1,5 +1,6 @@
 mod events;
 mod lsp;
+mod notifications;
 mod responders;
 mod state;
 

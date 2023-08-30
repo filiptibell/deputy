@@ -1,4 +1,5 @@
 use octocrab::models::{repos::Release, RepositoryMetrics};
+use tracing::error;
 
 use super::*;
 
@@ -23,10 +24,24 @@ impl GithubWrapper {
             .client
             .repos(owner, repository)
             .get_community_profile_metrics()
-            .await
-            .map_err(GithubError::from);
+            .await;
 
-        cache.add(cache_map, cache_key, result, false).await
+        if let Err(e) = &result {
+            if is_rate_limit_error(e) {
+                self.notify_rate_limited();
+            } else {
+                error!("GitHub error: {e}");
+            }
+        }
+
+        cache
+            .add(
+                cache_map,
+                cache_key,
+                result.map_err(GithubError::from),
+                false,
+            )
+            .await
     }
 
     pub async fn get_latest_release(
@@ -50,9 +65,34 @@ impl GithubWrapper {
             .repos(owner, repository)
             .releases()
             .get_latest()
-            .await
-            .map_err(GithubError::from);
+            .await;
 
-        cache.add(cache_map, cache_key, result, false).await
+        if let Err(e) = &result {
+            if is_rate_limit_error(e) {
+                self.notify_rate_limited();
+            } else {
+                error!("GitHub error: {e}");
+            }
+        }
+
+        cache
+            .add(
+                cache_map,
+                cache_key,
+                result.map_err(GithubError::from),
+                false,
+            )
+            .await
+    }
+}
+
+fn is_rate_limit_error(error: &octocrab::Error) -> bool {
+    if let octocrab::Error::GitHub { source, .. } = error {
+        let message = source.message.to_ascii_lowercase();
+        message.contains("rate limit exceeded")
+            || message.contains("higher rate limit")
+            || message.contains("#rate-limiting")
+    } else {
+        false
     }
 }
