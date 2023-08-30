@@ -22,7 +22,7 @@ impl From<octocrab::Error> for GithubError {
 
 #[derive(Debug, Clone)]
 pub struct GithubWrapper {
-    client: Arc<octocrab::Octocrab>,
+    client: octocrab::Octocrab,
     cache: GithubCache,
     rate_limit_tx: broadcast::Sender<()>,
     rate_limited: Arc<AtomicBool>,
@@ -37,8 +37,12 @@ impl GithubWrapper {
         self.cache.bust_all()
     }
 
+    pub fn is_rate_limited(&self) -> bool {
+        self.rate_limited.load(Ordering::SeqCst)
+    }
+
     pub fn notify_rate_limited(&self) -> bool {
-        if !self.rate_limited.load(Ordering::SeqCst) {
+        if !self.is_rate_limited() {
             self.rate_limited.store(true, Ordering::SeqCst);
             self.rate_limit_tx.send(()).ok();
             true
@@ -47,23 +51,23 @@ impl GithubWrapper {
         }
     }
 
-    pub fn reset_rate_limited(&self) -> bool {
-        if self.rate_limited.load(Ordering::SeqCst) {
-            self.rate_limited.store(false, Ordering::SeqCst);
-            true
-        } else {
-            false
-        }
-    }
-
-    pub async fn wait_until_rate_limited(&self) -> bool {
-        if self.rate_limited.load(Ordering::SeqCst) {
-            return true;
-        }
-        let rate_limited = Arc::clone(&self.rate_limited);
+    pub async fn wait_until_rate_limited_changes(&self) -> bool {
         let mut rate_limit_rx = self.rate_limit_tx.subscribe();
         rate_limit_rx.recv().await.ok();
-        rate_limited.load(Ordering::SeqCst)
+        self.is_rate_limited()
+    }
+
+    pub fn set_auth_token(&mut self, token: impl Into<String>) {
+        let client = octocrab::Octocrab::builder()
+            .personal_token(token.into())
+            .build()
+            .expect("Failed to create GitHub client");
+        self.client = client;
+        if self.is_rate_limited() {
+            self.rate_limited.store(false, Ordering::SeqCst);
+            self.bust_cache();
+            self.rate_limit_tx.send(()).ok();
+        }
     }
 }
 
@@ -74,7 +78,7 @@ impl Default for GithubWrapper {
             .expect("Failed to create GitHub client");
         let (rate_limit_tx, _) = broadcast::channel(32);
         Self {
-            client: Arc::new(client),
+            client,
             cache: GithubCache::new(),
             rate_limit_tx,
             rate_limited: Arc::new(AtomicBool::new(false)),

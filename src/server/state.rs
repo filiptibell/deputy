@@ -14,6 +14,8 @@ use crate::github::*;
 use crate::manifest::*;
 use crate::util::*;
 
+use super::notifications::*;
+
 const KNOWN_FILE_NAMES: &[&str] = &["aftman.toml", "foreman.toml", "wally.toml"];
 
 pub struct Server {
@@ -36,8 +38,9 @@ impl Server {
 
     pub fn into_router(self) -> Router<Self> {
         let mut router = Router::from_language_server(self);
-        router.event(Self::on_rate_limit);
-        router.event(Self::on_tick);
+        router.notification::<RateLimitNotification>(Self::on_notified_rate_limit);
+        router.event(Self::on_event_rate_limit);
+        router.event(Self::on_event_tick);
         router
     }
 

@@ -23,9 +23,8 @@ impl Server {
         let github = self.github.clone();
         tokio::spawn(async move {
             loop {
-                if github.wait_until_rate_limited().await
-                    && client.emit(RateLimitEvent::GitHub).is_err()
-                {
+                let got_limited = github.wait_until_rate_limited_changes().await;
+                if got_limited && client.emit(RateLimitEvent::GitHub).is_err() {
                     break;
                 }
             }
@@ -45,7 +44,7 @@ impl Server {
         });
     }
 
-    pub(super) fn on_rate_limit(&mut self, _: RateLimitEvent) -> ControlFlow<Result<()>> {
+    pub(super) fn on_event_rate_limit(&mut self, _: RateLimitEvent) -> ControlFlow<Result<()>> {
         warn!("GitHub rate limit was reached");
         let notif = RateLimitNotification::github();
         if self.client.notify::<RateLimitNotification>(notif).is_ok() {
@@ -54,7 +53,7 @@ impl Server {
         ControlFlow::Continue(())
     }
 
-    pub(super) fn on_tick(&mut self, _: TickEvent) -> ControlFlow<Result<()>> {
+    pub(super) fn on_event_tick(&mut self, _: TickEvent) -> ControlFlow<Result<()>> {
         trace!("tick");
         ControlFlow::Continue(())
     }

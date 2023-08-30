@@ -12,21 +12,32 @@ import {
 	TransportKind,
 } from "vscode-languageclient/node";
 
-let client: LanguageClient;
+import { promptAuthForGitHub } from "./auth";
+import { fileExists } from "./fs";
+import { RateLimitNotification } from "./notifications";
 
-const fileExists = async (path: vscode.Uri): Promise<boolean> => {
-	try {
-		let stat = await vscode.workspace.fs.stat(path);
-		return stat.type === vscode.FileType.File;
-	} catch {
-		return false;
+let client: LanguageClient;
+let outputChannel: vscode.OutputChannel;
+
+const sendAuthForGitHub = async () => {
+	const auth = await promptAuthForGitHub();
+	if (!auth) {
+		outputChannel.appendLine("GitHub token prompt was dismissed");
+		return;
 	}
+
+	const notification: RateLimitNotification = {
+		kind: "GitHub",
+		value: auth,
+	};
+
+	outputChannel.appendLine("GitHub token is valid, sending to server");
+	client.sendNotification("$/internal_message/ratelimit", notification);
 };
 
 export async function activate(context: vscode.ExtensionContext) {
 	// Create a persistent output channel to use
-
-	let outputChannel = vscode.window.createOutputChannel(
+	outputChannel = vscode.window.createOutputChannel(
 		"Tooling Language Server"
 	);
 
@@ -100,6 +111,16 @@ export async function activate(context: vscode.ExtensionContext) {
 	);
 
 	client.start();
+
+	// Listen for custom notifications from server
+	client.onNotification(
+		"$/internal_message/ratelimit",
+		(value: RateLimitNotification) => {
+			if (value.kind === "GitHub") {
+				sendAuthForGitHub();
+			}
+		}
+	);
 }
 
 export function deactivate() {
