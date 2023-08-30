@@ -1,9 +1,6 @@
 use tracing_subscriber::filter::{EnvFilter, LevelFilter};
 
-use async_lsp::{
-    client_monitor::ClientProcessMonitorLayer, concurrency::ConcurrencyLayer,
-    panic::CatchUnwindLayer, server::LifecycleLayer, tracing::TracingLayer, MainLoop,
-};
+use tower_lsp::{lsp_types::notification::Notification, LspService, Server};
 
 mod cli;
 mod github;
@@ -13,7 +10,7 @@ mod toml;
 mod util;
 
 use cli::{Cli, Transport};
-use server::Backend;
+use server::{notifications::RateLimitNotification, Backend};
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
@@ -38,32 +35,23 @@ async fn main() {
         .init();
 
     // Create our language server
-    let (server, _) = MainLoop::new_server(|client| {
-        tower::ServiceBuilder::new()
-            .layer(TracingLayer::default())
-            .layer(LifecycleLayer::default())
-            .layer(CatchUnwindLayer::default())
-            .layer(ConcurrencyLayer::default())
-            .layer(ClientProcessMonitorLayer::new(client.clone()))
-            .service(Backend::new(client, &cli).into_router())
-    });
+    let (service, socket) = LspService::build(|client| Backend::new(client, &cli))
+        .custom_method(
+            RateLimitNotification::METHOD,
+            Backend::on_notified_rate_limit,
+        )
+        .finish();
 
     // Run the server over the preferred transport protocol
     // FUTURE: Support pipe transport
     match cli.transport {
         Transport::Socket(port) => {
             let (read, write) = util::create_socket(port).await;
-            server
-                .run_buffered(read, write)
-                .await
-                .expect("unexpected language server error");
+            Server::new(read, write, socket).serve(service).await;
         }
         Transport::Stdio => {
             let (stdin, stdout) = util::create_stdio();
-            server
-                .run_buffered(stdin, stdout)
-                .await
-                .expect("unexpected language server error");
+            Server::new(stdin, stdout, socket).serve(service).await;
         }
     }
 }

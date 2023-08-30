@@ -2,48 +2,35 @@ use std::{collections::HashMap, sync::Arc};
 
 use tokio::sync::Mutex as AsyncMutex;
 
-use async_lsp::{router::Router, ClientSocket};
-
-use lsp_types::Url;
+use tower_lsp::lsp_types::*;
+use tower_lsp::Client;
 
 use crate::cli::*;
 use crate::github::*;
 
 use super::document::*;
-use super::notifications::*;
 
 pub struct Backend {
-    pub client: ClientSocket,
+    pub client: Client,
     pub github: GithubWrapper,
     pub documents: Arc<AsyncMutex<HashMap<Url, Document>>>,
-    pub workspace_folders: Vec<(String, Url)>,
 }
 
 impl Backend {
-    pub fn new(client: ClientSocket, cli: &Cli) -> Self {
-        let mut github = GithubWrapper::new();
+    pub fn new(client: Client, cli: &Cli) -> Self {
+        let github = GithubWrapper::new();
         if let Some(token) = &cli.github_token {
             github.set_auth_token(token);
         }
 
-        let mut this = Self {
+        let this = Self {
             client,
             github,
             documents: Arc::new(AsyncMutex::new(HashMap::new())),
-            workspace_folders: Vec::new(),
         };
 
-        this.spawn_rate_limit();
-        this.spawn_tick();
+        this.watch_rate_limit();
 
         this
-    }
-
-    pub fn into_router(self) -> Router<Self> {
-        let mut router = Router::from_language_server(self);
-        router.notification::<RateLimitNotification>(Self::on_notified_rate_limit);
-        router.event(Self::on_event_rate_limit);
-        router.event(Self::on_event_tick);
-        router
     }
 }

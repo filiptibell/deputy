@@ -1,11 +1,9 @@
-use std::ops::ControlFlow;
-
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use tracing::{debug, warn};
 
-use async_lsp::Result;
-use lsp_types::notification::Notification;
+use tower_lsp::jsonrpc::Result;
+use tower_lsp::lsp_types::notification::Notification;
 
 use super::Backend;
 
@@ -43,17 +41,30 @@ impl Notification for RateLimitNotification {
 }
 
 impl Backend {
-    pub(super) fn on_notified_rate_limit(
-        &mut self,
-        notif: RateLimitNotification,
-    ) -> ControlFlow<Result<()>> {
+    pub fn watch_rate_limit(&self) {
+        let client = self.client.clone();
+        let github = self.github.clone();
+        tokio::spawn(async move {
+            loop {
+                let is_rate_limited = github.wait_until_rate_limited_changes().await;
+                if is_rate_limited {
+                    let notif = RateLimitNotification::github();
+                    client
+                        .send_notification::<RateLimitNotification>(notif)
+                        .await;
+                }
+            }
+        });
+    }
+
+    pub async fn on_notified_rate_limit(&self, notif: RateLimitNotification) -> Result<()> {
         if let Some(token) = notif.value_string() {
             self.github.set_auth_token(token);
             debug!("GitHub rate limit notification received - set token");
         } else {
             warn!("GitHub rate limit notification received - no token");
         }
-        self.update_all_workspaces();
-        ControlFlow::Continue(())
+        self.update_all_workspaces().await;
+        Ok(())
     }
 }

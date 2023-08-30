@@ -57,7 +57,7 @@ impl GithubWrapper {
         self.is_rate_limited()
     }
 
-    pub fn set_auth_token(&mut self, token: impl Into<String>) {
+    pub fn set_auth_token(&self, token: impl Into<String>) {
         let client = octocrab::Octocrab::builder()
             .personal_token(token.into())
             .build()

@@ -1,9 +1,9 @@
 mod actions;
 mod backend;
 mod document;
-mod events;
 mod lsp;
-mod notifications;
 mod responders;
+
+pub mod notifications;
 
 pub use backend::Backend;

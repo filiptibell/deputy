@@ -1,17 +1,15 @@
-use futures::future::BoxFuture;
-
-use async_lsp::{ResponseError, Result};
-use lsp_types::{CodeActionOrCommand, CodeActionParams};
+use tower_lsp::jsonrpc::Result;
+use tower_lsp::lsp_types::*;
 
 use crate::server::*;
 
 use super::super::actions::*;
 
 impl Backend {
-    pub(crate) fn respond_to_code_action(
+    pub async fn respond_to_code_action(
         &self,
         params: CodeActionParams,
-    ) -> BoxFuture<'static, Result<Option<Vec<CodeActionOrCommand>>, ResponseError>> {
+    ) -> Result<Option<Vec<CodeActionOrCommand>>> {
         let mut actions = Vec::new();
 
         for diag in params.context.diagnostics {
@@ -20,12 +18,10 @@ impl Backend {
             }
         }
 
-        Box::pin(async move {
-            Ok(if actions.is_empty() {
-                None
-            } else {
-                Some(actions)
-            })
+        Ok(if actions.is_empty() {
+            None
+        } else {
+            Some(actions)
         })
     }
 }

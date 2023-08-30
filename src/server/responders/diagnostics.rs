@@ -2,16 +2,13 @@ use std::{collections::HashMap, ops::ControlFlow, path::PathBuf, sync::Arc};
 
 use futures::future::join_all;
 use semver::Version;
+use tower_lsp::lsp_types::notification::Progress;
+use tower_lsp::lsp_types::notification::PublishDiagnostics;
 use tracing::{debug, info, trace, warn};
 
-use async_lsp::{ClientSocket, Result};
-
-use lsp_types::notification::{Progress, PublishDiagnostics};
-use lsp_types::{
-    Diagnostic, DiagnosticSeverity, NumberOrString, ProgressParams, ProgressParamsValue,
-    PublishDiagnosticsParams, Range, Url, WorkDoneProgress, WorkDoneProgressBegin,
-    WorkDoneProgressEnd,
-};
+use tower_lsp::jsonrpc::Result;
+use tower_lsp::lsp_types::*;
+use tower_lsp::Client;
 
 use crate::github::*;
 use crate::manifest::*;
@@ -59,7 +56,7 @@ impl Backend {
         ControlFlow::Continue(())
     }
 
-    pub fn update_workspace_documents(&self, uri: Url) {
+    pub async fn update_workspace_documents(&self, uri: Url) {
         let uri_fs_path = match uri.to_file_path() {
             Err(_) => return,
             Ok(p) => p,
@@ -70,47 +67,53 @@ impl Backend {
         let client = self.client.clone();
         let github = self.github.clone();
         let documents = Arc::clone(&self.documents);
-        tokio::task::spawn(async move {
-            let file_paths = KNOWN_FILE_NAMES
-                .iter()
-                .map(|file_name| uri_fs_path.join(file_name))
-                .collect::<Vec<_>>();
 
-            let file_futs = file_paths
-                .iter()
-                .map(tokio::fs::read_to_string)
-                .collect::<Vec<_>>();
-            let file_results = join_all(file_futs).await;
+        let file_paths = KNOWN_FILE_NAMES
+            .iter()
+            .map(|file_name| uri_fs_path.join(file_name))
+            .collect::<Vec<_>>();
 
-            let mut documents = documents.lock().await;
-            for (file_path, file_result) in file_paths.into_iter().zip(file_results) {
-                parse_and_insert(
-                    client.clone(),
-                    github.clone(),
-                    &mut documents,
-                    file_path,
-                    Some(0),
-                    file_result,
-                );
-            }
-        });
+        let file_futs = file_paths
+            .iter()
+            .map(tokio::fs::read_to_string)
+            .collect::<Vec<_>>();
+        let file_results = join_all(file_futs).await;
+
+        let mut documents = documents.lock().await;
+        for (file_path, file_result) in file_paths.into_iter().zip(file_results) {
+            parse_and_insert(
+                client.clone(),
+                github.clone(),
+                &mut documents,
+                file_path,
+                Some(0),
+                file_result,
+            );
+        }
     }
 
-    pub fn update_all_workspaces(&self) {
+    pub async fn update_all_workspaces(&self) {
         info!("Updating all workspaces");
-        for (_, uri) in &self.workspace_folders {
-            self.update_workspace_documents(uri.clone());
+        let client = self.client.clone();
+        if let Ok(Some(folders)) = client.workspace_folders().await {
+            join_all(
+                folders
+                    .into_iter()
+                    .map(|f| self.update_workspace_documents(f.uri.clone()))
+                    .collect::<Vec<_>>(),
+            )
+            .await;
         }
     }
 }
 
 fn parse_and_insert(
-    client: ClientSocket,
+    client: Client,
     github: GithubWrapper,
     documents: &mut HashMap<Url, Document>,
     file_path_absolute: PathBuf,
     file_version: Option<i32>,
-    file_result: Result<String, std::io::Error>,
+    file_result: std::result::Result<String, std::io::Error>,
 ) {
     trace!("Updating text document '{}'", file_path_absolute.display());
 
@@ -174,34 +177,40 @@ fn parse_and_insert(
                     .map(|(tool, range)| diagnose_tool_version(&github, &uri, tool, range))
                     .collect::<Vec<_>>();
 
-                let _ = client.notify::<Progress>(ProgressParams {
-                    token: NumberOrString::String(progress_token.clone()),
-                    value: ProgressParamsValue::WorkDone(WorkDoneProgress::Begin(
-                        WorkDoneProgressBegin {
-                            cancellable: Some(false),
-                            title: String::from("Fetching latest versions"),
-                            ..Default::default()
-                        },
-                    )),
-                });
+                let _ = client
+                    .send_notification::<Progress>(ProgressParams {
+                        token: NumberOrString::String(progress_token.clone()),
+                        value: ProgressParamsValue::WorkDone(WorkDoneProgress::Begin(
+                            WorkDoneProgressBegin {
+                                cancellable: Some(false),
+                                title: String::from("Fetching latest versions"),
+                                ..Default::default()
+                            },
+                        )),
+                    })
+                    .await;
 
                 let mut diags = join_all(diags).await;
                 for diag in diags.drain(..).flatten() {
                     diagnostics.push(diag);
                 }
 
-                let _ = client.notify::<Progress>(ProgressParams {
-                    token: NumberOrString::String(progress_token.clone()),
-                    value: ProgressParamsValue::WorkDone(WorkDoneProgress::End(
-                        WorkDoneProgressEnd::default(),
-                    )),
-                });
+                let _ = client
+                    .send_notification::<Progress>(ProgressParams {
+                        token: NumberOrString::String(progress_token.clone()),
+                        value: ProgressParamsValue::WorkDone(WorkDoneProgress::End(
+                            WorkDoneProgressEnd::default(),
+                        )),
+                    })
+                    .await;
 
-                let _ = client.notify::<PublishDiagnostics>(PublishDiagnosticsParams {
-                    uri: uri.clone(),
-                    diagnostics,
-                    version: file_version,
-                });
+                let _ = client
+                    .send_notification::<PublishDiagnostics>(PublishDiagnosticsParams {
+                        uri: uri.clone(),
+                        diagnostics,
+                        version: file_version,
+                    })
+                    .await;
             });
         }
     }

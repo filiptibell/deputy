@@ -3,10 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
-use async_lsp::Result;
-use lsp_types::{
-    CodeAction, CodeActionKind, CodeActionOrCommand, Diagnostic, TextEdit, Url, WorkspaceEdit,
-};
+use tower_lsp::lsp_types::*;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind")]

@@ -1,21 +1,13 @@
-use futures::future::BoxFuture;
 use itertools::Itertools;
 use tracing::{info, trace};
 
-use async_lsp::{ResponseError, Result};
-use lsp_types::{
-    CodeActionProviderCapability, HoverProviderCapability, InitializeParams, InitializeResult,
-    PositionEncodingKind, ServerCapabilities, ServerInfo, TextDocumentSyncCapability,
-    TextDocumentSyncKind, TextDocumentSyncOptions,
-};
+use tower_lsp::jsonrpc::Result;
+use tower_lsp::lsp_types::*;
 
 use crate::server::*;
 
 impl Backend {
-    pub(crate) fn respond_to_initalize(
-        &self,
-        params: InitializeParams,
-    ) -> BoxFuture<'static, Result<InitializeResult, ResponseError>> {
+    pub async fn respond_to_initalize(&self, params: InitializeParams) -> Result<InitializeResult> {
         trace!("Initializing server with params: {params:#?}");
 
         // Negotiate with client for settings, encodings, try to prefer using utf-8
@@ -23,27 +15,25 @@ impl Backend {
         let (position_encoding, offset_encoding) = negotiate_position_and_offset_encoding(&params);
 
         // Respond with negotiated encoding, server info, capabilities
-        Box::pin(async move {
-            Ok(InitializeResult {
-                offset_encoding: Some(offset_encoding),
-                server_info: Some(ServerInfo {
-                    name: env!("CARGO_PKG_NAME").to_string(),
-                    version: Some(env!("CARGO_PKG_VERSION").to_string()),
-                }),
-                capabilities: ServerCapabilities {
-                    position_encoding: Some(position_encoding),
-                    text_document_sync: Some(TextDocumentSyncCapability::Options(
-                        TextDocumentSyncOptions {
-                            change: Some(TextDocumentSyncKind::FULL),
-                            open_close: Some(true),
-                            ..Default::default()
-                        },
-                    )),
-                    hover_provider: Some(HoverProviderCapability::Simple(true)),
-                    code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
-                    ..ServerCapabilities::default()
-                },
-            })
+        Ok(InitializeResult {
+            offset_encoding: Some(offset_encoding),
+            server_info: Some(ServerInfo {
+                name: env!("CARGO_PKG_NAME").to_string(),
+                version: Some(env!("CARGO_PKG_VERSION").to_string()),
+            }),
+            capabilities: ServerCapabilities {
+                position_encoding: Some(position_encoding),
+                text_document_sync: Some(TextDocumentSyncCapability::Options(
+                    TextDocumentSyncOptions {
+                        change: Some(TextDocumentSyncKind::FULL),
+                        open_close: Some(true),
+                        ..Default::default()
+                    },
+                )),
+                hover_provider: Some(HoverProviderCapability::Simple(true)),
+                code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
+                ..ServerCapabilities::default()
+            },
         })
     }
 }

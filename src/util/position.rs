@@ -2,9 +2,9 @@
 
 use std::ops::Range;
 
-use lsp_types::{Position, Range as LspRange};
+use tower_lsp::lsp_types::{Position as LspPosition, Range as LspRange};
 
-pub fn position_to_offset(source: impl AsRef<str>, position: Position) -> usize {
+pub fn position_to_offset(source: impl AsRef<str>, position: LspPosition) -> usize {
     let source = source.as_ref();
 
     if position.line == 0 {
@@ -25,7 +25,7 @@ pub fn position_to_offset(source: impl AsRef<str>, position: Position) -> usize 
     offset
 }
 
-pub fn offset_to_position(source: impl AsRef<str>, offset: usize) -> Position {
+pub fn offset_to_position(source: impl AsRef<str>, offset: usize) -> LspPosition {
     let source = source.as_ref();
 
     let mut newline_count = 0;
@@ -40,7 +40,7 @@ pub fn offset_to_position(source: impl AsRef<str>, offset: usize) -> Position {
         }
     }
 
-    Position::new(newline_count, (offset - newline_last_idx - 1) as u32)
+    LspPosition::new(newline_count, (offset - newline_last_idx - 1) as u32)
 }
 
 pub fn offset_range_to_range(source: impl AsRef<str>, range: Range<usize>) -> LspRange {
