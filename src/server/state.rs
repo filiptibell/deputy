@@ -1,13 +1,14 @@
 use std::{collections::HashMap, ops::ControlFlow, path::PathBuf, sync::Arc, time::Duration};
 
 use futures::future::join_all;
+use semver::Version;
 use tokio::{sync::Mutex as AsyncMutex, time};
 use tracing::{debug, trace, warn};
 
 use async_lsp::{router::Router, ClientSocket, Result};
 
 use lsp_types::notification::PublishDiagnostics;
-use lsp_types::{Diagnostic, DiagnosticSeverity, PublishDiagnosticsParams, Url};
+use lsp_types::{Diagnostic, DiagnosticSeverity, PublishDiagnosticsParams, Range, Url};
 
 use super::events::*;
 use crate::github::*;
@@ -65,13 +66,14 @@ impl Server {
 
         debug!("Updating document: {}", file_path.display());
 
-        let mut client = self.client.clone();
+        let client = self.client.clone();
+        let github = self.github.clone();
         let manifests = Arc::clone(&self.manifests);
         tokio::task::spawn(async move {
             let mut manifests = manifests.lock().await;
             if let Some(file_name) = file_path.file_name().and_then(|n| n.to_str()) {
                 if KNOWN_FILE_NAMES.contains(&file_name) {
-                    parse_and_insert(&mut client, &mut manifests, file_path, Ok(contents));
+                    parse_and_insert(client, github, &mut manifests, file_path, Ok(contents));
                 }
             }
         });
@@ -87,7 +89,8 @@ impl Server {
 
         debug!("Updating workspace documents: {}", uri_fs_path.display());
 
-        let mut client = self.client.clone();
+        let client = self.client.clone();
+        let github = self.github.clone();
         let manifests = Arc::clone(&self.manifests);
         tokio::task::spawn(async move {
             let file_paths = KNOWN_FILE_NAMES
@@ -103,14 +106,21 @@ impl Server {
 
             let mut manifests = manifests.lock().await;
             for (file_path, file_result) in file_paths.into_iter().zip(file_results) {
-                parse_and_insert(&mut client, &mut manifests, file_path, file_result);
+                parse_and_insert(
+                    client.clone(),
+                    github.clone(),
+                    &mut manifests,
+                    file_path,
+                    file_result,
+                );
             }
         });
     }
 }
 
 fn parse_and_insert(
-    client: &mut ClientSocket,
+    client: ClientSocket,
+    github: GithubWrapper,
     manifests: &mut HashMap<Url, Manifest>,
     file_path_absolute: PathBuf,
     file_result: Result<String, std::io::Error>,
@@ -143,31 +153,87 @@ fn parse_and_insert(
             let uri =
                 Url::from_file_path(file_path_absolute).expect("File path passed was not absolute");
 
+            let tools = manifest
+                .tools_map
+                .tools
+                .iter()
+                .map(|tool| {
+                    let range = offset_range_to_range(&manifest.source, tool.val_span.clone());
+                    (tool.clone(), range)
+                })
+                .collect::<Vec<_>>();
+
             let mut diagnostics = Vec::new();
-            for tool in &manifest.tools_map.tools {
-                if let Some(diag) = diagnose_tool_spec(&manifest, tool) {
+            for (tool, range) in &tools {
+                if let Some(diag) = diagnose_tool_spec(tool, range) {
                     diagnostics.push(diag);
                 }
             }
 
-            let _ = client.notify::<PublishDiagnostics>(PublishDiagnosticsParams {
-                uri: uri.clone(),
-                diagnostics,
-                version: None,
-            });
+            manifests.insert(uri.clone(), manifest);
 
-            manifests.insert(uri, manifest);
+            tokio::task::spawn(async move {
+                for (tool, range) in tools {
+                    if let Some(diag) = diagnose_tool_version(&github, &tool, &range).await {
+                        diagnostics.push(diag);
+                    }
+                }
+
+                let _ = client.notify::<PublishDiagnostics>(PublishDiagnosticsParams {
+                    uri: uri.clone(),
+                    diagnostics,
+                    version: None,
+                });
+            });
         }
     }
 }
 
-fn diagnose_tool_spec(manifest: &Manifest, tool: &ManifestTool) -> Option<Diagnostic> {
+fn diagnose_tool_spec(tool: &ManifestTool, range: &Range) -> Option<Diagnostic> {
     if let Err(err) = tool.spec() {
         Some(Diagnostic {
             source: Some(String::from("Tools")),
-            range: offset_range_to_range(&manifest.source, tool.val_span.clone()),
+            range: *range,
             message: err.to_string(),
             severity: Some(DiagnosticSeverity::ERROR),
+            ..Default::default()
+        })
+    } else {
+        None
+    }
+}
+
+async fn diagnose_tool_version(
+    github: &GithubWrapper,
+    tool: &ManifestTool,
+    range: &Range,
+) -> Option<Diagnostic> {
+    let spec = match tool.spec() {
+        Err(_) => return None,
+        Ok(s) => s,
+    };
+    let latest = match github.get_latest_release(spec.author, spec.name).await {
+        Err(_) => return None,
+        Ok(l) => l,
+    };
+    let (version_current, version_latest) = match (
+        Version::parse(spec.version.trim_start_matches('v')),
+        Version::parse(latest.tag_name.trim_start_matches('v')),
+    ) {
+        (Err(_), _) => return None,
+        (_, Err(_)) => return None,
+        (Ok(version_current), Ok(version_latest)) => (version_current, version_latest),
+    };
+
+    if version_current != version_latest {
+        Some(Diagnostic {
+            source: Some(String::from("Tools")),
+            range: *range,
+            message: format!(
+                "A newer tool version is available.\
+                \nThe latest version is `{version_latest}`"
+            ),
+            severity: Some(DiagnosticSeverity::INFORMATION),
             ..Default::default()
         })
     } else {

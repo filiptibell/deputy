@@ -1,4 +1,4 @@
-use octocrab::models::RepositoryMetrics;
+use octocrab::models::{repos::Release, RepositoryMetrics};
 
 use super::*;
 
@@ -23,6 +23,33 @@ impl GithubWrapper {
             .client
             .repos(owner, repository)
             .get_community_profile_metrics()
+            .await
+            .map_err(GithubError::from);
+
+        cache.add(cache_map, cache_key, result, false).await
+    }
+
+    pub async fn get_latest_release(
+        &self,
+        owner: impl Into<String>,
+        repository: impl Into<String>,
+    ) -> GithubResult<Release> {
+        let owner = owner.into();
+        let repository = repository.into();
+
+        let cache = self.cache.clone();
+        let cache_map = &cache.latest_releases;
+        let cache_key = format!("{}/{}", &owner, &repository);
+
+        if let Some(cached) = cache.get(cache_map, &cache_key).await {
+            return cached.clone();
+        }
+
+        let result = self
+            .client
+            .repos(owner, repository)
+            .releases()
+            .get_latest()
             .await
             .map_err(GithubError::from);
 

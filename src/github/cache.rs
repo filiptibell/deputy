@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
-use octocrab::models::RepositoryMetrics;
+use octocrab::models::{repos::Release, RepositoryMetrics};
 use tokio::sync::Mutex;
 
 use super::GithubResult;
@@ -23,6 +23,7 @@ type CacheMap<T> = Arc<Mutex<HashMap<String, GithubResult<T>>>>;
 #[derive(Debug, Default, Clone)]
 pub(super) struct GithubCache {
     pub repository_metrics: CacheMap<RepositoryMetrics>,
+    pub latest_releases: CacheMap<Release>,
 }
 
 impl GithubCache {
