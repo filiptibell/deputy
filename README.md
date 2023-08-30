@@ -14,12 +14,12 @@ Features that are currently supported:
 
 - Diagnostics for invalid tool names, new tool versions
 - Hover for more information about a tool (description)
+- Quick action to update to new tool version
 
 Features that will be supported:
 
 - Diagnostic for unsupported platform/arch
 - Autocomplete for tools under a specific GitHub user/org
-- Inlay hints and quick action to update to new tool version
 
 ## Wally
 
