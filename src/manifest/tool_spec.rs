@@ -21,11 +21,11 @@ pub enum ManifestToolSpecError {
     InvalidSemver(String),
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct ManifestToolSpec {
     pub author: String,
     pub name: String,
-    pub version: String,
+    pub version: Version,
 }
 
 impl fmt::Display for ManifestToolSpec {
@@ -105,16 +105,17 @@ fn validate_name(name: impl AsRef<str>) -> Result<String, ManifestToolSpecError>
     }
 }
 
-fn validate_version(version: impl AsRef<str>) -> Result<String, ManifestToolSpecError> {
+fn validate_version(version: impl AsRef<str>) -> Result<Version, ManifestToolSpecError> {
     let mut version = version.as_ref();
     if version.starts_with('v') {
         version = &version[1..]
     }
     if let Some(invalid_char) = version.chars().find(|c| !is_valid_version_char(*c)) {
         Err(ManifestToolSpecError::InvalidVersion(invalid_char))
-    } else if let Err(semver_err) = Version::parse(version) {
-        Err(ManifestToolSpecError::InvalidSemver(semver_err.to_string()))
     } else {
-        Ok(version.to_string())
+        match Version::parse(version) {
+            Err(semver_err) => Err(ManifestToolSpecError::InvalidSemver(semver_err.to_string())),
+            Ok(semver) => Ok(semver),
+        }
     }
 }

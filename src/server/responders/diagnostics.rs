@@ -233,22 +233,20 @@ async fn diagnose_tool_version(
         Err(_) => return None,
         Ok(l) => l,
     };
-    let (version_current, version_latest) = match (
-        Version::parse(spec.version.trim_start_matches('v')),
-        Version::parse(latest.tag_name.trim_start_matches('v')),
-    ) {
-        (Err(_), _) => return None,
-        (_, Err(_)) => return None,
-        (Ok(version_current), Ok(version_latest)) => (version_current, version_latest),
+
+    let latest_tag = latest.tag_name.trim_start_matches('v');
+    let latest_version = match Version::parse(latest_tag) {
+        Err(_) => return None,
+        Ok(v) => v,
     };
 
-    if version_current != version_latest {
+    if latest_version > spec.version {
         Some(Diagnostic {
             source: Some(String::from("Tools")),
             range: *range,
             message: format!(
                 "A newer tool version is available.\
-                \nThe latest version is `{version_latest}`"
+                \nThe latest version is `{latest_version}`"
             ),
             severity: Some(DiagnosticSeverity::INFORMATION),
             ..Default::default()
