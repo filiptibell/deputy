@@ -5,10 +5,10 @@ use async_lsp::{
     panic::CatchUnwindLayer, server::LifecycleLayer, tracing::TracingLayer, MainLoop,
 };
 
+mod cli;
 mod github;
 mod manifest;
 mod server;
-mod stdio;
 mod toml;
 mod util;
 
@@ -37,7 +37,10 @@ async fn main() {
         .with_writer(std::io::stderr)
         .init();
 
-    // Create our language server
+    // Create our language server, parse cli args
+    let cli = cli::Cli::new();
+    cli.emit_debug();
+
     let (server, _) = MainLoop::new_server(|client| {
         tower::ServiceBuilder::new()
             .layer(TracingLayer::default())
@@ -45,11 +48,12 @@ async fn main() {
             .layer(CatchUnwindLayer::default())
             .layer(ConcurrencyLayer::default())
             .layer(ClientProcessMonitorLayer::new(client.clone()))
-            .service(server::Server::new(client).into_router())
+            .service(server::Server::new(client, &cli).into_router())
     });
 
     // Run it communicating over stdio, until the end of time
-    let (stdin, stdout) = stdio::create();
+    // FUTURE: Support other kinds of transport (ipc, pipe, socket)
+    let (stdin, stdout) = util::create_stdio();
     server
         .run_buffered(stdin, stdout)
         .await

@@ -14,12 +14,14 @@ name = "server"
 path = "src/main.rs"
 
 [dependencies]
-itertools = "0.11.0"
+itertools = "0.11"
 logos = "0.13"
 octocrab = "0.29"
 regex = "1.9"
 semver = "1.0"
 thiserror = "1.0"
+
+clap = { version = "4.4", features = ["derive", "env"] }
 
 async-lsp = { version = "0.0.5", features = ["tokio"] }
 lsp-types = { version = "0.94", features = ["proposed"] }

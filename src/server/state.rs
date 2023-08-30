@@ -6,6 +6,7 @@ use async_lsp::{router::Router, ClientSocket};
 
 use lsp_types::Url;
 
+use crate::cli::*;
 use crate::github::*;
 
 use super::document::*;
@@ -19,15 +20,22 @@ pub struct Server {
 }
 
 impl Server {
-    pub fn new(client: ClientSocket) -> Self {
+    pub fn new(client: ClientSocket, cli: &Cli) -> Self {
+        let mut github = GithubWrapper::new();
+        if let Some(token) = &cli.github_token {
+            github.set_auth_token(token);
+        }
+
         let mut this = Self {
             client,
-            github: GithubWrapper::new(),
+            github,
             documents: Arc::new(AsyncMutex::new(HashMap::new())),
             workspace_folders: Vec::new(),
         };
+
         this.spawn_rate_limit();
         this.spawn_tick();
+
         this
     }
 

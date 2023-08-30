@@ -17,12 +17,15 @@ import { fileExists } from "./fs";
 import { RateLimitNotification } from "./notifications";
 
 let client: LanguageClient;
+let context: vscode.ExtensionContext;
 let outputChannel: vscode.OutputChannel;
+
+const GITHUB_AUTH_TOKEN_STORAGE_KEY = "auth.github.token";
 
 const sendAuthForGitHub = async () => {
 	const auth = await promptAuthForGitHub();
 	if (!auth) {
-		outputChannel.appendLine("GitHub token prompt was dismissed");
+		outputChannel.appendLine("AUTH GitHub token prompt was dismissed");
 		return;
 	}
 
@@ -31,11 +34,21 @@ const sendAuthForGitHub = async () => {
 		value: auth,
 	};
 
-	outputChannel.appendLine("GitHub token is valid, sending to server");
+	outputChannel.appendLine("AUTH saving GitHub token to global context");
+	await context.globalState.update(GITHUB_AUTH_TOKEN_STORAGE_KEY, auth);
+
+	outputChannel.appendLine("AUTH sending GitHub token to server");
 	client.sendNotification("$/internal_message/rate_limit", notification);
 };
 
-export async function activate(context: vscode.ExtensionContext) {
+export async function activate(extensionContext: vscode.ExtensionContext) {
+	context = extensionContext;
+
+	// Try to load previously stored auth
+	let githubAuthToken = context.globalState.get(
+		GITHUB_AUTH_TOKEN_STORAGE_KEY
+	);
+
 	// Create a persistent output channel to use
 	outputChannel = vscode.window.createOutputChannel(
 		"Tooling Language Server"
@@ -74,7 +87,11 @@ export async function activate(context: vscode.ExtensionContext) {
 	let isDebug = command === exeDebug.fsPath;
 	let options: ExecutableOptions = isDebug
 		? { env: { RUST_LOG: "debug" } }
-		: {};
+		: { env: {} };
+	if (typeof githubAuthToken === "string" && githubAuthToken.length > 0) {
+		outputChannel.appendLine(" AUTH found stored GitHub token");
+		options.env["GITHUB_TOKEN"] = githubAuthToken;
+	}
 	let server: Executable = {
 		transport: TransportKind.stdio,
 		command,
