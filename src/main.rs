@@ -18,7 +18,11 @@ async fn main() {
     // meaning we must use stderr for all of our logging
     let tracing_filter = EnvFilter::builder()
         .with_default_directive(LevelFilter::INFO.into())
-        .from_env_lossy();
+        .from_env_lossy()
+        .add_directive("hyper=info".parse().unwrap())
+        .add_directive("rustls=warn".parse().unwrap())
+        .add_directive("tower=warn".parse().unwrap())
+        .add_directive("octocrab=warn".parse().unwrap());
     let tracing_target_enabled = matches!(
         tracing_filter.max_level_hint(),
         Some(LevelFilter::TRACE | LevelFilter::DEBUG)

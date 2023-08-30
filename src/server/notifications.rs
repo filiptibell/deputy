@@ -38,7 +38,7 @@ impl RateLimitNotification {
 }
 
 impl Notification for RateLimitNotification {
-    const METHOD: &'static str = "$/internal_message/ratelimit";
+    const METHOD: &'static str = "$/internal_message/rate_limit";
     type Params = Self;
 }
 
@@ -53,6 +53,7 @@ impl Server {
         } else {
             warn!("GitHub rate limit notification received - no token");
         }
+        self.update_all_workspaces();
         ControlFlow::Continue(())
     }
 }

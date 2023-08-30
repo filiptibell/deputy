@@ -32,7 +32,7 @@ const sendAuthForGitHub = async () => {
 	};
 
 	outputChannel.appendLine("GitHub token is valid, sending to server");
-	client.sendNotification("$/internal_message/ratelimit", notification);
+	client.sendNotification("$/internal_message/rate_limit", notification);
 };
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -114,7 +114,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// Listen for custom notifications from server
 	client.onNotification(
-		"$/internal_message/ratelimit",
+		"$/internal_message/rate_limit",
 		(value: RateLimitNotification) => {
 			if (value.kind === "GitHub") {
 				sendAuthForGitHub();

@@ -4,9 +4,9 @@ use tracing::{info, trace};
 
 use async_lsp::{ResponseError, Result};
 use lsp_types::{
-    HoverProviderCapability, InitializeParams, InitializeResult, PositionEncodingKind, SaveOptions,
+    HoverProviderCapability, InitializeParams, InitializeResult, PositionEncodingKind,
     ServerCapabilities, ServerInfo, TextDocumentSyncCapability, TextDocumentSyncKind,
-    TextDocumentSyncOptions, TextDocumentSyncSaveOptions,
+    TextDocumentSyncOptions,
 };
 
 use crate::server::*;
@@ -22,13 +22,6 @@ impl Server {
         log_client_info(&params);
         let (position_encoding, offset_encoding) = negotiate_position_and_offset_encoding(&params);
 
-        // Read known files in workspace folders in the background
-        if let Some(folders) = &params.workspace_folders {
-            for folder in folders {
-                self.update_workspace_documents(folder.uri.clone());
-            }
-        }
-
         // Respond with negotiated encoding, server info, capabilities
         Box::pin(async move {
             Ok(InitializeResult {
@@ -43,9 +36,6 @@ impl Server {
                     text_document_sync: Some(TextDocumentSyncCapability::Options(
                         TextDocumentSyncOptions {
                             change: Some(TextDocumentSyncKind::FULL),
-                            save: Some(TextDocumentSyncSaveOptions::SaveOptions(SaveOptions {
-                                include_text: Some(true),
-                            })),
                             open_close: Some(true),
                             ..Default::default()
                         },

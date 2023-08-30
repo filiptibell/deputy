@@ -12,7 +12,9 @@ impl GithubWrapper {
         let owner = owner.into();
         let repository = repository.into();
 
+        let client = self.client.clone();
         let cache = self.cache.clone();
+
         let cache_map = &cache.repository_metrics;
         let cache_key = format!("{}/{}", &owner, &repository);
 
@@ -20,8 +22,8 @@ impl GithubWrapper {
             return cached.clone();
         }
 
-        let result = self
-            .client
+        let client = client.lock().await;
+        let result = client
             .repos(owner, repository)
             .get_community_profile_metrics()
             .await;
@@ -52,7 +54,9 @@ impl GithubWrapper {
         let owner = owner.into();
         let repository = repository.into();
 
+        let client = self.client.clone();
         let cache = self.cache.clone();
+
         let cache_map = &cache.latest_releases;
         let cache_key = format!("{}/{}", &owner, &repository);
 
@@ -60,8 +64,8 @@ impl GithubWrapper {
             return cached.clone();
         }
 
-        let result = self
-            .client
+        let client = client.lock().await;
+        let result = client
             .repos(owner, repository)
             .releases()
             .get_latest()
@@ -80,7 +84,7 @@ impl GithubWrapper {
                 cache_map,
                 cache_key,
                 result.map_err(GithubError::from),
-                false,
+                true,
             )
             .await
     }

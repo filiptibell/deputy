@@ -1,7 +1,9 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
-use octocrab::models::{repos::Release, RepositoryMetrics};
 use tokio::sync::Mutex;
+use tracing::trace;
+
+use octocrab::models::{repos::Release, RepositoryMetrics};
 
 use super::GithubResult;
 
@@ -33,17 +35,17 @@ impl GithubCache {
 
     pub fn bust_all(&self) {
         self.bust_one(&self.repository_metrics);
+        self.bust_one(&self.latest_releases);
     }
 
     pub fn bust_one<T>(&self, cache: &CacheMap<T>)
     where
         T: Clone + Send + 'static,
     {
-        let cache = cache.clone();
-        tokio::task::spawn(async move {
-            let mut cache_guard = cache.lock().await;
-            cache_guard.clear()
-        });
+        cache
+            .try_lock()
+            .expect("Failed to lock cache for busting")
+            .clear()
     }
 
     pub async fn get<T>(
@@ -56,6 +58,9 @@ impl GithubCache {
     {
         let cache_key = cache_key.as_ref();
         let cache_guard = cache.lock().await;
+        if cache_guard.contains_key(cache_key) {
+            trace!("Cache hit on key '{cache_key}'");
+        }
         cache_guard.get(cache_key).cloned()
     }
 

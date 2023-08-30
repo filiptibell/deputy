@@ -1,2 +1,3 @@
-pub mod hover;
-pub mod initialize;
+mod diagnostics;
+mod hover;
+mod initialize;

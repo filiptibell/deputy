@@ -5,8 +5,8 @@ use futures::future::BoxFuture;
 use async_lsp::{LanguageServer, ResponseError, Result};
 
 use lsp_types::{
-    DidChangeConfigurationParams, DidChangeTextDocumentParams, DidOpenTextDocumentParams,
-    DidSaveTextDocumentParams, Hover, HoverParams, InitializeParams, InitializeResult,
+    DidChangeConfigurationParams, DidChangeTextDocumentParams, DidCloseTextDocumentParams,
+    DidOpenTextDocumentParams, Hover, HoverParams, InitializeParams, InitializeResult,
 };
 
 use super::state::*;
@@ -19,28 +19,37 @@ impl LanguageServer for Server {
         &mut self,
         params: InitializeParams,
     ) -> BoxFuture<'static, Result<InitializeResult, Self::Error>> {
+        if let Some(folders) = &params.workspace_folders {
+            self.workspace_folders = folders
+                .iter()
+                .map(|folder| (folder.name.clone(), folder.uri.clone()))
+                .collect();
+        }
+        self.update_all_workspaces();
         self.respond_to_initalize(params)
     }
 
     fn did_open(&mut self, params: DidOpenTextDocumentParams) -> ControlFlow<Result<()>> {
-        self.update_document(params.text_document.uri, params.text_document.text)
+        self.update_document(
+            params.text_document.uri,
+            params.text_document.version,
+            params.text_document.text,
+        )
+    }
+
+    fn did_close(&mut self, _: DidCloseTextDocumentParams) -> ControlFlow<Result<()>> {
+        ControlFlow::Continue(())
     }
 
     fn did_change(&mut self, mut params: DidChangeTextDocumentParams) -> ControlFlow<Result<()>> {
         self.update_document(
             params.text_document.uri,
+            params.text_document.version,
             params
                 .content_changes
                 .pop()
                 .expect("Missing content changes in change notification")
                 .text,
-        )
-    }
-
-    fn did_save(&mut self, params: DidSaveTextDocumentParams) -> ControlFlow<Result<()>> {
-        self.update_document(
-            params.text_document.uri,
-            params.text.expect("Missing text in save notification"),
         )
     }
 

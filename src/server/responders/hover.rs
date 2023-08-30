@@ -16,13 +16,13 @@ impl Server {
         position: Position,
     ) -> BoxFuture<'static, Result<Option<Hover>, ResponseError>> {
         let github = self.github.clone();
-        let manifests = Arc::clone(&self.manifests);
+        let documents = Arc::clone(&self.documents);
         Box::pin(async move {
-            let manifests = manifests.lock().await;
+            let documents = documents.lock().await;
 
-            let manifest = match manifests.get(&uri) {
+            let manifest = match documents.get(&uri) {
                 None => return Ok(None),
-                Some(manifest) => manifest,
+                Some(doc) => &doc.manifest,
             };
 
             let offset = position_to_offset(&manifest.source, position);

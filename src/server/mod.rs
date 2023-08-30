@@ -1,3 +1,4 @@
+mod document;
 mod events;
 mod lsp;
 mod notifications;

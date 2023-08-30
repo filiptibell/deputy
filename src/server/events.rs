@@ -23,8 +23,8 @@ impl Server {
         let github = self.github.clone();
         tokio::spawn(async move {
             loop {
-                let got_limited = github.wait_until_rate_limited_changes().await;
-                if got_limited && client.emit(RateLimitEvent::GitHub).is_err() {
+                let is_rate_limited = github.wait_until_rate_limited_changes().await;
+                if is_rate_limited && client.emit(RateLimitEvent::GitHub).is_err() {
                     break;
                 }
             }

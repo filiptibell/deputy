@@ -5,7 +5,7 @@ use std::sync::{
 
 mod cache;
 use cache::*;
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, Mutex as AsyncMutex};
 
 mod repository;
 
@@ -22,7 +22,7 @@ impl From<octocrab::Error> for GithubError {
 
 #[derive(Debug, Clone)]
 pub struct GithubWrapper {
-    client: octocrab::Octocrab,
+    client: Arc<AsyncMutex<octocrab::Octocrab>>,
     cache: GithubCache,
     rate_limit_tx: broadcast::Sender<()>,
     rate_limited: Arc<AtomicBool>,
@@ -62,10 +62,16 @@ impl GithubWrapper {
             .personal_token(token.into())
             .build()
             .expect("Failed to create GitHub client");
-        self.client = client;
+
+        let mut current_client = self
+            .client
+            .try_lock()
+            .expect("Failed to lock GitHub client");
+        *current_client = client;
+
+        self.bust_cache();
         if self.is_rate_limited() {
             self.rate_limited.store(false, Ordering::SeqCst);
-            self.bust_cache();
             self.rate_limit_tx.send(()).ok();
         }
     }
@@ -78,7 +84,7 @@ impl Default for GithubWrapper {
             .expect("Failed to create GitHub client");
         let (rate_limit_tx, _) = broadcast::channel(32);
         Self {
-            client,
+            client: Arc::new(AsyncMutex::new(client)),
             cache: GithubCache::new(),
             rate_limit_tx,
             rate_limited: Arc::new(AtomicBool::new(false)),
