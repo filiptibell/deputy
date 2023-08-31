@@ -8,18 +8,21 @@ A language server for several tools:
 
 This is mostly a small personal project to learn how to write a performant language server and lexer/parser for TOML files.
 
-## Aftman / Foreman
+## Aftman
 
 Features that are currently supported:
 
-- Diagnostics for invalid tool names, new tool versions
-- Hover for more information about a tool (description)
+- Diagnostics for:
+  - A newer tool version is available
+  - Invalid author / name / version
+- Hover for information about a tool (description)
 - Quick action to update to new tool version
 
 Features that will be supported:
 
 - Diagnostic for unsupported platform/arch
 - Autocomplete for tools under a specific GitHub user/org
+- All of the listed Aftman features for Foreman as well
 
 ## Wally
 
