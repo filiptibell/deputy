@@ -2,7 +2,7 @@ use std::{hash::Hash, time::Duration};
 
 use moka::future::Cache;
 
-use octocrab::models::{repos::Release, RepositoryMetrics};
+use octocrab::models::{repos::Release, Repository, RepositoryMetrics};
 
 use super::GithubResult;
 
@@ -10,6 +10,7 @@ type CacheMap<T> = Cache<String, GithubResult<T>>;
 
 #[derive(Debug, Clone)]
 pub(super) struct GithubCache {
+    pub repository_listings: CacheMap<Vec<Repository>>,
     pub repository_metrics: CacheMap<RepositoryMetrics>,
     pub repository_releases: CacheMap<Vec<Release>>,
 }
@@ -17,12 +18,14 @@ pub(super) struct GithubCache {
 impl GithubCache {
     pub fn new() -> Self {
         Self {
+            repository_listings: new_cache(120, 30),
             repository_metrics: new_cache(60, 15),
             repository_releases: new_cache(30, 5),
         }
     }
 
     pub fn invalidate(&self) {
+        self.repository_listings.invalidate_all();
         self.repository_metrics.invalidate_all();
         self.repository_releases.invalidate_all();
     }

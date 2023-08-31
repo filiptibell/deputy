@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use futures::future::join_all;
+use tracing::debug;
 use tracing::trace;
 
 use tower_lsp::jsonrpc::Result;
@@ -96,6 +97,46 @@ impl Tool for Aftman {
                 value: lines.join("\n"),
             }),
         }))
+    }
+
+    async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
+        let uri = params.text_document_position.text_document.uri;
+        let pos = params.text_document_position.position;
+
+        debug!("Completion triggered");
+
+        let documents = Arc::clone(&self.documents);
+        let documents = documents.lock().await;
+
+        let document = match documents.get(&uri) {
+            None => return Ok(None),
+            Some(d) => d,
+        };
+        let manifest = match Manifest::parse(&document.text) {
+            Err(_) => return Ok(None),
+            Ok(m) => m,
+        };
+
+        let offset = position_to_offset(&manifest.source, pos);
+        let found = manifest.tools_map.tools.iter().find_map(|tool| {
+            if offset >= tool.val_span.start && offset <= tool.val_span.end {
+                Some((
+                    offset_range_to_range(&manifest.source, tool.val_span.clone()),
+                    tool.spec(),
+                ))
+            } else {
+                None
+            }
+        });
+
+        let (found_range, found_spec) = match found {
+            Some((range, Ok(spec))) => (range, spec),
+            _ => return Ok(None),
+        };
+
+        debug!("TODO: Provide completion for spec - {}", found_spec);
+
+        Ok(None)
     }
 
     async fn diagnostics(&self, params: DocumentDiagnosticParams) -> Result<Vec<Diagnostic>> {

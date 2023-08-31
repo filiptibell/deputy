@@ -14,7 +14,20 @@ impl Server {
         log_client_info(&params);
         let (position_encoding, offset_encoding) = negotiate_position_and_offset_encoding(&params);
 
-        // Create registration parameters combined for all known tools
+        // Create completion provider parameters
+        let completion_options = CompletionOptions {
+            resolve_provider: Some(false),
+            trigger_characters: Some(vec![
+                String::from("\""),
+                String::from("'"),
+                String::from("/"),
+                String::from("@"),
+                String::from("."),
+            ]),
+            ..Default::default()
+        };
+
+        // Create diagnostic registration parameters combined for all known tools
         let diagnostic_registration_options = DiagnosticRegistrationOptions {
             text_document_registration_options: TextDocumentRegistrationOptions {
                 document_selector: Some(
@@ -53,6 +66,7 @@ impl Server {
                     },
                 )),
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
+                completion_provider: Some(completion_options),
                 code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
                 diagnostic_provider: Some(DiagnosticServerCapabilities::RegistrationOptions(
                     diagnostic_registration_options,
