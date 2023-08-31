@@ -30,17 +30,17 @@ impl GithubWrapper {
         let result = client
             .repos(owner, repository)
             .get_community_profile_metrics()
-            .await;
+            .await
+            .map_err(GithubError::from);
 
         if let Err(e) = &result {
-            if is_rate_limit_error(e) {
+            if e.is_rate_limit_error() {
                 self.notify_rate_limited();
             } else {
                 error!("GitHub error: {e}");
             }
         }
 
-        let result = result.map_err(GithubError::from);
         cache_map.insert(cache_key, result.clone()).await;
         result
     }
@@ -73,29 +73,19 @@ impl GithubWrapper {
             .releases()
             .list()
             .send()
-            .await;
+            .await
+            .map_err(GithubError::from);
 
         if let Err(e) = &result {
-            if is_rate_limit_error(e) {
+            if e.is_rate_limit_error() {
                 self.notify_rate_limited();
             } else {
                 error!("GitHub error: {e}");
             }
         }
 
-        let result = result.map(|list| list.items).map_err(GithubError::from);
+        let result = result.map(|list| list.items);
         cache_map.insert(cache_key, result.clone()).await;
         result
-    }
-}
-
-fn is_rate_limit_error(error: &octocrab::Error) -> bool {
-    if let octocrab::Error::GitHub { source, .. } = error {
-        let message = source.message.to_ascii_lowercase();
-        message.contains("rate limit exceeded")
-            || message.contains("higher rate limit")
-            || message.contains("#rate-limiting")
-    } else {
-        false
     }
 }

@@ -1,7 +1,15 @@
+use std::fmt;
+
 pub type GithubResult<T, E = GithubError> = Result<T, E>;
 
 #[derive(Debug, Clone)]
 pub struct GithubError(String);
+
+impl fmt::Display for GithubError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
 impl From<octocrab::Error> for GithubError {
     fn from(value: octocrab::Error) -> Self {
