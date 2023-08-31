@@ -25,12 +25,12 @@ pub struct ManifestTool {
 }
 
 impl ManifestTool {
-    pub fn spec(&self) -> Result<ManifestToolSpec, ManifestToolSpecError> {
+    pub fn spec(&self) -> Result<ToolSpec, ToolSpecError> {
         let len = self.val_text.len();
         if len == 2 {
-            ManifestToolSpec::from_str("")
+            ToolSpec::from_str("")
         } else if self.val_text.starts_with('\"') || self.val_text.starts_with('\'') {
-            ManifestToolSpec::from_str(&self.val_text[1..len - 1])
+            ToolSpec::from_str(&self.val_text[1..len - 1])
         } else {
             panic!("Unknown string char")
         }
