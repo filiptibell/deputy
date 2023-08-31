@@ -4,7 +4,7 @@ use tracing::{debug, warn};
 
 use tower_lsp::lsp_types::notification::Notification;
 
-use super::Backend;
+use super::Server;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum RateLimitNotificationKind {
@@ -39,7 +39,7 @@ impl Notification for RateLimitNotification {
     type Params = Self;
 }
 
-impl Backend {
+impl Server {
     pub fn watch_rate_limit(&self) {
         let client = self.client.clone();
         let github = self.github.clone();
@@ -59,10 +59,13 @@ impl Backend {
     pub async fn on_notified_rate_limit(&self, notif: RateLimitNotification) {
         if let Some(token) = notif.value_string() {
             self.github.set_auth_token(token);
+            self.client
+                .workspace_diagnostic_refresh()
+                .await
+                .expect("Server has not been initialized");
             debug!("GitHub rate limit notification received - set token");
         } else {
             warn!("GitHub rate limit notification received - no token");
         }
-        self.update_all_workspaces().await;
     }
 }

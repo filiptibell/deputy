@@ -4,11 +4,7 @@ use itertools::Itertools;
 
 use crate::toml::*;
 
-mod tool_spec;
-use tool_spec::*;
-
-#[cfg(test)]
-mod tests;
+use super::tool_spec::*;
 
 #[derive(Debug, Clone)]
 pub struct ManifestToolsHeader {

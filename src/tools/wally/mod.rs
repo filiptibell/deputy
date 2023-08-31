@@ -1,11 +1,26 @@
+use tower_lsp::Client;
+
+use crate::github::*;
+use crate::server::*;
+
 use super::*;
 
-#[derive(Debug, Clone, Copy)]
-pub struct Wally;
+#[derive(Debug, Clone)]
+pub struct Wally {
+    client: Client,
+    github: GithubWrapper,
+    documents: Documents,
+}
 
-#[tower_lsp::async_trait]
-impl Tool for Wally {
-    fn new() -> Self {
-        Self
+impl Wally {
+    pub(super) fn new(client: Client, github: GithubWrapper, documents: Documents) -> Self {
+        Self {
+            client,
+            github,
+            documents,
+        }
     }
 }
+
+#[tower_lsp::async_trait]
+impl Tool for Wally {}

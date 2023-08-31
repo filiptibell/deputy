@@ -8,4 +8,5 @@ pub use tool::*;
 
 mod aftman;
 mod foreman;
+mod shared;
 mod wally;

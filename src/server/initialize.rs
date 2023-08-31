@@ -6,13 +6,35 @@ use tower_lsp::lsp_types::*;
 
 use crate::server::*;
 
-impl Backend {
+impl Server {
     pub async fn respond_to_initalize(&self, params: InitializeParams) -> Result<InitializeResult> {
         trace!("Initializing server with params: {params:#?}");
 
         // Negotiate with client for settings, encodings, try to prefer using utf-8
         log_client_info(&params);
         let (position_encoding, offset_encoding) = negotiate_position_and_offset_encoding(&params);
+
+        // Create registration parameters combined for all known tools
+        let diagnostic_registration_options = DiagnosticRegistrationOptions {
+            text_document_registration_options: TextDocumentRegistrationOptions {
+                document_selector: Some(
+                    Tools::file_globs()
+                        .iter()
+                        .map(|&glob| DocumentFilter {
+                            scheme: Some(String::from("file")),
+                            pattern: Some(String::from(glob)),
+                            language: None,
+                        })
+                        .collect(),
+                ),
+            },
+            diagnostic_options: DiagnosticOptions {
+                inter_file_dependencies: false,
+                workspace_diagnostics: false,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
 
         // Respond with negotiated encoding, server info, capabilities
         Ok(InitializeResult {
@@ -32,6 +54,9 @@ impl Backend {
                 )),
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
                 code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
+                diagnostic_provider: Some(DiagnosticServerCapabilities::RegistrationOptions(
+                    diagnostic_registration_options,
+                )),
                 ..ServerCapabilities::default()
             },
         })

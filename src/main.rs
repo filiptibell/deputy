@@ -2,13 +2,12 @@ use tokio::runtime::Builder;
 use tracing_subscriber::filter::{EnvFilter, LevelFilter};
 
 mod github;
-mod manifest;
 mod server;
 mod toml;
 mod tools;
 mod util;
 
-use server::Backend;
+use server::Server;
 use util::Arguments;
 
 fn main() {
@@ -33,5 +32,5 @@ fn main() {
         .enable_all()
         .build()
         .expect("Failed to create runtime");
-    rt.block_on(Backend::serve(&args));
+    rt.block_on(Server::serve(&args));
 }

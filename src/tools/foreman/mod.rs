@@ -1,11 +1,26 @@
+use tower_lsp::Client;
+
+use crate::github::GithubWrapper;
+use crate::server::*;
+
 use super::*;
 
-#[derive(Debug, Clone, Copy)]
-pub struct Foreman;
+#[derive(Debug, Clone)]
+pub struct Foreman {
+    client: Client,
+    github: GithubWrapper,
+    documents: Documents,
+}
 
-#[tower_lsp::async_trait]
-impl Tool for Foreman {
-    fn new() -> Self {
-        Self
+impl Foreman {
+    pub(super) fn new(client: Client, github: GithubWrapper, documents: Documents) -> Self {
+        Self {
+            client,
+            github,
+            documents,
+        }
     }
 }
+
+#[tower_lsp::async_trait]
+impl Tool for Foreman {}
