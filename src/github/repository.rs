@@ -1,10 +1,17 @@
 use tracing::error;
 
-use octocrab::models::{repos::Release, RepositoryMetrics};
+use octocrab::{
+    models::{repos::Release, RepositoryMetrics},
+    Octocrab,
+};
 
 use super::*;
 
 impl GithubWrapper {
+    async fn client(&self) -> Octocrab {
+        self.client.lock().await.clone()
+    }
+
     pub async fn get_repository_metrics(
         &self,
         owner: impl Into<String>,
@@ -13,10 +20,7 @@ impl GithubWrapper {
         let owner = owner.into();
         let repository = repository.into();
 
-        let client = self.client.clone();
-        let cache = self.cache.clone();
-
-        let cache_map = &cache.repository_metrics;
+        let cache_map = &self.cache.repository_metrics;
         let cache_key = format!(
             "{}/{}",
             owner.trim().to_ascii_lowercase(),
@@ -27,7 +31,7 @@ impl GithubWrapper {
             return cached.clone();
         }
 
-        let client = client.lock().await;
+        let client = self.client().await;
         let result = client
             .repos(owner, repository)
             .get_community_profile_metrics()
@@ -54,10 +58,7 @@ impl GithubWrapper {
         let owner = owner.into();
         let repository = repository.into();
 
-        let client = self.client.clone();
-        let cache = self.cache.clone();
-
-        let cache_map = &cache.repository_releases;
+        let cache_map = &self.cache.repository_releases;
         let cache_key = format!(
             "{}/{}",
             owner.trim().to_ascii_lowercase(),
@@ -68,7 +69,7 @@ impl GithubWrapper {
             return cached.clone();
         }
 
-        let client = client.lock().await;
+        let client = self.client().await;
         let result = client
             .repos(owner, repository)
             .releases()

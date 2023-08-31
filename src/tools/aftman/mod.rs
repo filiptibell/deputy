@@ -10,7 +10,6 @@ use tower_lsp::Client;
 use crate::github::GithubWrapper;
 
 use crate::server::*;
-use crate::util::*;
 
 use super::shared::actions::*;
 use super::shared::completion::*;
@@ -33,6 +32,12 @@ impl Aftman {
             documents,
         }
     }
+
+    async fn get_document(&self, uri: &Url) -> Option<Document> {
+        let documents = Arc::clone(&self.documents);
+        let documents = documents.lock().await;
+        documents.get(uri).cloned()
+    }
 }
 
 #[tower_lsp::async_trait]
@@ -41,10 +46,7 @@ impl Tool for Aftman {
         let uri = params.text_document_position_params.text_document.uri;
         let pos = params.text_document_position_params.position;
 
-        let documents = Arc::clone(&self.documents);
-        let documents = documents.lock().await;
-
-        let document = match documents.get(&uri) {
+        let document = match self.get_document(&uri).await {
             None => return Ok(None),
             Some(d) => d,
         };
@@ -53,11 +55,11 @@ impl Tool for Aftman {
             Ok(m) => m,
         };
 
-        let offset = position_to_offset(&manifest.source, pos);
+        let offset = document.position_to_offset(pos);
         let found = manifest.tools_map.tools.iter().find_map(|tool| {
             if offset >= tool.val_span.start && offset <= tool.val_span.end {
                 Some((
-                    offset_range_to_range(&manifest.source, tool.val_span.clone()),
+                    document.offset_range_to_range(tool.val_span.clone()),
                     tool.spec(),
                 ))
             } else {
@@ -103,10 +105,7 @@ impl Tool for Aftman {
         let uri = params.text_document_position.text_document.uri;
         let pos = params.text_document_position.position;
 
-        let documents = Arc::clone(&self.documents);
-        let documents = documents.lock().await;
-
-        let document = match documents.get(&uri) {
+        let document = match self.get_document(&uri).await {
             None => return Ok(Vec::new()),
             Some(d) => d,
         };
@@ -115,7 +114,7 @@ impl Tool for Aftman {
             Ok(m) => m,
         };
 
-        let offset = position_to_offset(&manifest.source, pos);
+        let offset = document.position_to_offset(pos);
         let found = manifest
             .tools_map
             .tools
@@ -126,13 +125,10 @@ impl Tool for Aftman {
             Some(tool) => tool,
         };
 
-        let range_before = range_to_offset_range(
-            &document.text,
-            Range {
-                start: offset_to_position(&document.text, found.val_span.start + 1),
-                end: pos,
-            },
-        );
+        let range_before = document.range_to_offset_range(Range {
+            start: document.offset_to_position(found.val_span.start + 1),
+            end: pos,
+        });
 
         get_tool_completions(&self.github, &document.text[range_before]).await
     }
@@ -140,10 +136,7 @@ impl Tool for Aftman {
     async fn diagnostics(&self, params: DocumentDiagnosticParams) -> Result<Vec<Diagnostic>> {
         let uri = params.text_document.uri;
 
-        let documents = Arc::clone(&self.documents);
-        let documents = documents.lock().await;
-
-        let document = match documents.get(&uri) {
+        let document = match self.get_document(&uri).await {
             None => return Ok(Vec::new()),
             Some(d) => d,
         };
@@ -157,7 +150,7 @@ impl Tool for Aftman {
             .tools
             .iter()
             .map(|tool| {
-                let range = offset_range_to_range(&manifest.source, tool.val_span.clone());
+                let range = document.offset_range_to_range(tool.val_span.clone());
                 (tool.clone(), range)
             })
             .collect::<Vec<_>>();
