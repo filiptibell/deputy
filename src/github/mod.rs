@@ -3,22 +3,15 @@ use std::sync::{
     Arc,
 };
 
-mod cache;
-use cache::*;
 use tokio::sync::{broadcast, Mutex as AsyncMutex};
 
+mod cache;
+use cache::*;
+
+mod errors;
 mod repository;
 
-pub type GithubResult<T, E = GithubError> = Result<T, E>;
-
-#[derive(Debug, Clone)]
-pub struct GithubError(String);
-
-impl From<octocrab::Error> for GithubError {
-    fn from(value: octocrab::Error) -> Self {
-        Self(value.to_string())
-    }
-}
+pub use errors::*;
 
 #[derive(Debug, Clone)]
 pub struct GithubWrapper {
