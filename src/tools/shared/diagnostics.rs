@@ -7,16 +7,15 @@ use super::actions::*;
 use super::manifest::*;
 
 pub fn diagnose_tool_spec(tool: &ManifestTool, range: &Range) -> Option<Diagnostic> {
-    if let Err(err) = tool.spec() {
-        Some(Diagnostic {
+    match tool.spec() {
+        Ok(_) => None,
+        Err(e) => Some(Diagnostic {
             source: Some(String::from("Tools")),
             range: *range,
-            message: err.to_string(),
+            message: e.to_string(),
             severity: Some(DiagnosticSeverity::ERROR),
             ..Default::default()
-        })
-    } else {
-        None
+        }),
     }
 }
 
@@ -26,20 +25,27 @@ pub async fn diagnose_tool_version(
     tool: &ManifestTool,
     range: &Range,
 ) -> Option<Diagnostic> {
-    let spec = match tool.spec() {
-        Err(_) => return None,
-        Ok(s) => s,
-    };
-    let latest = match github.get_latest_release(spec.author, spec.name).await {
-        Err(_) => return None,
-        Ok(l) => l,
-    };
+    let spec = tool.spec().ok()?;
+    let releases = github
+        .get_repository_releases(&spec.author, &spec.name)
+        .await
+        .ok()?;
 
-    let latest_tag = latest.tag_name.trim_start_matches('v');
-    let latest_version = match Version::parse(latest_tag) {
-        Err(_) => return None,
-        Ok(v) => v,
-    };
+    if releases.is_empty() {
+        return Some(Diagnostic {
+            source: Some(String::from("Tools")),
+            range: *range,
+            message: format!(
+                "No releases were found for tool '{}/{}'",
+                spec.author, spec.name
+            ),
+            severity: Some(DiagnosticSeverity::ERROR),
+            ..Default::default()
+        });
+    }
+
+    let latest_tag = releases[0].tag_name.trim_start_matches('v');
+    let latest_version = Version::parse(latest_tag).ok()?;
 
     if latest_version > spec.version {
         let metadata = CodeActionMetadata::LatestVersion {

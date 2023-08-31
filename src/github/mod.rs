@@ -34,7 +34,7 @@ impl GithubWrapper {
     }
 
     pub fn bust_cache(&self) {
-        self.cache.bust_all()
+        self.cache.invalidate()
     }
 
     pub fn is_rate_limited(&self) -> bool {

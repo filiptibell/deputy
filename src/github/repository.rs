@@ -18,7 +18,7 @@ impl GithubWrapper {
         let cache_map = &cache.repository_metrics;
         let cache_key = format!("{}/{}", &owner, &repository);
 
-        if let Some(cached) = cache.get(cache_map, &cache_key).await {
+        if let Some(cached) = cache_map.get(&cache_key) {
             return cached.clone();
         }
 
@@ -36,31 +36,26 @@ impl GithubWrapper {
             }
         }
 
-        cache
-            .add(
-                cache_map,
-                cache_key,
-                result.map_err(GithubError::from),
-                false,
-            )
-            .await
+        let result = result.map_err(GithubError::from);
+        cache_map.insert(cache_key, result.clone()).await;
+        result
     }
 
-    pub async fn get_latest_release(
+    pub async fn get_repository_releases(
         &self,
         owner: impl Into<String>,
         repository: impl Into<String>,
-    ) -> GithubResult<Release> {
+    ) -> GithubResult<Vec<Release>> {
         let owner = owner.into();
         let repository = repository.into();
 
         let client = self.client.clone();
         let cache = self.cache.clone();
 
-        let cache_map = &cache.latest_releases;
+        let cache_map = &cache.repository_releases;
         let cache_key = format!("{}/{}", &owner, &repository);
 
-        if let Some(cached) = cache.get(cache_map, &cache_key).await {
+        if let Some(cached) = cache_map.get(&cache_key) {
             return cached.clone();
         }
 
@@ -68,7 +63,8 @@ impl GithubWrapper {
         let result = client
             .repos(owner, repository)
             .releases()
-            .get_latest()
+            .list()
+            .send()
             .await;
 
         if let Err(e) = &result {
@@ -79,14 +75,9 @@ impl GithubWrapper {
             }
         }
 
-        cache
-            .add(
-                cache_map,
-                cache_key,
-                result.map_err(GithubError::from),
-                true,
-            )
-            .await
+        let result = result.map(|list| list.items).map_err(GithubError::from);
+        cache_map.insert(cache_key, result.clone()).await;
+        result
     }
 }
 
