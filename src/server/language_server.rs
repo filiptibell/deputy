@@ -3,6 +3,7 @@ use std::sync::Arc;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::LanguageServer;
+use tracing::debug;
 
 use super::*;
 
@@ -60,7 +61,16 @@ impl LanguageServer for Server {
     }
 
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
-        self.tools.completion(params).await
+        match self.tools.completion(params).await {
+            Err(e) => Err(e),
+            Ok(v) => {
+                if v.is_empty() {
+                    Ok(None)
+                } else {
+                    Ok(Some(CompletionResponse::Array(v)))
+                }
+            }
+        }
     }
 
     async fn diagnostic(

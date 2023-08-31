@@ -34,15 +34,6 @@ impl Tool for Tools {
         name.as_ref().parse::<ToolName>().is_ok()
     }
 
-    async fn diagnostics(&self, params: DocumentDiagnosticParams) -> Result<Vec<Diagnostic>> {
-        match ToolName::from_uri(&params.text_document.uri) {
-            Ok(ToolName::Aftman) => self.aftman.diagnostics(params).await,
-            Ok(ToolName::Foreman) => self.foreman.diagnostics(params).await,
-            Ok(ToolName::Wally) => self.wally.diagnostics(params).await,
-            Err(_) => Ok(Vec::new()),
-        }
-    }
-
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
         match ToolName::from_uri(&params.text_document_position_params.text_document.uri) {
             Ok(ToolName::Aftman) => self.aftman.hover(params).await,
@@ -52,12 +43,21 @@ impl Tool for Tools {
         }
     }
 
-    async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
+    async fn completion(&self, params: CompletionParams) -> Result<Vec<CompletionItem>> {
         match ToolName::from_uri(&params.text_document_position.text_document.uri) {
             Ok(ToolName::Aftman) => self.aftman.completion(params).await,
             Ok(ToolName::Foreman) => self.foreman.completion(params).await,
             Ok(ToolName::Wally) => self.wally.completion(params).await,
-            Err(_) => Ok(None),
+            Err(_) => Ok(Vec::new()),
+        }
+    }
+
+    async fn diagnostics(&self, params: DocumentDiagnosticParams) -> Result<Vec<Diagnostic>> {
+        match ToolName::from_uri(&params.text_document.uri) {
+            Ok(ToolName::Aftman) => self.aftman.diagnostics(params).await,
+            Ok(ToolName::Foreman) => self.foreman.diagnostics(params).await,
+            Ok(ToolName::Wally) => self.wally.diagnostics(params).await,
+            Err(_) => Ok(Vec::new()),
         }
     }
 

@@ -16,12 +16,17 @@ fn main() {
     // Set up logging / tracing
     let tracing_filter = EnvFilter::builder()
         .with_default_directive(LevelFilter::INFO.into())
-        .from_env_lossy();
+        .from_env_lossy()
+        .add_directive("hyper=warn".parse().unwrap())
+        .add_directive("rustls=warn".parse().unwrap())
+        .add_directive("tower_lsp=warn".parse().unwrap())
+        .add_directive("tower=info".parse().unwrap())
+        .add_directive("octocrab=info".parse().unwrap());
     tracing_subscriber::fmt()
         .compact()
         .with_env_filter(tracing_filter)
         .without_time()
-        .with_target(false)
+        .with_target(true)
         .with_level(true)
         .with_ansi(false) // Editor output does not support ANSI ... yet?
         .with_writer(std::io::stderr) // Stdio transport takes up stdout, so emit output to stderr

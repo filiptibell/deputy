@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use futures::future::join_all;
-use tracing::debug;
 use tracing::trace;
 
 use tower_lsp::jsonrpc::Result;
@@ -14,6 +13,7 @@ use crate::server::*;
 use crate::util::*;
 
 use super::shared::actions::*;
+use super::shared::completion::*;
 use super::shared::diagnostics::*;
 use super::shared::manifest::*;
 use super::*;
@@ -99,44 +99,42 @@ impl Tool for Aftman {
         }))
     }
 
-    async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
+    async fn completion(&self, params: CompletionParams) -> Result<Vec<CompletionItem>> {
         let uri = params.text_document_position.text_document.uri;
         let pos = params.text_document_position.position;
-
-        debug!("Completion triggered");
 
         let documents = Arc::clone(&self.documents);
         let documents = documents.lock().await;
 
         let document = match documents.get(&uri) {
-            None => return Ok(None),
+            None => return Ok(Vec::new()),
             Some(d) => d,
         };
         let manifest = match Manifest::parse(&document.text) {
-            Err(_) => return Ok(None),
+            Err(_) => return Ok(Vec::new()),
             Ok(m) => m,
         };
 
         let offset = position_to_offset(&manifest.source, pos);
-        let found = manifest.tools_map.tools.iter().find_map(|tool| {
-            if offset >= tool.val_span.start && offset <= tool.val_span.end {
-                Some((
-                    offset_range_to_range(&manifest.source, tool.val_span.clone()),
-                    tool.spec(),
-                ))
-            } else {
-                None
-            }
-        });
-
-        let (found_range, found_spec) = match found {
-            Some((range, Ok(spec))) => (range, spec),
-            _ => return Ok(None),
+        let found = manifest
+            .tools_map
+            .tools
+            .iter()
+            .find(|tool| offset >= tool.val_span.start && offset <= tool.val_span.end);
+        let found = match found {
+            None => return Ok(Vec::new()),
+            Some(tool) => tool,
         };
 
-        debug!("TODO: Provide completion for spec - {}", found_spec);
+        let range_before = range_to_offset_range(
+            &document.text,
+            Range {
+                start: offset_to_position(&document.text, found.val_span.start + 1),
+                end: pos,
+            },
+        );
 
-        Ok(None)
+        get_tool_completions(&self.github, &document.text[range_before]).await
     }
 
     async fn diagnostics(&self, params: DocumentDiagnosticParams) -> Result<Vec<Diagnostic>> {

@@ -13,9 +13,9 @@ pub trait Tool {
         Ok(None)
     }
 
-    async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
+    async fn completion(&self, params: CompletionParams) -> Result<Vec<CompletionItem>> {
         let _params = params;
-        Ok(None)
+        Ok(vec![])
     }
 
     async fn diagnostics(&self, params: DocumentDiagnosticParams) -> Result<Vec<Diagnostic>> {
