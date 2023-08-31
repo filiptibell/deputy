@@ -6,17 +6,28 @@ use crate::github::GithubWrapper;
 
 use super::actions::*;
 use super::manifest::*;
+use super::tool_spec::*;
 
 pub fn diagnose_tool_spec(tool: &ManifestTool, range: &Range) -> Option<Diagnostic> {
     match tool.spec() {
         Ok(_) => None,
-        Err(e) => Some(Diagnostic {
-            source: Some(String::from("Tools")),
-            range: *range,
-            message: e.to_string(),
-            severity: Some(DiagnosticSeverity::ERROR),
-            ..Default::default()
-        }),
+        Err(e) => {
+            // Missing author / name / version usually happens
+            // when the user is typing, and is not really an error
+            let severity = match e {
+                ToolSpecError::MissingAuthor
+                | ToolSpecError::MissingName
+                | ToolSpecError::MissingVersion => DiagnosticSeverity::WARNING,
+                _ => DiagnosticSeverity::ERROR,
+            };
+            Some(Diagnostic {
+                source: Some(String::from("Tools")),
+                range: *range,
+                message: e.to_string(),
+                severity: Some(severity),
+                ..Default::default()
+            })
+        }
     }
 }
 

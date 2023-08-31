@@ -20,7 +20,7 @@ async fn complete_tool_author(
         .map(|a| CompletionItem {
             label: a.to_string(),
             kind: Some(CompletionItemKind::VALUE),
-            insert_text: Some(format!("{a}/")),
+            insert_text: Some(a.to_string()),
             ..Default::default()
         })
         .collect())
@@ -44,7 +44,7 @@ async fn complete_tool_name(
             .map(|repo| CompletionItem {
                 label: repo.to_string(),
                 kind: Some(CompletionItemKind::VALUE),
-                insert_text: Some(format!("{repo}@")),
+                insert_text: Some(repo.to_string()),
                 ..Default::default()
             })
             .collect()),
