@@ -16,7 +16,11 @@ impl GithubWrapper {
         let cache = self.cache.clone();
 
         let cache_map = &cache.repository_metrics;
-        let cache_key = format!("{}/{}", &owner, &repository);
+        let cache_key = format!(
+            "{}/{}",
+            owner.trim().to_ascii_lowercase(),
+            repository.trim().to_ascii_lowercase()
+        );
 
         if let Some(cached) = cache_map.get(&cache_key) {
             return cached.clone();
@@ -53,7 +57,11 @@ impl GithubWrapper {
         let cache = self.cache.clone();
 
         let cache_map = &cache.repository_releases;
-        let cache_key = format!("{}/{}", &owner, &repository);
+        let cache_key = format!(
+            "{}/{}",
+            owner.trim().to_ascii_lowercase(),
+            repository.trim().to_ascii_lowercase()
+        );
 
         if let Some(cached) = cache_map.get(&cache_key) {
             return cached.clone();
