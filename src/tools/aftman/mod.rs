@@ -19,7 +19,7 @@ use super::*;
 
 #[derive(Debug, Clone)]
 pub struct Aftman {
-    client: Client,
+    _client: Client,
     github: GithubWrapper,
     documents: Documents,
 }
@@ -27,7 +27,7 @@ pub struct Aftman {
 impl Aftman {
     pub(super) fn new(client: Client, github: GithubWrapper, documents: Documents) -> Self {
         Self {
-            client,
+            _client: client,
             github,
             documents,
         }

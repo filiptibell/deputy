@@ -16,10 +16,9 @@ async fn complete_tool_author(
     replace_range: StdRange<usize>,
     author: &str,
 ) -> Result<Vec<CompletionItem>> {
-    let author_low = author.to_ascii_lowercase();
     Ok(KNOWN_TOOLS
         .keys()
-        .filter(|a| author_low.is_empty() || a.to_ascii_lowercase().starts_with(&author_low))
+        .filter(|a| author.is_empty() || author.eq_ignore_ascii_case(a))
         .map(|a| CompletionItem {
             label: a.to_string(),
             kind: Some(CompletionItemKind::VALUE),
@@ -38,16 +37,12 @@ async fn complete_tool_name(
     author: &str,
     name: &str,
 ) -> Result<Vec<CompletionItem>> {
-    let author_low = author.to_ascii_lowercase();
-    let name_low = name.to_ascii_lowercase();
-    let key = KNOWN_TOOLS
-        .keys()
-        .find(|k| k.to_ascii_lowercase() == author_low);
+    let key = KNOWN_TOOLS.keys().find(|k| author.eq_ignore_ascii_case(k));
     match key.and_then(|k| KNOWN_TOOLS.get(k)) {
         None => Ok(Vec::new()),
         Some(v) => Ok(v
             .iter()
-            .filter(|repo| name_low.is_empty() || repo.to_ascii_lowercase().starts_with(&name_low))
+            .filter(|repo| name.is_empty() || name.eq_ignore_ascii_case(repo))
             .map(|repo| CompletionItem {
                 label: repo.to_string(),
                 kind: Some(CompletionItemKind::VALUE),
@@ -68,7 +63,6 @@ async fn complete_tool_version(
     name: &str,
     version: &str,
 ) -> Result<Vec<CompletionItem>> {
-    let version_low = version.to_ascii_lowercase();
     match github.get_repository_releases(author, name).await {
         Err(e) if e.is_rate_limit_error() || e.is_not_found_error() => Ok(Vec::new()),
         Err(_) => Err(Error::invalid_request()),
@@ -82,7 +76,10 @@ async fn complete_tool_version(
                         .to_ascii_lowercase()
                 })
                 .filter_map(|tag| {
-                    if version_low.is_empty() || tag.starts_with(&version_low) {
+                    let smallest_len = version.len().min(tag.len());
+                    if version.is_empty()
+                        || version[..smallest_len].eq_ignore_ascii_case(&tag[..smallest_len])
+                    {
                         Version::parse(&tag).ok()
                     } else {
                         None

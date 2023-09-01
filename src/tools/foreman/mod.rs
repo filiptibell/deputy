@@ -7,17 +7,17 @@ use super::*;
 
 #[derive(Debug, Clone)]
 pub struct Foreman {
-    client: Client,
-    github: GithubWrapper,
-    documents: Documents,
+    _client: Client,
+    _github: GithubWrapper,
+    _documents: Documents,
 }
 
 impl Foreman {
     pub(super) fn new(client: Client, github: GithubWrapper, documents: Documents) -> Self {
         Self {
-            client,
-            github,
-            documents,
+            _client: client,
+            _github: github,
+            _documents: documents,
         }
     }
 }
