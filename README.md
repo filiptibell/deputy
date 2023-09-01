@@ -16,13 +16,23 @@ Features that are currently supported:
   - A newer tool version is available
   - Invalid author / name / version
 - Hover for information about a tool (description)
+- Autocomplete for commonly used tool authors & names
 - Quick action to update to new tool version
 
 Features that will be supported:
 
 - Diagnostic for unsupported platform/arch
-- Autocomplete for tools under a specific GitHub user/org
 - All of the listed Aftman features for Foreman as well
+
+## Cargo
+
+Features that will be supported:
+
+- Diagnostics for:
+  - A newer package version is available
+  - Invalid package name / version
+- Hover for information about a package (description)
+- Quick action to update to a new package version
 
 ## Wally
 

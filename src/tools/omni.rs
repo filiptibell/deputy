@@ -5,23 +5,24 @@ use tower_lsp::Client;
 use crate::github::GithubWrapper;
 use crate::server::*;
 
+use super::cargo::*;
+use super::toolchain::*;
+use super::wally::*;
 use super::*;
 
 #[derive(Debug, Clone)]
 pub struct Tools {
-    toolchain_managers: toolchain_managers::ToolchainManagers,
-    wally: wally::Wally,
+    cargo: Cargo,
+    toolchain: Toolchain,
+    wally: Wally,
 }
 
 impl Tools {
     pub fn new(client: Client, github: GithubWrapper, documents: Documents) -> Self {
         Self {
-            toolchain_managers: toolchain_managers::ToolchainManagers::new(
-                client.clone(),
-                github.clone(),
-                documents.clone(),
-            ),
-            wally: wally::Wally::new(client.clone(), github.clone(), documents.clone()),
+            cargo: Cargo::new(client.clone(), github.clone(), documents.clone()),
+            toolchain: Toolchain::new(client.clone(), github.clone(), documents.clone()),
+            wally: Wally::new(client.clone(), github.clone(), documents.clone()),
         }
     }
 
@@ -38,8 +39,9 @@ impl Tool for Tools {
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
         match ToolName::from_uri(&params.text_document_position_params.text_document.uri) {
-            Ok(ToolName::Aftman) => self.toolchain_managers.hover(params).await,
-            Ok(ToolName::Foreman) => self.toolchain_managers.hover(params).await,
+            Ok(ToolName::Aftman) => self.toolchain.hover(params).await,
+            Ok(ToolName::Cargo) => self.cargo.hover(params).await,
+            Ok(ToolName::Foreman) => self.toolchain.hover(params).await,
             Ok(ToolName::Wally) => self.wally.hover(params).await,
             Err(_) => Ok(None),
         }
@@ -47,8 +49,9 @@ impl Tool for Tools {
 
     async fn completion(&self, params: CompletionParams) -> Result<CompletionResponse> {
         match ToolName::from_uri(&params.text_document_position.text_document.uri) {
-            Ok(ToolName::Aftman) => self.toolchain_managers.completion(params).await,
-            Ok(ToolName::Foreman) => self.toolchain_managers.completion(params).await,
+            Ok(ToolName::Aftman) => self.toolchain.completion(params).await,
+            Ok(ToolName::Cargo) => self.cargo.completion(params).await,
+            Ok(ToolName::Foreman) => self.toolchain.completion(params).await,
             Ok(ToolName::Wally) => self.wally.completion(params).await,
             Err(_) => Ok(CompletionResponse::Array(Vec::new())),
         }
@@ -56,8 +59,9 @@ impl Tool for Tools {
 
     async fn diagnostics(&self, params: DocumentDiagnosticParams) -> Result<Vec<Diagnostic>> {
         match ToolName::from_uri(&params.text_document.uri) {
-            Ok(ToolName::Aftman) => self.toolchain_managers.diagnostics(params).await,
-            Ok(ToolName::Foreman) => self.toolchain_managers.diagnostics(params).await,
+            Ok(ToolName::Aftman) => self.toolchain.diagnostics(params).await,
+            Ok(ToolName::Cargo) => self.cargo.diagnostics(params).await,
+            Ok(ToolName::Foreman) => self.toolchain.diagnostics(params).await,
             Ok(ToolName::Wally) => self.wally.diagnostics(params).await,
             Err(_) => Ok(Vec::new()),
         }
@@ -65,8 +69,9 @@ impl Tool for Tools {
 
     async fn code_action(&self, params: CodeActionParams) -> Result<Vec<CodeActionOrCommand>> {
         match ToolName::from_uri(&params.text_document.uri) {
-            Ok(ToolName::Aftman) => self.toolchain_managers.code_action(params).await,
-            Ok(ToolName::Foreman) => self.toolchain_managers.code_action(params).await,
+            Ok(ToolName::Aftman) => self.toolchain.code_action(params).await,
+            Ok(ToolName::Cargo) => self.cargo.code_action(params).await,
+            Ok(ToolName::Foreman) => self.toolchain.code_action(params).await,
             Ok(ToolName::Wally) => self.wally.code_action(params).await,
             Err(_) => Ok(Vec::new()),
         }

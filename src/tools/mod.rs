@@ -6,5 +6,6 @@ pub use name::*;
 pub use omni::*;
 pub use tool::*;
 
-mod toolchain_managers;
+mod cargo;
+mod toolchain;
 mod wally;

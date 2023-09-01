@@ -25,13 +25,13 @@ use diagnostics::*;
 use manifest::*;
 
 #[derive(Debug, Clone)]
-pub struct ToolchainManagers {
+pub struct Toolchain {
     _client: Client,
     github: GithubWrapper,
     documents: Documents,
 }
 
-impl ToolchainManagers {
+impl Toolchain {
     pub(super) fn new(client: Client, github: GithubWrapper, documents: Documents) -> Self {
         Self {
             _client: client,
@@ -48,7 +48,7 @@ impl ToolchainManagers {
 }
 
 #[tower_lsp::async_trait]
-impl Tool for ToolchainManagers {
+impl Tool for Toolchain {
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
         let uri = params.text_document_position_params.text_document.uri;
         let pos = params.text_document_position_params.position;
