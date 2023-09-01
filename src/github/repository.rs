@@ -1,4 +1,5 @@
 use octocrab::models::{repos::Release, RepositoryMetrics};
+use tracing::debug;
 
 use super::*;
 
@@ -9,6 +10,8 @@ impl GithubWrapper {
         repository: &str,
     ) -> GithubResult<RepositoryMetrics> {
         let fut = async move {
+            debug!("Fetching GitHub metrics for {owner}/{repository}");
+
             let result = self
                 .client()
                 .repos(owner, repository)
@@ -33,6 +36,8 @@ impl GithubWrapper {
         repository: &str,
     ) -> GithubResult<Vec<Release>> {
         let fut = async move {
+            debug!("Fetching GitHub releases for {owner}/{repository}");
+
             let result = self
                 .client()
                 .repos(owner, repository)
