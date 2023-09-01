@@ -110,12 +110,12 @@ pub async fn get_tool_completions(
     document: &Document,
     replace_range: StdRange<usize>,
     substring: &str,
-) -> Result<Vec<CompletionItem>> {
+) -> Result<CompletionResponse> {
     let idx_slash = substring.find('/');
     let idx_at = idx_slash
         .and_then(|idx| substring[idx..].find('@'))
         .map(|idx| idx + idx_slash.unwrap());
-    match (idx_slash, idx_at) {
+    let items = match (idx_slash, idx_at) {
         (Some(idx_slash), Some(idx_at)) => {
             let author = &substring[..idx_slash];
             let name = &substring[idx_slash + 1..idx_at];
@@ -136,5 +136,6 @@ pub async fn get_tool_completions(
             complete_tool_name(github, document, range, author, name).await
         }
         _ => complete_tool_author(github, document, replace_range, substring).await,
-    }
+    }?;
+    Ok(CompletionResponse::Array(items))
 }

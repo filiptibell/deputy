@@ -83,7 +83,7 @@ impl Tool for Aftman {
 
         if let Ok(metrics) = self
             .github
-            .get_repository_metrics(found_spec.author, found_spec.name)
+            .get_repository_metrics(&found_spec.author, &found_spec.name)
             .await
         {
             if let Some(description) = metrics.description {
@@ -101,16 +101,16 @@ impl Tool for Aftman {
         }))
     }
 
-    async fn completion(&self, params: CompletionParams) -> Result<Vec<CompletionItem>> {
+    async fn completion(&self, params: CompletionParams) -> Result<CompletionResponse> {
         let uri = params.text_document_position.text_document.uri;
         let pos = params.text_document_position.position;
 
         let document = match self.get_document(&uri).await {
-            None => return Ok(Vec::new()),
+            None => return Ok(CompletionResponse::Array(Vec::new())),
             Some(d) => d,
         };
         let manifest = match Manifest::parse(document.as_str()) {
-            Err(_) => return Ok(Vec::new()),
+            Err(_) => return Ok(CompletionResponse::Array(Vec::new())),
             Ok(m) => m,
         };
 
@@ -121,7 +121,7 @@ impl Tool for Aftman {
             .iter()
             .find(|tool| offset >= tool.val_span.start && offset <= tool.val_span.end);
         let found = match found {
-            None => return Ok(Vec::new()),
+            None => return Ok(CompletionResponse::Array(Vec::new())),
             Some(tool) => tool,
         };
 
