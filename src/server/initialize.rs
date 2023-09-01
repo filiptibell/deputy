@@ -1,4 +1,3 @@
-use itertools::Itertools;
 use tracing::{info, trace};
 
 use tower_lsp::jsonrpc::Result;
@@ -10,9 +9,7 @@ impl Server {
     pub async fn respond_to_initalize(&self, params: InitializeParams) -> Result<InitializeResult> {
         trace!("Initializing server with params: {params:#?}");
 
-        // Negotiate with client for settings, encodings, try to prefer using utf-8
         log_client_info(&params);
-        let (position_encoding, offset_encoding) = negotiate_position_and_offset_encoding(&params);
 
         // Create completion provider parameters
         let completion_options = CompletionOptions {
@@ -51,16 +48,16 @@ impl Server {
 
         // Respond with negotiated encoding, server info, capabilities
         Ok(InitializeResult {
-            offset_encoding: Some(offset_encoding),
+            offset_encoding: Some(String::from("utf-8")),
             server_info: Some(ServerInfo {
                 name: env!("CARGO_PKG_NAME").to_string(),
                 version: Some(env!("CARGO_PKG_VERSION").to_string()),
             }),
             capabilities: ServerCapabilities {
-                position_encoding: Some(position_encoding),
+                position_encoding: Some(PositionEncodingKind::UTF16),
                 text_document_sync: Some(TextDocumentSyncCapability::Options(
                     TextDocumentSyncOptions {
-                        change: Some(TextDocumentSyncKind::FULL),
+                        change: Some(TextDocumentSyncKind::INCREMENTAL),
                         open_close: Some(true),
                         ..Default::default()
                     },
@@ -102,65 +99,4 @@ fn log_client_info(params: &InitializeParams) {
             );
         }
     }
-}
-
-fn negotiate_position_and_offset_encoding(
-    params: &InitializeParams,
-) -> (PositionEncodingKind, String) {
-    let encoding_capabilities = match &params.capabilities.general {
-        Some(general) => general.position_encodings.as_ref(),
-        None => None,
-    };
-
-    let position_encodings_str;
-    let position_encoding = match encoding_capabilities {
-        Some(encodings) => {
-            position_encodings_str = encodings
-                .iter()
-                .map(|e| format!("\"{}\"", e.as_str()))
-                .join(", ");
-            if encodings.contains(&PositionEncodingKind::UTF8) {
-                PositionEncodingKind::UTF8
-            } else {
-                PositionEncodingKind::UTF16
-            }
-        }
-        None => {
-            position_encodings_str = String::from("N/A");
-            PositionEncodingKind::UTF16
-        }
-    };
-
-    let offset_encodings_str;
-    let offset_encoding = match &params.capabilities.offset_encoding {
-        Some(encodings) => {
-            offset_encodings_str = encodings
-                .iter()
-                .map(|e| format!("\"{}\"", e.as_str()))
-                .join(", ");
-            if encodings.contains(&String::from("utf-8"))
-                || encodings.contains(&String::from("utf8"))
-            {
-                "utf-8"
-            } else {
-                "utf-16"
-            }
-        }
-        None => {
-            offset_encodings_str = String::from("N/A");
-            "utf-16"
-        }
-    };
-
-    info!(
-        "Client encoding support\n\tPosition: {}\n\tOffset: {}",
-        position_encodings_str, offset_encodings_str
-    );
-    info!(
-        "Negotiated encodings with client\n\tPosition: \"{}\"\n\tOffset: \"{}\"",
-        position_encoding.as_str(),
-        offset_encoding,
-    );
-
-    (position_encoding, offset_encoding.to_string())
 }

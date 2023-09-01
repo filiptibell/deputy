@@ -85,7 +85,7 @@ export async function activate(extensionContext: vscode.ExtensionContext) {
 
 	let isDebug = command === exeDebug.fsPath;
 	let options: ExecutableOptions = isDebug
-		? { env: { RUST_LOG: "debug" } }
+		? { env: { RUST_LOG: "debug", RUST_BACKTRACE: "1" } }
 		: { env: {} };
 	if (typeof githubAuthToken === "string" && githubAuthToken.length > 0) {
 		outputChannel.appendLine(" AUTH found stored GitHub token");

@@ -2,6 +2,7 @@
 
 use std::{collections::HashMap, sync::Arc};
 
+use lsp_document::{IndexedText, TextAdapter, TextMap};
 use tokio::sync::Mutex as AsyncMutex;
 
 use tower_lsp::lsp_types::*;
@@ -14,59 +15,59 @@ pub type Documents = Arc<AsyncMutex<HashMap<Url, Document>>>;
 
 #[derive(Debug, Clone)]
 pub struct Document {
-    pub uri: Url,
-    pub name: String,
-    pub version: i32,
-    pub text: String,
+    uri: Url,
+    name: String,
+    version: i32,
+    text: IndexedText<String>,
 }
 
 impl Document {
-    pub fn position_to_offset(&self, position: Position) -> usize {
-        if position.line == 0 {
-            return 1 + position.character as usize;
-        }
-
-        let last_newline_offset = self
-            .text
-            .char_indices()
-            .filter(|&(_, c)| c == '\n')
-            .nth((position.line - 1) as usize)
-            .map(|(index, _)| index)
-            .expect("Invalid position");
-
-        let mut offset = 0;
-        offset += last_newline_offset;
-        offset += 1;
-        offset += position.character as usize;
-        offset
+    pub fn uri(&self) -> &Url {
+        &self.uri
     }
 
-    pub fn offset_to_position(&self, offset: usize) -> Position {
-        let mut newline_count = 0;
-        let mut newline_last_idx = 0;
-        for (index, char) in self.text.char_indices() {
-            if index >= offset {
-                break;
-            }
-            if char == '\n' {
-                newline_count += 1;
-                newline_last_idx = index;
-            }
-        }
-
-        Position::new(newline_count, (offset - newline_last_idx - 1) as u32)
+    pub fn name(&self) -> &str {
+        &self.name
     }
 
-    pub fn offset_range_to_range(&self, range: StdRange) -> Range {
-        let start = self.offset_to_position(range.start);
-        let end = self.offset_to_position(range.end);
+    pub fn version(&self) -> i32 {
+        self.version
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.text.text
+    }
+
+    pub fn lsp_position_to_offset(&self, position: Position) -> usize {
+        let pos = self.text.lsp_pos_to_pos(&position).unwrap();
+        self.text.pos_to_offset(&pos).unwrap()
+    }
+
+    pub fn lsp_position_from_offset(&self, offset: usize) -> Position {
+        let pos = self.text.offset_to_pos(offset).unwrap();
+        self.text.pos_to_lsp_pos(&pos).unwrap()
+    }
+
+    pub fn lsp_range_from_range(&self, range: StdRange) -> Range {
+        let start = self.lsp_position_from_offset(range.start);
+        let end = self.lsp_position_from_offset(range.end);
         Range::new(start, end)
     }
 
-    pub fn range_to_offset_range(&self, range: Range) -> StdRange {
-        let start = self.position_to_offset(range.start);
-        let end = self.position_to_offset(range.end);
+    pub fn lsp_range_to_range(&self, range: Range) -> StdRange {
+        let start = self.lsp_position_to_offset(range.start);
+        let end = self.lsp_position_to_offset(range.end);
         StdRange { start, end }
+    }
+
+    pub fn set_version(&mut self, version: impl Into<i32>) {
+        self.version = version.into();
+    }
+
+    pub fn apply_change(&mut self, change: TextDocumentContentChangeEvent) {
+        let change = self.text.lsp_change_to_change(change).unwrap();
+        let replaced = lsp_document::apply_change(&self.text, change);
+        self.text = IndexedText::new(replaced);
     }
 }
 
@@ -121,7 +122,7 @@ impl DocumentBuilder {
             uri,
             name,
             version: self.version.unwrap_or(i32::MIN),
-            text: self.text.unwrap_or_default(),
+            text: IndexedText::new(self.text.unwrap_or_default()),
         }
     }
 }

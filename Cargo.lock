@@ -864,6 +864,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "lsp-document"
+version = "0.6.0"
+source = "git+https://github.com/artempyanykh/rust-lsp-document?rev=d08ce4d2e36b073611d0db17e5a2b41a70d8daa4#d08ce4d2e36b073611d0db17e5a2b41a70d8daa4"
+dependencies = [
+ "lsp-types",
+]
+
+[[package]]
 name = "lsp-types"
 version = "0.94.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1809,6 +1817,7 @@ dependencies = [
  "futures",
  "itertools",
  "logos",
+ "lsp-document",
  "moka",
  "octocrab",
  "once_cell",

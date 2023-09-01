@@ -41,7 +41,7 @@ impl FromStr for ToolSpec {
             return Err(ToolSpecError::MissingAuthor);
         }
 
-        let idx_slash = s.chars().enumerate().find(|(_, c)| c == &'/');
+        let idx_slash = s.char_indices().find(|(_, c)| c == &'/');
         if idx_slash.is_none() {
             validate_author(s)?;
             return Err(ToolSpecError::MissingName);
@@ -54,7 +54,7 @@ impl FromStr for ToolSpec {
 
         let tool_author = validate_author(&s[..idx_slash])?;
 
-        let idx_at = s.chars().enumerate().find(|(_, c)| c == &'@');
+        let idx_at = s.char_indices().find(|(_, c)| c == &'@');
         if idx_at.is_none() {
             if idx_slash > s.len() - 1 {
                 validate_name(&s[idx_slash + 1..])?;

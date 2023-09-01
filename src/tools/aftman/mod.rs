@@ -50,16 +50,16 @@ impl Tool for Aftman {
             None => return Ok(None),
             Some(d) => d,
         };
-        let manifest = match Manifest::parse(&document.text) {
+        let manifest = match Manifest::parse(document.as_str()) {
             Err(_) => return Ok(None),
             Ok(m) => m,
         };
 
-        let offset = document.position_to_offset(pos);
+        let offset = document.lsp_position_to_offset(pos);
         let found = manifest.tools_map.tools.iter().find_map(|tool| {
             if offset >= tool.val_span.start && offset <= tool.val_span.end {
                 Some((
-                    document.offset_range_to_range(tool.val_span.clone()),
+                    document.lsp_range_from_range(tool.val_span.clone()),
                     tool.spec(),
                 ))
             } else {
@@ -109,12 +109,12 @@ impl Tool for Aftman {
             None => return Ok(Vec::new()),
             Some(d) => d,
         };
-        let manifest = match Manifest::parse(&document.text) {
+        let manifest = match Manifest::parse(document.as_str()) {
             Err(_) => return Ok(Vec::new()),
             Ok(m) => m,
         };
 
-        let offset = document.position_to_offset(pos);
+        let offset = document.lsp_position_to_offset(pos);
         let found = manifest
             .tools_map
             .tools
@@ -125,12 +125,13 @@ impl Tool for Aftman {
             Some(tool) => tool,
         };
 
-        let range_before = document.range_to_offset_range(Range {
-            start: document.offset_to_position(found.val_span.start + 1),
+        let range_before = document.lsp_range_to_range(Range {
+            start: document.lsp_position_from_offset(found.val_span.start + 1),
             end: pos,
         });
 
-        get_tool_completions(&self.github, &document.text[range_before]).await
+        let slice_before = &document.as_str()[range_before];
+        get_tool_completions(&self.github, slice_before).await
     }
 
     async fn diagnostics(&self, params: DocumentDiagnosticParams) -> Result<Vec<Diagnostic>> {
@@ -140,7 +141,7 @@ impl Tool for Aftman {
             None => return Ok(Vec::new()),
             Some(d) => d,
         };
-        let manifest = match Manifest::parse(&document.text) {
+        let manifest = match Manifest::parse(document.as_str()) {
             Err(_) => return Ok(Vec::new()),
             Ok(m) => m,
         };
@@ -150,7 +151,7 @@ impl Tool for Aftman {
             .tools
             .iter()
             .map(|tool| {
-                let range = document.offset_range_to_range(tool.val_span.clone());
+                let range = document.lsp_range_from_range(tool.val_span.clone());
                 (tool.clone(), range)
             })
             .collect::<Vec<_>>();

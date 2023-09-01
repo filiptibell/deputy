@@ -3,7 +3,6 @@ use std::sync::Arc;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::LanguageServer;
-use tracing::debug;
 
 use super::*;
 
@@ -38,22 +37,18 @@ impl LanguageServer for Server {
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let uri = params.text_document.uri.clone();
         let version = params.text_document.version;
-        let text = params
-            .content_changes
-            .get(0)
-            .expect("Missing content changes in change notification")
-            .text
-            .clone();
 
         let documents = Arc::clone(&self.documents);
         let mut documents = documents.lock().await;
 
-        let new_document = DocumentBuilder::new()
-            .with_uri(uri.clone())
-            .with_version(version)
-            .with_text(text)
-            .build();
-        documents.insert(uri, new_document);
+        let document = documents
+            .get_mut(&uri)
+            .expect("Got change event for nonexistent document");
+
+        document.set_version(version);
+        for change in params.content_changes {
+            document.apply_change(change);
+        }
     }
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
