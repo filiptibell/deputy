@@ -43,6 +43,7 @@ impl GithubWrapper {
                 .repos(owner, repository)
                 .releases()
                 .list()
+                .per_page(50)
                 .send()
                 .await
                 .map(|r| r.items)

@@ -63,46 +63,56 @@ async fn complete_tool_version(
     name: &str,
     version: &str,
 ) -> Result<Vec<CompletionItem>> {
-    match github.get_repository_releases(author, name).await {
-        Err(e) if e.is_rate_limit_error() || e.is_not_found_error() => Ok(Vec::new()),
-        Err(_) => Err(Error::invalid_request()),
-        Ok(v) => {
-            let mut tags = v
-                .into_iter()
-                .map(|release| {
-                    release
-                        .tag_name
-                        .trim_start_matches('v')
-                        .to_ascii_lowercase()
-                })
-                .filter_map(|tag| {
-                    let smallest_len = version.len().min(tag.len());
-                    if version.is_empty()
-                        || version[..smallest_len].eq_ignore_ascii_case(&tag[..smallest_len])
-                    {
-                        Version::parse(&tag).ok()
-                    } else {
-                        None
-                    }
-                })
-                .collect::<Vec<_>>();
-            tags.sort();
-            tags.reverse();
-            Ok(tags
-                .into_iter()
-                .enumerate()
-                .map(|(index, tag)| CompletionItem {
-                    label: tag.to_string(),
-                    kind: Some(CompletionItemKind::VALUE),
-                    sort_text: Some(format!("{:0>5}", index)),
-                    text_edit: Some(CompletionTextEdit::Edit(
-                        document.create_edit(replace_range.clone(), tag.to_string()),
-                    )),
-                    ..Default::default()
-                })
-                .collect())
-        }
-    }
+    let releases = match github.get_repository_releases(author, name).await {
+        Err(e) if e.is_rate_limit_error() || e.is_not_found_error() => return Ok(Vec::new()),
+        Err(_) => return Err(Error::invalid_request()),
+        Ok(v) => v,
+    };
+
+    let mut valid_releases = releases
+        .into_iter()
+        .filter_map(|release| {
+            let tag = release
+                .tag_name
+                .trim_start_matches('v')
+                .to_ascii_lowercase();
+            let smallest_len = version.len().min(tag.len());
+            if version.is_empty()
+                || version[..smallest_len].eq_ignore_ascii_case(&tag[..smallest_len])
+            {
+                if let Ok(version) = Version::parse(&tag) {
+                    Some((version, release))
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+
+    valid_releases.sort_by(|left, right| left.0.cmp(&right.0));
+    valid_releases.reverse();
+
+    Ok(valid_releases
+        .into_iter()
+        .enumerate()
+        .map(|(index, (version, release))| CompletionItem {
+            label: version.to_string(),
+            kind: Some(CompletionItemKind::VALUE),
+            sort_text: Some(format!("{:0>5}", index)),
+            text_edit: Some(CompletionTextEdit::Edit(
+                document.create_edit(replace_range.clone(), version.to_string()),
+            )),
+            label_details: Some(CompletionItemLabelDetails {
+                description: release
+                    .published_at
+                    .map(|dt| dt.naive_local().format(" %b %d %Y").to_string()),
+                detail: None,
+            }),
+            ..Default::default()
+        })
+        .collect())
 }
 
 pub async fn get_tool_completions(
