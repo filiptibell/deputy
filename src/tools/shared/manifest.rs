@@ -32,7 +32,7 @@ impl ManifestTool {
         } else if self.val_text.starts_with('\"') || self.val_text.starts_with('\'') {
             ToolSpec::from_str(&self.val_text[1..len - 1])
         } else {
-            panic!("Unknown string char")
+            Err(ToolSpecError::Unknown)
         }
     }
 }

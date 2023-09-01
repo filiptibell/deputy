@@ -19,6 +19,8 @@ pub enum ToolSpecError {
     InvalidVersion(char),
     #[error("tool version contains invalid semver - {0}")]
     InvalidSemver(String),
+    #[error("unknown error while parsing tool spec")]
+    Unknown,
 }
 
 #[derive(Debug, Clone)]

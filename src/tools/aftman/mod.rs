@@ -130,8 +130,8 @@ impl Tool for Aftman {
             end: pos,
         });
 
-        let slice_before = &document.as_str()[range_before];
-        get_tool_completions(&self.github, slice_before).await
+        let slice_before = &document.as_str()[range_before.clone()];
+        get_tool_completions(&self.github, &document, range_before, slice_before).await
     }
 
     async fn diagnostics(&self, params: DocumentDiagnosticParams) -> Result<Vec<Diagnostic>> {

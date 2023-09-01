@@ -60,6 +60,13 @@ impl Document {
         StdRange { start, end }
     }
 
+    pub fn create_edit(&self, range: StdRange, new_text: impl Into<String>) -> TextEdit {
+        TextEdit {
+            range: self.lsp_range_from_range(range),
+            new_text: new_text.into(),
+        }
+    }
+
     pub fn set_version(&mut self, version: impl Into<i32>) {
         self.version = version.into();
     }
