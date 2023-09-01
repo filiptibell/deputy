@@ -156,30 +156,22 @@ impl Tool for Aftman {
             })
             .collect::<Vec<_>>();
 
-        let mut diagnostics = Vec::new();
+        let mut all_diagnostics = Vec::new();
+        let mut fut_diagnostics = Vec::new();
         for (tool, range) in &tools {
             if let Some(diag) = diagnose_tool_spec(tool, range) {
-                diagnostics.push(diag);
+                all_diagnostics.push(diag);
+            } else {
+                let fut = diagnose_tool_version(&self.github, &uri, tool, range);
+                fut_diagnostics.push(fut);
             }
         }
 
-        // Return parsing errors immediately - leads to better responsiveness
-        // for parsing errors since we don't wait on other (potentially valid)
-        // tools to fetch their info to show new parsing errors when typing
-        if !diagnostics.is_empty() {
-            return Ok(diagnostics);
+        for diag in join_all(fut_diagnostics).await.into_iter().flatten() {
+            all_diagnostics.push(diag);
         }
 
-        let diags = tools
-            .iter()
-            .map(|(tool, range)| diagnose_tool_version(&self.github, &uri, tool, range))
-            .collect::<Vec<_>>();
-
-        let mut diags = join_all(diags).await;
-        for diag in diags.drain(..).flatten() {
-            diagnostics.push(diag);
-        }
-        Ok(diagnostics)
+        Ok(all_diagnostics)
     }
 
     async fn code_action(&self, params: CodeActionParams) -> Result<Vec<CodeActionOrCommand>> {
