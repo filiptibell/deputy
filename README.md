@@ -6,7 +6,7 @@ A language server for several tools:
 - [Foreman](https://github.com/roblox/foreman)
 - [Wally](https://github.com/UpliftGames/wally)
 
-This is mostly a small personal project to learn how to write a performant language server and lexer/parser for TOML files.
+Mostly a personal project, to learn how to write a performant language server.
 
 ## Aftman
 

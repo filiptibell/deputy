@@ -3,7 +3,6 @@ use tracing_subscriber::filter::{EnvFilter, LevelFilter};
 
 mod github;
 mod server;
-mod toml;
 mod tools;
 mod util;
 

@@ -7,24 +7,31 @@ use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::Client;
 
-use crate::github::GithubWrapper;
-
+use crate::github::*;
 use crate::server::*;
 
-use super::shared::actions::*;
-use super::shared::completion::*;
-use super::shared::diagnostics::*;
-use super::shared::manifest::*;
 use super::*;
 
+mod actions;
+mod completion;
+mod constants;
+mod diagnostics;
+mod manifest;
+mod tool_spec;
+
+use actions::*;
+use completion::*;
+use diagnostics::*;
+use manifest::*;
+
 #[derive(Debug, Clone)]
-pub struct Aftman {
+pub struct ToolchainManagers {
     _client: Client,
     github: GithubWrapper,
     documents: Documents,
 }
 
-impl Aftman {
+impl ToolchainManagers {
     pub(super) fn new(client: Client, github: GithubWrapper, documents: Documents) -> Self {
         Self {
             _client: client,
@@ -41,7 +48,7 @@ impl Aftman {
 }
 
 #[tower_lsp::async_trait]
-impl Tool for Aftman {
+impl Tool for ToolchainManagers {
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
         let uri = params.text_document_position_params.text_document.uri;
         let pos = params.text_document_position_params.position;
@@ -50,18 +57,16 @@ impl Tool for Aftman {
             None => return Ok(None),
             Some(d) => d,
         };
-        let manifest = match Manifest::parse(document.as_str()) {
+        let manifest = match Manifest::parse_aftman(document.as_str()) {
             Err(_) => return Ok(None),
             Ok(m) => m,
         };
 
         let offset = document.lsp_position_to_offset(pos);
-        let found = manifest.tools_map.tools.iter().find_map(|tool| {
-            if offset >= tool.val_span.start && offset <= tool.val_span.end {
-                Some((
-                    document.lsp_range_from_range(tool.val_span.clone()),
-                    tool.spec(),
-                ))
+        let found = manifest.tools.iter().find_map(|(_, tool)| {
+            let span = tool.span();
+            if offset >= span.start && offset <= span.end {
+                Some((document.lsp_range_from_range(span.clone()), tool.spec()))
             } else {
                 None
             }
@@ -109,24 +114,23 @@ impl Tool for Aftman {
             None => return Ok(CompletionResponse::Array(Vec::new())),
             Some(d) => d,
         };
-        let manifest = match Manifest::parse(document.as_str()) {
+        let manifest = match Manifest::parse_aftman(document.as_str()) {
             Err(_) => return Ok(CompletionResponse::Array(Vec::new())),
             Ok(m) => m,
         };
 
         let offset = document.lsp_position_to_offset(pos);
-        let found = manifest
-            .tools_map
-            .tools
-            .iter()
-            .find(|tool| offset >= tool.val_span.start && offset <= tool.val_span.end);
+        let found = manifest.tools.iter().find(|(_, tool)| {
+            let span = tool.span();
+            offset >= span.start && offset <= span.end
+        });
         let found = match found {
             None => return Ok(CompletionResponse::Array(Vec::new())),
             Some(tool) => tool,
         };
 
         let range_before = document.lsp_range_to_range(Range {
-            start: document.lsp_position_from_offset(found.val_span.start + 1),
+            start: document.lsp_position_from_offset(found.1.span().start + 1),
             end: pos,
         });
 
@@ -141,17 +145,16 @@ impl Tool for Aftman {
             None => return Ok(Vec::new()),
             Some(d) => d,
         };
-        let manifest = match Manifest::parse(document.as_str()) {
+        let manifest = match Manifest::parse_aftman(document.as_str()) {
             Err(_) => return Ok(Vec::new()),
             Ok(m) => m,
         };
 
         let tools = manifest
-            .tools_map
             .tools
-            .iter()
+            .values()
             .map(|tool| {
-                let range = document.lsp_range_from_range(tool.val_span.clone());
+                let range = document.lsp_range_from_range(tool.span().clone());
                 (tool.clone(), range)
             })
             .collect::<Vec<_>>();
