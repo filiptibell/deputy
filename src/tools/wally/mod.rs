@@ -8,16 +8,16 @@ use super::*;
 #[derive(Debug, Clone)]
 pub struct Wally {
     _client: Client,
-    _github: GithubWrapper,
     _documents: Documents,
+    _github: GithubWrapper,
 }
 
 impl Wally {
-    pub(super) fn new(client: Client, github: GithubWrapper, documents: Documents) -> Self {
+    pub(super) fn new(client: Client, documents: Documents, github: GithubWrapper) -> Self {
         Self {
             _client: client,
-            _github: github,
             _documents: documents,
+            _github: github,
         }
     }
 }

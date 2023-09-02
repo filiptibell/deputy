@@ -27,16 +27,16 @@ use manifest::*;
 #[derive(Debug, Clone)]
 pub struct Toolchain {
     _client: Client,
-    github: GithubWrapper,
     documents: Documents,
+    github: GithubWrapper,
 }
 
 impl Toolchain {
-    pub(super) fn new(client: Client, github: GithubWrapper, documents: Documents) -> Self {
+    pub(super) fn new(client: Client, documents: Documents, github: GithubWrapper) -> Self {
         Self {
             _client: client,
-            github,
             documents,
+            github,
         }
     }
 

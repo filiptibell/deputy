@@ -39,7 +39,7 @@ impl FromStr for ToolName {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.trim().to_ascii_lowercase().as_ref() {
             "aftman" | "aftman.toml" => Ok(Self::Aftman),
-            "cargo" | "Cargo" | "Cargo.toml" => Ok(Self::Cargo),
+            "cargo" | "cargo.toml" => Ok(Self::Cargo),
             "foreman" | "foreman.toml" => Ok(Self::Foreman),
             "wally" | "wally.toml" => Ok(Self::Wally),
             _ => Err("Unknown tool"),

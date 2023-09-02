@@ -1,6 +1,7 @@
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::Client;
+use tracing::warn;
 
 use crate::github::GithubWrapper;
 use crate::server::*;
@@ -20,9 +21,9 @@ pub struct Tools {
 impl Tools {
     pub fn new(client: Client, github: GithubWrapper, documents: Documents) -> Self {
         Self {
-            cargo: Cargo::new(client.clone(), github.clone(), documents.clone()),
-            toolchain: Toolchain::new(client.clone(), github.clone(), documents.clone()),
-            wally: Wally::new(client.clone(), github.clone(), documents.clone()),
+            cargo: Cargo::new(client.clone(), documents.clone()),
+            toolchain: Toolchain::new(client.clone(), documents.clone(), github.clone()),
+            wally: Wally::new(client.clone(), documents.clone(), github.clone()),
         }
     }
 
@@ -43,7 +44,10 @@ impl Tool for Tools {
             Ok(ToolName::Cargo) => self.cargo.hover(params).await,
             Ok(ToolName::Foreman) => self.toolchain.hover(params).await,
             Ok(ToolName::Wally) => self.wally.hover(params).await,
-            Err(_) => Ok(None),
+            Err(e) => {
+                warn!("Failed to parse file name from uri '{e}'");
+                Ok(None)
+            }
         }
     }
 
@@ -53,7 +57,10 @@ impl Tool for Tools {
             Ok(ToolName::Cargo) => self.cargo.completion(params).await,
             Ok(ToolName::Foreman) => self.toolchain.completion(params).await,
             Ok(ToolName::Wally) => self.wally.completion(params).await,
-            Err(_) => Ok(CompletionResponse::Array(Vec::new())),
+            Err(e) => {
+                warn!("Failed to parse file name from uri '{e}'");
+                Ok(CompletionResponse::Array(Vec::new()))
+            }
         }
     }
 
@@ -63,7 +70,10 @@ impl Tool for Tools {
             Ok(ToolName::Cargo) => self.cargo.diagnostics(params).await,
             Ok(ToolName::Foreman) => self.toolchain.diagnostics(params).await,
             Ok(ToolName::Wally) => self.wally.diagnostics(params).await,
-            Err(_) => Ok(Vec::new()),
+            Err(e) => {
+                warn!("Failed to parse file name from uri '{e}'");
+                Ok(Vec::new())
+            }
         }
     }
 
@@ -73,7 +83,10 @@ impl Tool for Tools {
             Ok(ToolName::Cargo) => self.cargo.code_action(params).await,
             Ok(ToolName::Foreman) => self.toolchain.code_action(params).await,
             Ok(ToolName::Wally) => self.wally.code_action(params).await,
-            Err(_) => Ok(Vec::new()),
+            Err(e) => {
+                warn!("Failed to parse file name from uri '{e}'");
+                Ok(Vec::new())
+            }
         }
     }
 }
