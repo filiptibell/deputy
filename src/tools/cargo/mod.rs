@@ -7,6 +7,7 @@ use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::Client;
 
+use crate::crates::*;
 use crate::server::*;
 
 use super::*;
@@ -18,13 +19,15 @@ use manifest::*;
 pub struct Cargo {
     _client: Client,
     documents: Documents,
+    crates: CratesWrapper,
 }
 
 impl Cargo {
-    pub(super) fn new(client: Client, documents: Documents) -> Self {
+    pub(super) fn new(client: Client, documents: Documents, crates: CratesWrapper) -> Self {
         Self {
             _client: client,
             documents,
+            crates,
         }
     }
 
@@ -52,10 +55,14 @@ impl Tool for Cargo {
 
         let offset = document.lsp_position_to_offset(pos);
         let try_find = |deps: &HashMap<String, ManifestDependency>| {
-            deps.iter().find_map(|(_, dep)| {
+            deps.iter().find_map(|(key, dep)| {
                 let span = dep.span();
                 if offset >= span.start && offset <= span.end {
-                    Some((document.lsp_range_from_range(span.clone()), dep.to_string()))
+                    Some((
+                        document.lsp_range_from_range(span.clone()),
+                        key.to_string(),
+                        dep.to_string(),
+                    ))
                 } else {
                     None
                 }
@@ -65,15 +72,59 @@ impl Tool for Cargo {
         let found = try_find(&manifest.dependencies)
             .or_else(|| try_find(&manifest.dev_dependencies))
             .or_else(|| try_find(&manifest.build_dependencies));
-        let (found_range, found_dep) = match found {
-            Some((range, dep)) => (range, dep),
+        let (found_range, found_key, found_ver) = match found {
+            Some((range, key, dep)) => (range, key, dep),
             _ => return Ok(None),
         };
 
-        trace!("Hovering: {found_dep}");
+        trace!("Hovering: {found_key} version {found_ver}");
+
+        let metadatas = match self.crates.get_index_metadatas(&found_key).await {
+            Err(_) => return Ok(None),
+            Ok(m) => m,
+        };
+        let meta_latest = match metadatas.last() {
+            None => return Ok(None),
+            Some(m) => m,
+        };
 
         let mut lines = Vec::new();
-        lines.push(format!("## {}", found_dep));
+        lines.push(format!("## {}", meta_latest.name));
+        lines.push(format!("Version **{}**", meta_latest.version));
+
+        trace!("Fetching crate data from crates.io");
+        if let Ok(crate_data) = self
+            .crates
+            .get_crate_data(&found_key)
+            .await
+            .map(|c| c.inner)
+        {
+            lines.push(String::new());
+            lines.push(crate_data.description.to_string());
+            let mut docs = crate_data.links.documentation.as_deref();
+            let mut page = crate_data.links.homepage.as_deref();
+            let repo = crate_data.links.repository.as_deref();
+            if docs.is_some() || page.is_some() || repo.is_some() {
+                if page == repo {
+                    page = None;
+                }
+                if docs == repo {
+                    docs = None;
+                }
+                lines.push(String::new());
+                lines.push(String::from("### Links"));
+                if let Some(docs) = docs {
+                    lines.push(format!("- [Documentation]({docs})"));
+                }
+                if let Some(repo) = repo {
+                    lines.push(format!("- [Repository]({repo})"));
+                }
+                if let Some(page) = page {
+                    lines.push(format!("- [Homepage]({page})"));
+                }
+                lines.push(String::new());
+            }
+        }
 
         Ok(Some(Hover {
             range: Some(found_range),

@@ -13,7 +13,7 @@ pub(super) struct GithubCache {
 impl GithubCache {
     pub fn new() -> Self {
         Self {
-            repository_metrics: RequestCacheMap::new(0, 15),
+            repository_metrics: RequestCacheMap::new(60, 15),
             repository_releases: RequestCacheMap::new(30, 5),
         }
     }

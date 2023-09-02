@@ -5,6 +5,7 @@ use tokio::sync::Mutex as AsyncMutex;
 use tower_lsp::lsp_types::notification::Notification;
 use tower_lsp::{Client, LspService, Server as LspServer};
 
+use crate::crates::*;
 use crate::github::*;
 use crate::tools::*;
 use crate::util::*;
@@ -20,25 +21,29 @@ pub use document::*;
 
 pub struct Server {
     pub client: Client,
-    pub github: GithubWrapper,
     pub documents: Documents,
+    pub github: GithubWrapper,
+    pub crates: CratesWrapper,
     pub tools: Tools,
 }
 
 impl Server {
     fn new(client: Client, args: &Arguments) -> Self {
         let github = GithubWrapper::new();
+        let crates = CratesWrapper::new();
+
+        let documents = Arc::new(AsyncMutex::new(HashMap::new()));
+
         if let Some(token) = &args.github_token {
             github.set_auth_token(token);
         }
 
-        let documents = Arc::new(AsyncMutex::new(HashMap::new()));
-
         let this = Self {
             client: client.clone(),
-            github: github.clone(),
             documents: Arc::clone(&documents),
-            tools: Tools::new(client, github, documents),
+            github: github.clone(),
+            crates: crates.clone(),
+            tools: Tools::new(client, documents, github, crates),
         };
 
         this.watch_rate_limit();

@@ -3,6 +3,7 @@ use tower_lsp::lsp_types::*;
 use tower_lsp::Client;
 use tracing::warn;
 
+use crate::crates::CratesWrapper;
 use crate::github::GithubWrapper;
 use crate::server::*;
 
@@ -19,9 +20,14 @@ pub struct Tools {
 }
 
 impl Tools {
-    pub fn new(client: Client, github: GithubWrapper, documents: Documents) -> Self {
+    pub fn new(
+        client: Client,
+        documents: Documents,
+        github: GithubWrapper,
+        crates: CratesWrapper,
+    ) -> Self {
         Self {
-            cargo: Cargo::new(client.clone(), documents.clone()),
+            cargo: Cargo::new(client.clone(), documents.clone(), crates.clone()),
             toolchain: Toolchain::new(client.clone(), documents.clone(), github.clone()),
             wally: Wally::new(client.clone(), documents.clone(), github.clone()),
         }

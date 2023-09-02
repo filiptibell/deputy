@@ -6,7 +6,11 @@ use std::{
 
 use futures::Future;
 use moka::future::Cache;
-use tokio::sync::broadcast::{self, Sender};
+use tokio::{
+    sync::broadcast::{self, Sender},
+    time::sleep,
+};
+use tracing::trace;
 
 type CacheMap<T> = Cache<String, T>;
 
@@ -92,16 +96,28 @@ impl<T: Clone + Send + Sync + 'static> RequestCacheMap<T> {
         let send = { sends.lock().unwrap().get(&key).cloned() };
 
         if let Some(send) = send {
-            return send
-                .subscribe()
-                .recv()
-                .await
-                .expect("Unexpectedly dropped sender");
+            if let Ok(res) = send.subscribe().recv().await {
+                return res;
+            } else {
+                // Existing request was cancelled / dropped, try again
+            }
         }
 
         match self.map.get(&key) {
             Some(cached) => cached.clone(),
             None => {
+                // HACK: Spawn a timeout task that will clear out any
+                // senders if for some reason this request was cancelled
+                // We should really do this on future being dropped instead
+                let sends_key = key.clone();
+                let sends_timeout = Arc::clone(&sends);
+                tokio::spawn(async move {
+                    sleep(Duration::from_secs(5)).await;
+                    if sends_timeout.lock().unwrap().remove(&sends_key).is_some() {
+                        trace!("Request was cancelled, cleaning up")
+                    }
+                });
+
                 let send = {
                     let (send, _) = broadcast::channel(1);
                     sends.lock().unwrap().insert(key.clone(), send.clone());
