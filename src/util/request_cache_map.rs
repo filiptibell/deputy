@@ -6,12 +6,14 @@ use std::{
 
 use futures::Future;
 use moka::future::Cache;
-use tokio::sync::Mutex as AsyncMutex;
+use tokio::sync::broadcast::{self, Sender};
 
 type CacheMap<T> = Cache<String, T>;
 
-type ConcurrencyLock = Arc<AsyncMutex<()>>;
-type ConcurrencyLocks = Arc<Mutex<HashMap<String, ConcurrencyLock>>>;
+// Map of senders, used to notify any listeners
+// that are waiting for a request to finish and
+// a cache value to become available to clone
+type Senders<T> = Arc<Mutex<HashMap<String, Sender<T>>>>;
 
 /**
     Generic cache map for web requests.
@@ -21,7 +23,7 @@ type ConcurrencyLocks = Arc<Mutex<HashMap<String, ConcurrencyLock>>>;
 #[derive(Debug, Clone)]
 pub struct RequestCacheMap<T: Clone + Send + Sync + 'static> {
     map: CacheMap<T>,
-    locks: ConcurrencyLocks,
+    sends: Senders<T>,
 }
 
 impl<T: Clone + Send + Sync + 'static> RequestCacheMap<T> {
@@ -41,7 +43,7 @@ impl<T: Clone + Send + Sync + 'static> RequestCacheMap<T> {
             .build();
         RequestCacheMap {
             map,
-            locks: Arc::new(Mutex::new(HashMap::new())),
+            sends: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -86,29 +88,38 @@ impl<T: Clone + Send + Sync + 'static> RequestCacheMap<T> {
     {
         let key = key.into();
 
-        let guard = self.concurrency_lock(&key);
-        let _guard = guard.lock().await;
+        let sends = Arc::clone(&self.sends);
+        let send = { sends.lock().unwrap().get(&key).cloned() };
+
+        if let Some(send) = send {
+            return send
+                .subscribe()
+                .recv()
+                .await
+                .expect("Unexpectedly dropped sender");
+        }
 
         match self.map.get(&key) {
             Some(cached) => cached.clone(),
             None => {
+                let send = {
+                    let (send, _) = broadcast::channel(1);
+                    sends.lock().unwrap().insert(key.clone(), send.clone());
+                    send
+                };
+
                 let result = f.await;
 
-                self.map.insert(key, result.clone()).await;
+                self.map.insert(key.clone(), result.clone()).await;
+
+                {
+                    sends.lock().unwrap().remove(&key);
+                }
+
+                send.send(result.clone()).ok();
 
                 result
             }
         }
-    }
-
-    fn concurrency_lock(&self, key: impl Into<String>) -> ConcurrencyLock {
-        let key = key.into();
-
-        let mut locks = self.locks.lock().unwrap();
-        let lock = locks
-            .entry(key)
-            .or_insert_with(|| Arc::new(AsyncMutex::new(())));
-
-        Arc::clone(lock)
     }
 }
