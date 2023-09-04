@@ -48,6 +48,23 @@ impl Server {
             ..Default::default()
         };
 
+        // Create similar options but for file operation notifications
+        let file_operation_options = FileOperationRegistrationOptions {
+            filters: Tools::all_file_globs()
+                .iter()
+                .map(|&glob| FileOperationFilter {
+                    scheme: Some(String::from("file")),
+                    pattern: FileOperationPattern {
+                        glob: String::from(glob),
+                        matches: Some(FileOperationPatternKind::File),
+                        options: Some(FileOperationPatternOptions {
+                            ignore_case: Some(true),
+                        }),
+                    },
+                })
+                .collect(),
+        };
+
         // Respond with negotiated encoding, server info, capabilities
         Ok(InitializeResult {
             offset_encoding: Some(String::from("utf-16")),
@@ -70,6 +87,15 @@ impl Server {
                 diagnostic_provider: Some(DiagnosticServerCapabilities::RegistrationOptions(
                     diagnostic_registration_options,
                 )),
+                workspace: Some(WorkspaceServerCapabilities {
+                    file_operations: Some(WorkspaceFileOperationsServerCapabilities {
+                        did_create: Some(file_operation_options.clone()),
+                        did_rename: Some(file_operation_options.clone()),
+                        did_delete: Some(file_operation_options),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                }),
                 ..ServerCapabilities::default()
             },
         })

@@ -3,6 +3,8 @@ use std::sync::Arc;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::LanguageServer;
+use tracing::trace;
+use tracing::warn;
 
 use super::*;
 
@@ -48,6 +50,45 @@ impl LanguageServer for Server {
         document.set_version(version);
         for change in params.content_changes {
             document.apply_change(change);
+        }
+    }
+
+    async fn did_create_files(&self, params: CreateFilesParams) {
+        for create in params.files {
+            let new = Url::parse(create.uri.as_str())
+                .expect("Got invalid file path in create notification");
+            // NOTE: We intentionally don't read and insert a document here,
+            // it is not provided directly in the create files params, and
+            // we might as well do it lazily when a file is opened instead
+            trace!("File created: {new}");
+        }
+    }
+
+    async fn did_rename_files(&self, params: RenameFilesParams) {
+        let documents = Arc::clone(&self.documents);
+        let mut documents = documents.lock().await;
+        for rename in params.files {
+            let old = Url::parse(rename.old_uri.as_str())
+                .expect("Got invalid file path in rename notification");
+            let new = Url::parse(rename.new_uri.as_str())
+                .expect("Got invalid file path in rename notification");
+            if let Some(old_doc) = documents.remove(&old) {
+                trace!("File renamed: {old} -> {new}");
+                documents.insert(new, old_doc);
+            } else {
+                warn!("File renamed, but no doc existed: {old} -> {new}")
+            }
+        }
+    }
+
+    async fn did_delete_files(&self, params: DeleteFilesParams) {
+        let documents = Arc::clone(&self.documents);
+        let mut documents = documents.lock().await;
+        for delete in params.files {
+            let old = Url::parse(delete.uri.as_str())
+                .expect("Got invalid file path in delete notification");
+            documents.remove(&old);
+            trace!("File deleted: {old}");
         }
     }
 
