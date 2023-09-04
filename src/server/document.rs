@@ -121,7 +121,7 @@ impl DocumentBuilder {
 
     pub fn build(self) -> Document {
         let uri = self.uri.expect("Missing uri");
-        let name = self.name.unwrap_or_else(|| match uri_to_file_name(&uri) {
+        let name = self.name.unwrap_or_else(|| match uri.file_name() {
             None => panic!("Encountered document without file name"),
             Some(f) => f,
         });

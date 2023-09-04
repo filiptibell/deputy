@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use tower_lsp::lsp_types::*;
 
-use crate::util::uri_to_file_name;
+use crate::util::LspUriExt;
 
 #[derive(Debug, Clone, Copy)]
 pub enum ToolName {
@@ -14,7 +14,7 @@ pub enum ToolName {
 
 impl ToolName {
     pub fn from_uri(uri: &Url) -> Result<Self, &'static str> {
-        match uri_to_file_name(uri) {
+        match uri.file_name() {
             Some(file_name) => file_name.parse(),
             None => Err("No file name"),
         }
@@ -32,6 +32,15 @@ impl ToolName {
             Self::Wally => "**/wally.toml",
         }
     }
+
+    pub fn relevant_file_globs(&self) -> &'static [&'static str] {
+        match self {
+            Self::Aftman => &[],
+            Self::Cargo => &["**/Cargo.lock"],
+            Self::Foreman => &[],
+            Self::Wally => &[],
+        }
+    }
 }
 
 impl FromStr for ToolName {
@@ -39,7 +48,7 @@ impl FromStr for ToolName {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.trim().to_ascii_lowercase().as_ref() {
             "aftman" | "aftman.toml" => Ok(Self::Aftman),
-            "cargo" | "cargo.toml" => Ok(Self::Cargo),
+            "cargo" | "cargo.toml" | "cargo.lock" => Ok(Self::Cargo),
             "foreman" | "foreman.toml" => Ok(Self::Foreman),
             "wally" | "wally.toml" => Ok(Self::Wally),
             _ => Err("Unknown tool"),

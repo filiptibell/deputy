@@ -20,6 +20,8 @@ impl Server {
                 String::from("/"),
                 String::from("@"),
                 String::from("."),
+                String::from("-"),
+                String::from("_"),
             ]),
             ..Default::default()
         };
@@ -28,7 +30,7 @@ impl Server {
         let diagnostic_registration_options = DiagnosticRegistrationOptions {
             text_document_registration_options: TextDocumentRegistrationOptions {
                 document_selector: Some(
-                    Tools::file_globs()
+                    Tools::all_file_globs()
                         .iter()
                         .map(|&glob| DocumentFilter {
                             scheme: Some(String::from("file")),
@@ -39,7 +41,7 @@ impl Server {
                 ),
             },
             diagnostic_options: DiagnosticOptions {
-                inter_file_dependencies: false,
+                inter_file_dependencies: true,
                 workspace_diagnostics: false,
                 ..Default::default()
             },
@@ -48,7 +50,7 @@ impl Server {
 
         // Respond with negotiated encoding, server info, capabilities
         Ok(InitializeResult {
-            offset_encoding: Some(String::from("utf-8")),
+            offset_encoding: Some(String::from("utf-16")),
             server_info: Some(ServerInfo {
                 name: env!("CARGO_PKG_NAME").to_string(),
                 version: Some(env!("CARGO_PKG_VERSION").to_string()),
