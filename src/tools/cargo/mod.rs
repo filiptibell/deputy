@@ -9,10 +9,14 @@ use tower_lsp::Client;
 
 use crate::crates::*;
 use crate::server::*;
+use crate::util::*;
 
 use super::*;
 
+mod lockfile;
 mod manifest;
+
+use lockfile::*;
 use manifest::*;
 
 #[derive(Debug, Clone)]
@@ -31,10 +35,26 @@ impl Cargo {
         }
     }
 
-    async fn get_document(&self, uri: &Url) -> Option<Document> {
-        let documents = Arc::clone(&self.documents);
-        let documents = documents.lock().await;
-        documents.get(uri).cloned()
+    async fn get_documents(&self, uri: &Url) -> Option<(Document, Document)> {
+        if matches!(
+            uri.file_name().as_deref(),
+            Some("Cargo.toml" | "cargo.toml")
+        ) {
+            let documents = Arc::clone(&self.documents);
+            let documents = documents.lock().await;
+
+            let manifest = documents.get(uri).cloned();
+            let lockfile = documents
+                .get(&uri.with_file_name("Cargo.lock").unwrap())
+                .cloned();
+
+            match (manifest, lockfile) {
+                (Some(m), Some(l)) => Some((m, l)),
+                _ => None,
+            }
+        } else {
+            None
+        }
     }
 }
 
@@ -44,13 +64,16 @@ impl Tool for Cargo {
         let uri = params.text_document_position_params.text_document.uri;
         let pos = params.text_document_position_params.position;
 
-        let document = match self.get_document(&uri).await {
+        let (document, lockfile) = match self.get_documents(&uri).await {
             None => return Ok(None),
             Some(d) => d,
         };
-        let manifest = match Manifest::parse(document.as_str()) {
-            Err(_) => return Ok(None),
-            Ok(m) => m,
+        let (manifest, lockfile) = match (
+            Manifest::parse(document.as_str()),
+            Lockfile::parse(lockfile.as_str()),
+        ) {
+            (Ok(m), Ok(l)) => (m, l),
+            _ => return Ok(None),
         };
 
         let offset = document.lsp_position_to_offset(pos);
@@ -79,18 +102,18 @@ impl Tool for Cargo {
 
         trace!("Hovering: {found_key} version {found_ver}");
 
-        let metadatas = match self.crates.get_index_metadatas(&found_key).await {
-            Err(_) => return Ok(None),
-            Ok(m) => m,
-        };
-        let meta_latest = match metadatas.last() {
+        let locked = match lockfile
+            .packages
+            .iter()
+            .find(|package| package.name.eq_ignore_ascii_case(&found_key))
+        {
+            Some(package) => package,
             None => return Ok(None),
-            Some(m) => m,
         };
 
         let mut lines = Vec::new();
-        lines.push(format!("## {}", meta_latest.name));
-        lines.push(format!("Version **{}**", meta_latest.version));
+        lines.push(format!("## {}", locked.name));
+        lines.push(format!("Version **{}**", locked.version));
 
         trace!("Fetching crate data from crates.io");
         if let Ok(crate_data) = self
