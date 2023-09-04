@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt, ops::Range};
+use std::{collections::HashMap, fmt, ops::Range, str::FromStr};
 
 use serde::Deserialize;
 use toml::{Spanned, Value as TomlValue};
@@ -51,27 +51,27 @@ pub struct Manifest {
     pub build_dependencies: HashMap<String, ManifestDependency>,
 }
 
-impl Manifest {
-    pub fn parse(source: impl AsRef<str>) -> Result<Self, toml::de::Error> {
-        let result = toml::from_str::<Manifest>(source.as_ref())
-            .map(|manifest| manifest.remove_invalid_deps());
+impl FromStr for Manifest {
+    type Err = toml::de::Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let result = toml::from_str::<Manifest>(s).map(remove_invalid_deps);
         if let Err(e) = &result {
             error!("failed to deserialize cargo manifest - {e}")
         }
         result
     }
+}
 
-    fn remove_invalid_deps(mut self) -> Self {
-        let check = |deps: &mut HashMap<String, ManifestDependency>| {
-            deps.retain(|_, val| match val.0.as_ref() {
-                TomlValue::String(_) => true,
-                TomlValue::Table(t) => matches!(t.get("version"), Some(TomlValue::String(_))),
-                _ => false,
-            });
-        };
-        check(&mut self.dependencies);
-        check(&mut self.dev_dependencies);
-        check(&mut self.build_dependencies);
-        self
-    }
+fn remove_invalid_deps(mut manifest: Manifest) -> Manifest {
+    let check = |deps: &mut HashMap<String, ManifestDependency>| {
+        deps.retain(|_, val| match val.0.as_ref() {
+            TomlValue::String(_) => true,
+            TomlValue::Table(t) => matches!(t.get("version"), Some(TomlValue::String(_))),
+            _ => false,
+        });
+    };
+    check(&mut manifest.dependencies);
+    check(&mut manifest.dev_dependencies);
+    check(&mut manifest.build_dependencies);
+    manifest
 }

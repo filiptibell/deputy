@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use serde::Deserialize;
 use tracing::error;
 
@@ -13,9 +15,10 @@ pub struct Lockfile {
     pub packages: Vec<LockfilePackage>,
 }
 
-impl Lockfile {
-    pub fn parse(source: impl AsRef<str>) -> Result<Self, toml::de::Error> {
-        let result = toml::from_str::<Lockfile>(source.as_ref());
+impl FromStr for Lockfile {
+    type Err = toml::de::Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let result = toml::from_str::<Lockfile>(s);
         if let Err(e) = &result {
             error!("failed to deserialize cargo lockfile - {e}")
         }

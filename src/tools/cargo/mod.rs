@@ -6,6 +6,7 @@ use tracing::trace;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::Client;
+use tracing::warn;
 
 use crate::crates::*;
 use crate::server::*;
@@ -48,6 +49,10 @@ impl Cargo {
                 .get(&uri.with_file_name("Cargo.lock").unwrap())
                 .cloned();
 
+            if lockfile.is_none() {
+                warn!("Cargo.lock missing for manifest at '{uri}'")
+            }
+
             match (manifest, lockfile) {
                 (Some(m), Some(l)) => Some((m, l)),
                 _ => None,
@@ -64,13 +69,13 @@ impl Tool for Cargo {
         let uri = params.text_document_position_params.text_document.uri;
         let pos = params.text_document_position_params.position;
 
-        let (document, lockfile) = match self.get_documents(&uri).await {
+        let (document, lockdoc) = match self.get_documents(&uri).await {
             None => return Ok(None),
             Some(d) => d,
         };
         let (manifest, lockfile) = match (
-            Manifest::parse(document.as_str()),
-            Lockfile::parse(lockfile.as_str()),
+            document.as_str().parse::<Manifest>(),
+            lockdoc.as_str().parse::<Lockfile>(),
         ) {
             (Ok(m), Ok(l)) => (m, l),
             _ => return Ok(None),
