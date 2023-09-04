@@ -21,7 +21,8 @@
         "Other"
     ],
     "activationEvents": [
-        "onLanguage:toml"
+        "onLanguage:toml",
+        "onStartupFinished"
     ],
     "main": "./out/extension.js",
     "contributes": {},
