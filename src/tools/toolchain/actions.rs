@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
-use serde_json::Value as JsonValue;
 
 use tower_lsp::lsp_types::*;
 
@@ -47,25 +46,5 @@ impl CodeActionMetadata {
                 })
             }
         }
-    }
-}
-
-impl TryFrom<JsonValue> for CodeActionMetadata {
-    type Error = serde_json::Error;
-    fn try_from(value: JsonValue) -> Result<Self, Self::Error> {
-        serde_json::from_value(value)
-    }
-}
-
-impl TryFrom<&JsonValue> for CodeActionMetadata {
-    type Error = serde_json::Error;
-    fn try_from(value: &JsonValue) -> Result<Self, Self::Error> {
-        serde_json::from_value(value.clone())
-    }
-}
-
-impl From<CodeActionMetadata> for JsonValue {
-    fn from(value: CodeActionMetadata) -> Self {
-        serde_json::to_value(value).unwrap()
     }
 }

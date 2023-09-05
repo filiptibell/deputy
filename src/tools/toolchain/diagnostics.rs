@@ -4,6 +4,7 @@ use tower_lsp::lsp_types::*;
 use crate::github::GithubErrorExt;
 use crate::github::GithubWrapper;
 
+use super::super::util::*;
 use super::actions::*;
 use super::manifest::*;
 use super::tool_spec::*;
@@ -98,7 +99,13 @@ pub async fn diagnose_tool_version(
                 \nThe latest version is `{latest_version}`"
             ),
             severity: Some(DiagnosticSeverity::INFORMATION),
-            data: Some(metadata.into()),
+            data: Some(
+                ResolveContext {
+                    uri: uri.clone(),
+                    value: metadata,
+                }
+                .into(),
+            ),
             ..Default::default()
         });
     }

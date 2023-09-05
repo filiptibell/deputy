@@ -180,8 +180,12 @@ impl Tool for Toolchain {
     async fn code_action(&self, params: CodeActionParams) -> Result<Vec<CodeActionOrCommand>> {
         let mut actions = Vec::new();
         for diag in params.context.diagnostics {
-            if let Some(Ok(action)) = diag.data.as_ref().map(CodeActionMetadata::try_from) {
-                actions.push(action.into_code_action(diag.clone()))
+            if let Some(Ok(action)) = diag
+                .data
+                .as_ref()
+                .map(ResolveContext::<CodeActionMetadata>::try_from)
+            {
+                actions.push(action.into_inner().into_code_action(diag.clone()))
             }
         }
         Ok(actions)
