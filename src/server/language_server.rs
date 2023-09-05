@@ -147,6 +147,10 @@ impl LanguageServer for Server {
         }
     }
 
+    async fn completion_resolve(&self, item: CompletionItem) -> Result<CompletionItem> {
+        self.tools.completion_resolve(item).await
+    }
+
     async fn diagnostic(
         &self,
         params: DocumentDiagnosticParams,
@@ -179,5 +183,9 @@ impl LanguageServer for Server {
                 }
             }
         }
+    }
+
+    async fn code_action_resolve(&self, action: CodeAction) -> Result<CodeAction> {
+        self.tools.code_action_resolve(action).await
     }
 }

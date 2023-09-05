@@ -2,12 +2,7 @@ use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 
 #[tower_lsp::async_trait]
-pub trait Tool {
-    fn affects(&self, name: impl AsRef<str>) -> bool {
-        let _name = name.as_ref();
-        false
-    }
-
+pub trait Tool: Send + Sync {
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
         let _params = params;
         Ok(None)
@@ -18,6 +13,10 @@ pub trait Tool {
         Ok(CompletionResponse::Array(vec![]))
     }
 
+    async fn completion_resolve(&self, item: CompletionItem) -> Result<CompletionItem> {
+        Ok(item)
+    }
+
     async fn diagnostics(&self, params: DocumentDiagnosticParams) -> Result<Vec<Diagnostic>> {
         let _params = params;
         Ok(vec![])
@@ -26,5 +25,9 @@ pub trait Tool {
     async fn code_action(&self, params: CodeActionParams) -> Result<Vec<CodeActionOrCommand>> {
         let _params = params;
         Ok(vec![])
+    }
+
+    async fn code_action_resolve(&self, action: CodeAction) -> Result<CodeAction> {
+        Ok(action)
     }
 }
