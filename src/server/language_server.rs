@@ -1,10 +1,12 @@
+use std::io;
 use std::sync::Arc;
 
+use futures::future::join_all;
+use tokio::fs;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::LanguageServer;
-use tracing::trace;
-use tracing::warn;
+use tracing::{trace, warn};
 
 use super::*;
 
@@ -31,10 +33,50 @@ impl LanguageServer for Server {
             .with_version(version)
             .with_text(text)
             .build();
-        documents.insert(uri, new_document);
+        let old_document = documents.insert(uri.clone(), new_document);
+
+        if old_document.is_none() {
+            let relevant_uris = Tools::relevant_file_uris(&uri)
+                .into_iter()
+                .filter(|u| !documents.contains_key(u))
+                .collect::<Vec<_>>();
+
+            let mut futs = Vec::new();
+            for relevant_uri in &relevant_uris {
+                futs.push(fs::read_to_string(
+                    relevant_uri
+                        .to_file_path()
+                        .expect("relevant_file_uris should only return file paths"),
+                ));
+            }
+
+            for (index, result) in join_all(futs).await.into_iter().enumerate() {
+                let relevant_uri = relevant_uris.get(index).expect("Missing or unordered uri");
+                match result {
+                    Err(e) => {
+                        if e.kind() != io::ErrorKind::NotFound {
+                            warn!("Failed to read relevant file at '{uri}' - {e}");
+                        }
+                    }
+                    Ok(s) => {
+                        let relevant_document = DocumentBuilder::new()
+                            .with_uri(relevant_uri.clone())
+                            .with_text(s)
+                            .build();
+                        documents.insert(relevant_uri.clone(), relevant_document);
+                    }
+                }
+            }
+        }
+
+        trace!("File opened: {uri}");
     }
 
-    async fn did_close(&self, _params: DidCloseTextDocumentParams) {}
+    async fn did_close(&self, params: DidCloseTextDocumentParams) {
+        let uri = params.text_document.uri.clone();
+
+        trace!("File closed: {uri}");
+    }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let uri = params.text_document.uri.clone();
@@ -51,6 +93,8 @@ impl LanguageServer for Server {
         for change in params.content_changes {
             document.apply_change(change);
         }
+
+        trace!("File changed: {uri}");
     }
 
     async fn did_create_files(&self, params: CreateFilesParams) {

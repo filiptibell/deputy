@@ -27,18 +27,24 @@ impl ToolName {
     pub fn file_glob(&self) -> &'static str {
         match self {
             Self::Aftman => "**/aftman.toml",
-            Self::Cargo => "**/Cargo.toml",
+            Self::Cargo => "**/Cargo.{toml,lock}",
             Self::Foreman => "**/foreman.toml",
             Self::Wally => "**/wally.toml",
         }
     }
 
-    pub fn relevant_file_globs(&self) -> &'static [&'static str] {
+    pub fn relevant_file_uris(&self, uri: &Url) -> Vec<Url> {
         match self {
-            Self::Aftman => &[],
-            Self::Cargo => &["**/Cargo.lock"],
-            Self::Foreman => &[],
-            Self::Wally => &[],
+            Self::Aftman => Vec::new(),
+            Self::Cargo => vec![match uri.file_name().as_deref() {
+                Some("Cargo.toml") => uri.with_file_name("Cargo.lock").unwrap(),
+                Some("cargo.toml") => uri.with_file_name("cargo.lock").unwrap(),
+                Some("Cargo.lock") => uri.with_file_name("Cargo.toml").unwrap(),
+                Some("cargo.lock") => uri.with_file_name("cargo.toml").unwrap(),
+                _ => return Vec::new(),
+            }],
+            Self::Foreman => Vec::new(),
+            Self::Wally => Vec::new(),
         }
     }
 }

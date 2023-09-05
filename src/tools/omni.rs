@@ -37,17 +37,11 @@ impl Tools {
         ToolName::all().into_iter().map(|t| t.file_glob()).collect()
     }
 
-    pub fn relevant_file_globs() -> Vec<&'static str> {
+    pub fn relevant_file_uris(uri: &Url) -> Vec<Url> {
         ToolName::all()
             .into_iter()
-            .flat_map(|t| t.relevant_file_globs().to_vec())
+            .flat_map(|t| t.relevant_file_uris(uri))
             .collect()
-    }
-
-    pub fn all_file_globs() -> Vec<&'static str> {
-        let mut all = Self::file_globs();
-        all.extend_from_slice(&Self::relevant_file_globs());
-        all
     }
 }
 

@@ -30,7 +30,7 @@ impl Server {
         let diagnostic_registration_options = DiagnosticRegistrationOptions {
             text_document_registration_options: TextDocumentRegistrationOptions {
                 document_selector: Some(
-                    Tools::all_file_globs()
+                    Tools::file_globs()
                         .iter()
                         .map(|&glob| DocumentFilter {
                             scheme: Some(String::from("file")),
@@ -50,7 +50,7 @@ impl Server {
 
         // Create similar options but for file operation notifications
         let file_operation_options = FileOperationRegistrationOptions {
-            filters: Tools::all_file_globs()
+            filters: Tools::file_globs()
                 .iter()
                 .map(|&glob| FileOperationFilter {
                     scheme: Some(String::from("file")),
