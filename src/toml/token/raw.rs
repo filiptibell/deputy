@@ -32,7 +32,7 @@ fn read_string_basic<'a>(lex: &mut Lexer<'a, RawToken<'a>>) -> TokenizerResult<&
         }
         lex.bump(char.len_utf8());
     }
-    Err(TokenizerError::IncompleteString)
+    Err(TokenizerError::IncompleteStringBasic)
 }
 
 fn read_string_literal<'a>(lex: &mut Lexer<'a, RawToken<'a>>) -> TokenizerResult<&'a str> {
@@ -46,7 +46,7 @@ fn read_string_literal<'a>(lex: &mut Lexer<'a, RawToken<'a>>) -> TokenizerResult
             _ => lex.bump(char.len_utf8()),
         }
     }
-    Err(TokenizerError::IncompleteString)
+    Err(TokenizerError::IncompleteStringLiteral)
 }
 
 fn read_comment<'a>(lex: &mut Lexer<'a, RawToken<'a>>) -> TokenizerResult<&'a str> {
@@ -63,11 +63,19 @@ fn read_comment<'a>(lex: &mut Lexer<'a, RawToken<'a>>) -> TokenizerResult<&'a st
 #[derive(Logos, Debug, Clone, PartialEq, Eq, Copy)]
 #[logos(error = TokenizerError)]
 pub enum RawToken<'a> {
+    #[regex(r"#.*", read_comment)]
+    Comment(&'a str),
+
     #[token(".")]
     Dot,
 
     #[token("=")]
     Equals,
+
+    #[regex(r"0x[a-fA-F0-9_]+", |lex| parse_integer(lex, "0x", 16))]
+    #[regex(r"0o[0-8_]+", |lex| parse_integer(lex, "0o", 8))]
+    #[regex(r"0b[01_]+", |lex| parse_integer(lex, "0b", 2))]
+    Integer(u64),
 
     #[token("[")]
     LeftBracket,
@@ -81,18 +89,10 @@ pub enum RawToken<'a> {
     #[token("}")]
     RightBrace,
 
-    #[regex(r"#.*", read_comment)]
-    Comment(&'a str),
-
     #[token("'", read_string_literal)]
     #[token("\"", read_string_basic)]
     #[regex(r"[a-zA-Z0-9\-_]+")]
     String(&'a str),
-
-    #[regex(r"0x[a-fA-F0-9_]+", |lex| parse_integer(lex, "0x", 16))]
-    #[regex(r"0o[0-8_]+", |lex| parse_integer(lex, "0o", 8))]
-    #[regex(r"0b[01_]+", |lex| parse_integer(lex, "0b", 2))]
-    Integer(u64),
 
     #[regex(r"[ \t\n\f]+")]
     Whitespace(&'a str),

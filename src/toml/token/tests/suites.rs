@@ -19,7 +19,7 @@ fn sections() {
     assert_eq!(next_val(tokens).as_string(), "key");
     assert_eq!(next_val(tokens).as_symbol(), "=");
     assert_eq!(next_val(tokens).as_string(), "\"value\"");
-    assert_eq!(next_val(tokens).as_string(), "# A comment");
+    assert_eq!(next_val(tokens).as_comment(), "# A comment");
 
     assert_eq!(next_val(tokens).as_string(), "1234");
     assert_eq!(next_val(tokens).as_symbol(), "=");

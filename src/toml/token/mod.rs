@@ -1,6 +1,6 @@
-use std::{borrow::Cow, ops::Range};
+use std::ops::Range;
 
-use logos::Logos;
+use logos::{Lexer, Logos};
 
 mod raw;
 use raw::*;
@@ -14,40 +14,49 @@ pub use value::*;
 #[cfg(test)]
 mod tests;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct Token<'a> {
     pub span: Range<usize>,
+    pub kind: TokenKind,
     pub value: TokenValue<'a>,
-    pub text: Cow<'a, str>,
 }
 
-#[derive(Debug, Clone)]
-pub struct Tokenizer;
+pub struct Tokenizer<'a> {
+    lexer: Lexer<'a, RawToken<'a>>,
+}
 
-impl Tokenizer {
-    pub fn parse(source: &str) -> TokenizerResult<Vec<Token>> {
-        let spanned = RawToken::lexer(source).spanned().collect::<Vec<_>>();
-
-        let mut results = Vec::new();
-
-        for (tok, span) in spanned {
-            // NOTE: Doing &tok? here instead of tok? causes stack overflow ???
-            let tok = tok?;
-            results.push(Token {
-                span: span.clone(),
-                value: tok.into(),
-                text: Cow::Borrowed(&source[span]),
-            });
+impl<'a> Tokenizer<'a> {
+    pub fn new(source: &'a str) -> Self {
+        Self {
+            lexer: RawToken::lexer(source),
         }
-
-        Ok(results)
     }
 
-    pub fn parse_ignore_whitespace(source: &str) -> TokenizerResult<Vec<Token>> {
-        let tokens = Self::parse(source)?
-            .into_iter()
-            .filter(|t| !t.value.is_whitespace())
-            .collect();
+    pub fn next(&mut self) -> TokenizerResult<Option<Token>> {
+        if let Some(res) = self.lexer.next() {
+            let raw = res?;
+            let span = self.lexer.span();
+            Ok(Some(Token {
+                span: span.clone(),
+                kind: raw.into(),
+                value: raw.into(),
+            }))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn parse_all(mut self) -> TokenizerResult<Vec<Token<'a>>> {
+        let mut tokens = Vec::new();
+        while let Some(res) = self.lexer.next() {
+            let raw = res?;
+            let span = self.lexer.span();
+            tokens.push(Token {
+                span: span.clone(),
+                kind: raw.into(),
+                value: raw.into(),
+            })
+        }
         Ok(tokens)
     }
 }
