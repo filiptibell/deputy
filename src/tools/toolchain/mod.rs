@@ -75,7 +75,7 @@ impl Tool for Toolchain {
             _ => return Ok(None),
         };
 
-        trace!("Hovering: {found_spec}");
+        trace!("Hovering: {found_spec:?}");
 
         let mut lines = Vec::new();
         lines.push(format!("## {}", found_spec.name));

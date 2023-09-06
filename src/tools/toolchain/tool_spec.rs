@@ -1,4 +1,4 @@
-use std::{fmt, str::FromStr};
+use std::str::FromStr;
 
 use semver::Version;
 use thiserror::Error;
@@ -26,12 +26,6 @@ pub struct ToolSpec {
     pub author: String,
     pub name: String,
     pub version: Version,
-}
-
-impl fmt::Display for ToolSpec {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}/{}@{}", self.author, self.name, self.version)
-    }
 }
 
 impl FromStr for ToolSpec {
