@@ -94,14 +94,16 @@ pub enum TomlValue {
 }
 
 impl TomlValue {
-    fn from_node(node: Node) -> Self {
+    fn from_node(node: Node, source: impl AsRef<str>) -> Self {
         match node {
-            Node::Array(_) => Self::Array(Box::new(TomlArray::from_node(node).unwrap())),
-            Node::Bool(_) => Self::Bool(Box::new(TomlBool::from_node(node).unwrap())),
-            Node::Float(_) => Self::Float(Box::new(TomlFloat::from_node(node).unwrap())),
-            Node::Integer(_) => Self::Integer(Box::new(TomlInteger::from_node(node).unwrap())),
-            Node::Str(_) => Self::String(Box::new(TomlString::from_node(node).unwrap())),
-            Node::Table(_) => Self::Table(Box::new(TomlTable::from_node(node).unwrap())),
+            Node::Array(_) => Self::Array(Box::new(TomlArray::from_node(node, source).unwrap())),
+            Node::Bool(_) => Self::Bool(Box::new(TomlBool::from_node(node, source).unwrap())),
+            Node::Float(_) => Self::Float(Box::new(TomlFloat::from_node(node, source).unwrap())),
+            Node::Integer(_) => {
+                Self::Integer(Box::new(TomlInteger::from_node(node, source).unwrap()))
+            }
+            Node::Str(_) => Self::String(Box::new(TomlString::from_node(node, source).unwrap())),
+            Node::Table(_) => Self::Table(Box::new(TomlTable::from_node(node, source).unwrap())),
             _ => unimplemented!(),
         }
     }
@@ -118,7 +120,7 @@ impl TomlValue {
             return Err(e.into());
         }
 
-        Ok(TomlValue::from_node(root))
+        Ok(TomlValue::from_node(root, source))
     }
 
     pub fn kind(&self) -> TomlValueKind {

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt, ops::Range, str::FromStr};
+use std::{collections::HashMap, ops::Range, str::FromStr};
 
 use tracing::error;
 
@@ -23,19 +23,17 @@ impl ManifestDependency {
             })
     }
 
-    pub fn span(&self) -> Range<usize> {
+    pub fn version_span(&self) -> Range<usize> {
         match self {
             Self::Plain(s) => s.span(),
             Self::Struct { version } => version.span(),
         }
     }
-}
 
-impl fmt::Display for ManifestDependency {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    pub fn version_source(&self) -> &str {
         match self {
-            Self::Plain(s) => s.fmt(f),
-            Self::Struct { version } => version.fmt(f),
+            Self::Plain(s) => s.source(),
+            Self::Struct { version } => version.source(),
         }
     }
 }
@@ -55,9 +53,9 @@ impl Manifest {
                 let mut manifest = Manifest::default();
                 if let Some((_, deps)) = t.find("dependencies") {
                     if let Some(deps_table) = deps.as_table() {
-                        for (k, v) in deps_table.iter() {
+                        for (k, v) in deps_table.as_ref().iter() {
                             if let Some(tool) = ManifestDependency::from_toml_value(v) {
-                                manifest.dependencies.insert(k.to_string(), tool);
+                                manifest.dependencies.insert(k.value().to_string(), tool);
                             }
                         }
                     }

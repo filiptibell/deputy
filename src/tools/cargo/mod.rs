@@ -84,12 +84,12 @@ impl Tool for Cargo {
         let offset = document.lsp_position_to_offset(pos);
         let try_find = |deps: &HashMap<String, ManifestDependency>| {
             deps.iter().find_map(|(key, dep)| {
-                let span = dep.span();
+                let span = dep.version_span();
                 if offset >= span.start && offset <= span.end {
                     Some((
                         document.lsp_range_from_range(span.clone()),
                         key.to_string(),
-                        dep.to_string(),
+                        dep.version_source().to_string(),
                     ))
                 } else {
                     None

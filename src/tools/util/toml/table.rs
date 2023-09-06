@@ -1,18 +1,16 @@
-use std::{
-    collections::HashMap,
-    ops::{Deref, Range},
-};
+use std::{collections::HashMap, ops::Range};
 
 use super::*;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TomlTable {
     pub(super) span: Range<usize>,
+    pub(super) source: String,
     pub(super) entries: HashMap<TomlString, TomlValue>,
 }
 
 impl TomlTable {
-    pub(super) fn from_node(node: Node) -> Option<Self> {
+    pub(super) fn from_node(node: Node, source: impl AsRef<str>) -> Option<Self> {
         match node.as_table() {
             None => None,
             Some(table) => {
@@ -31,25 +29,40 @@ impl TomlTable {
                     end: u32::from(range_last.unwrap().end()) as usize,
                 };
 
+                let source = source.as_ref();
+                let text = source[span.clone()].to_string();
+
                 let entries = table
                     .entries()
                     .read()
                     .iter()
                     .map(|(key, node)| {
                         (
-                            TomlString::from_key(key.clone()),
-                            TomlValue::from_node(node.clone()),
+                            TomlString::from_key(key.clone(), source),
+                            TomlValue::from_node(node.clone(), source),
                         )
                     })
                     .collect();
 
-                Some(Self { span, entries })
+                Some(Self {
+                    span,
+                    source: text,
+                    entries,
+                })
             }
         }
     }
 
     pub fn span(&self) -> Range<usize> {
         self.span.clone()
+    }
+
+    pub fn source(&self) -> &str {
+        self.source.as_str()
+    }
+
+    pub fn entries(&self) -> &HashMap<TomlString, TomlValue> {
+        &self.entries
     }
 
     pub fn find(&self, key: impl AsRef<str>) -> Option<(&TomlString, &TomlValue)> {
@@ -63,9 +76,8 @@ impl TomlTable {
     }
 }
 
-impl Deref for TomlTable {
-    type Target = HashMap<TomlString, TomlValue>;
-    fn deref(&self) -> &Self::Target {
+impl AsRef<HashMap<TomlString, TomlValue>> for TomlTable {
+    fn as_ref(&self) -> &HashMap<TomlString, TomlValue> {
         &self.entries
     }
 }

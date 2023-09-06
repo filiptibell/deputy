@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::fmt;
 use std::ops::Range;
 use std::str::FromStr;
 
@@ -17,17 +16,15 @@ impl ManifestTool {
     }
 
     pub fn spec(&self) -> Result<ToolSpec, ToolSpecError> {
-        self.0.parse::<ToolSpec>()
+        self.0.value().parse::<ToolSpec>()
     }
 
     pub fn span(&self) -> Range<usize> {
         self.0.span()
     }
-}
 
-impl fmt::Display for ManifestTool {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
+    pub fn source(&self) -> &str {
+        self.0.source()
     }
 }
 
@@ -44,9 +41,9 @@ impl Manifest {
                 let mut manifest = Manifest::default();
                 if let Some((_, tools)) = t.find("tools") {
                     if let Some(tools_table) = tools.as_table() {
-                        for (k, v) in tools_table.iter() {
+                        for (k, v) in tools_table.as_ref().iter() {
                             if let Some(tool) = ManifestTool::from_toml_value(v) {
-                                manifest.tools.insert(k.to_string(), tool);
+                                manifest.tools.insert(k.value().to_string(), tool);
                             }
                         }
                     }

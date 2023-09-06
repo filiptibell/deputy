@@ -87,7 +87,7 @@ pub async fn diagnose_tool_version(
     if latest_version > spec.version {
         let metadata = CodeActionMetadata::LatestVersion {
             source_uri: uri.clone(),
-            source_text: tool.to_string(),
+            source_text: tool.source().to_string(),
             version_current: spec.version.to_string(),
             version_latest: latest_version.to_string(),
         };
