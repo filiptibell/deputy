@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use tower_lsp::Client;
 
-use crate::github::*;
+use crate::clients::*;
 use crate::server::*;
 use crate::util::*;
 
@@ -17,16 +17,16 @@ use manifest::*;
 #[derive(Debug, Clone)]
 pub struct Wally {
     _client: Client,
+    clients: Clients,
     documents: Documents,
-    github: GithubWrapper,
 }
 
 impl Wally {
-    pub(super) fn new(client: Client, documents: Documents, github: GithubWrapper) -> Self {
+    pub(super) fn new(client: Client, clients: Clients, documents: Documents) -> Self {
         Self {
             _client: client,
+            clients,
             documents,
-            github,
         }
     }
 

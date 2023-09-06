@@ -1,7 +1,7 @@
 use semver::Version;
 use tower_lsp::lsp_types::*;
 
-use crate::github::*;
+use crate::clients::*;
 use crate::util::*;
 
 use super::super::util::*;

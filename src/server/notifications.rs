@@ -42,7 +42,7 @@ impl Notification for RateLimitNotification {
 impl Server {
     pub fn watch_rate_limit(&self) {
         let client = self.client.clone();
-        let github = self.github.clone();
+        let github = self.clients.github.clone();
         tokio::spawn(async move {
             loop {
                 let is_rate_limited = github.wait_until_rate_limited_changes().await;
@@ -58,7 +58,7 @@ impl Server {
 
     pub async fn on_notified_rate_limit(&self, notif: RateLimitNotification) {
         if let Some(token) = notif.value_string() {
-            self.github.set_auth_token(token);
+            self.clients.github.set_auth_token(token);
             self.client
                 .workspace_diagnostic_refresh()
                 .await

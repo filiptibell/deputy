@@ -9,7 +9,6 @@ use tower_lsp::lsp_types::*;
 use tower_lsp::Client;
 use tracing::warn;
 
-use crate::crates::*;
 use crate::server::*;
 use crate::util::*;
 
@@ -27,16 +26,16 @@ use manifest::*;
 #[derive(Debug, Clone)]
 pub struct Cargo {
     _client: Client,
+    clients: Clients,
     documents: Documents,
-    crates: CratesWrapper,
 }
 
 impl Cargo {
-    pub(super) fn new(client: Client, documents: Documents, crates: CratesWrapper) -> Self {
+    pub(super) fn new(client: Client, clients: Clients, documents: Documents) -> Self {
         Self {
             _client: client,
+            clients,
             documents,
-            crates,
         }
     }
 
@@ -134,6 +133,7 @@ impl Tool for Cargo {
 
         trace!("Fetching crate data from crates.io");
         if let Ok(crate_data) = self
+            .clients
             .crates
             .get_crate_data(&found_key)
             .await
@@ -204,7 +204,7 @@ impl Tool for Cargo {
         let mut fut_diagnostics = Vec::new();
         for (tool, range_name, range_version) in &deps {
             fut_diagnostics.push(diagnose_dependency(
-                &self.crates,
+                &self.clients.crates,
                 &uri,
                 tool,
                 range_name,

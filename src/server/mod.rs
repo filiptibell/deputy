@@ -5,8 +5,7 @@ use tokio::sync::Mutex as AsyncMutex;
 use tower_lsp::lsp_types::notification::Notification;
 use tower_lsp::{Client, LspService, Server as LspServer};
 
-use crate::crates::*;
-use crate::github::*;
+use crate::clients::*;
 use crate::tools::*;
 use crate::util::*;
 
@@ -21,43 +20,25 @@ pub use document::*;
 
 pub struct Server {
     pub client: Client,
+    pub clients: Clients,
     pub documents: Documents,
-    pub github: GithubWrapper,
-    pub crates: CratesWrapper,
     pub tools: Tools,
 }
 
 impl Server {
     fn new(client: Client, args: &Arguments) -> Self {
-        let mut rheaders = reqwest::header::HeaderMap::new();
-        rheaders.insert(
-            reqwest::header::USER_AGENT,
-            reqwest::header::HeaderValue::from_static(concat!(
-                env!("CARGO_PKG_NAME"),
-                "@",
-                env!("CARGO_PKG_VERSION")
-            )),
-        );
-        let rclient = reqwest::Client::builder()
-            .default_headers(rheaders)
-            .build()
-            .expect("Failed to create reqwest client");
-
-        let github = GithubWrapper::new(rclient.clone());
-        let crates = CratesWrapper::new(rclient.clone());
-
+        let clients = Clients::new();
         let documents = Arc::new(AsyncMutex::new(HashMap::new()));
 
         if let Some(token) = &args.github_token {
-            github.set_auth_token(token);
+            clients.github.set_auth_token(token);
         }
 
         let this = Self {
             client: client.clone(),
+            clients: clients.clone(),
             documents: Arc::clone(&documents),
-            github: github.clone(),
-            crates: crates.clone(),
-            tools: Tools::new(client, documents, github, crates),
+            tools: Tools::new(client, clients, documents),
         };
 
         this.watch_rate_limit();

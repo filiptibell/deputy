@@ -5,7 +5,7 @@ use semver::Version;
 use tower_lsp::jsonrpc::{Error, Result};
 use tower_lsp::lsp_types::*;
 
-use crate::github::*;
+use crate::clients::*;
 use crate::server::*;
 use crate::util::*;
 

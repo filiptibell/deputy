@@ -9,8 +9,16 @@ pub type RequestResult<T, E = RequestError> = Result<T, E>;
 pub struct RequestError(String);
 
 impl RequestError {
-    pub(super) fn new(s: impl Into<String>) -> Self {
-        Self(s.into())
+    pub fn is_not_found_error(&self) -> bool {
+        let message = self.0.as_str().to_ascii_lowercase();
+        message.contains("404") || message.contains("not found")
+    }
+
+    pub fn is_rate_limit_error(&self) -> bool {
+        let message = self.0.as_str().to_ascii_lowercase();
+        message.contains("rate limit exceeded")
+            || message.contains("higher rate limit")
+            || message.contains("#rate-limiting")
     }
 }
 
@@ -46,32 +54,5 @@ impl From<reqwest::Error> for RequestError {
 impl From<serde_json::Error> for RequestError {
     fn from(value: serde_json::Error) -> Self {
         Self(value.to_string())
-    }
-}
-
-fn is_not_found_error(error: impl AsRef<str>) -> bool {
-    let message = error.as_ref().to_ascii_lowercase();
-    message.contains("404") || message.contains("not found")
-}
-
-fn is_rate_limit_error(error: impl AsRef<str>) -> bool {
-    let message = error.as_ref().to_ascii_lowercase();
-    message.contains("rate limit exceeded")
-        || message.contains("higher rate limit")
-        || message.contains("#rate-limiting")
-}
-
-pub trait RequestErrorExt {
-    fn is_not_found_error(&self) -> bool;
-    fn is_rate_limit_error(&self) -> bool;
-}
-
-impl RequestErrorExt for RequestError {
-    fn is_not_found_error(&self) -> bool {
-        is_not_found_error(&self.0)
-    }
-
-    fn is_rate_limit_error(&self) -> bool {
-        is_rate_limit_error(&self.0)
     }
 }

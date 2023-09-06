@@ -7,7 +7,6 @@ use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::Client;
 
-use crate::github::*;
 use crate::server::*;
 
 use super::*;
@@ -25,16 +24,16 @@ use manifest::*;
 #[derive(Debug, Clone)]
 pub struct Toolchain {
     _client: Client,
+    clients: Clients,
     documents: Documents,
-    github: GithubWrapper,
 }
 
 impl Toolchain {
-    pub(super) fn new(client: Client, documents: Documents, github: GithubWrapper) -> Self {
+    pub(super) fn new(client: Client, clients: Clients, documents: Documents) -> Self {
         Self {
             _client: client,
+            clients,
             documents,
-            github,
         }
     }
 
@@ -85,6 +84,7 @@ impl Tool for Toolchain {
         ));
 
         if let Ok(metrics) = self
+            .clients
             .github
             .get_repository_metrics(&found_spec.author, &found_spec.name)
             .await
@@ -133,7 +133,7 @@ impl Tool for Toolchain {
         });
 
         let slice_before = &document.as_str()[range_before.clone()];
-        get_tool_completions(&self.github, &document, range_before, slice_before).await
+        get_tool_completions(&self.clients.github, &document, range_before, slice_before).await
     }
 
     async fn diagnostics(&self, params: DocumentDiagnosticParams) -> Result<Vec<Diagnostic>> {
@@ -163,7 +163,7 @@ impl Tool for Toolchain {
             if let Some(diag) = diagnose_tool_spec(tool, range) {
                 all_diagnostics.push(diag);
             } else {
-                let fut = diagnose_tool_version(&self.github, &uri, tool, range);
+                let fut = diagnose_tool_version(&self.clients.github, &uri, tool, range);
                 fut_diagnostics.push(fut);
             }
         }

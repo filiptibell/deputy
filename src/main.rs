@@ -1,8 +1,7 @@
 use tokio::runtime::Builder;
 use tracing_subscriber::filter::{EnvFilter, LevelFilter};
 
-mod crates;
-mod github;
+mod clients;
 mod server;
 mod tools;
 mod util;
