@@ -1,7 +1,6 @@
 use crate::util::*;
 
-use super::crates_io::*;
-use super::index::*;
+use super::models::*;
 use super::*;
 
 #[derive(Debug, Clone)]

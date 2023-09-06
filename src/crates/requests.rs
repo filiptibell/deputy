@@ -1,7 +1,6 @@
 use tracing::debug;
 
-use super::crates_io::*;
-use super::index::*;
+use super::models::*;
 use super::*;
 
 const BASE_URL_INDEX: &str = "https://index.crates.io";

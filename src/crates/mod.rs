@@ -6,19 +6,19 @@ use std::{
     time::Duration,
 };
 
+use tokio::{sync::broadcast, time::sleep};
+use tracing::error;
+
 use reqwest::{
     header::{HeaderMap, HeaderValue, USER_AGENT},
     Client,
 };
-use tokio::{sync::broadcast, time::sleep};
-use tracing::error;
 
 mod cache;
 use cache::*;
 
-mod crates_io;
 mod errors;
-mod index;
+mod models;
 mod requests;
 
 pub use errors::*;

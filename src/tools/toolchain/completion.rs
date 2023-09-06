@@ -105,9 +105,7 @@ async fn complete_tool_version(
                 document.create_edit(replace_range.clone(), version.to_string()),
             )),
             label_details: Some(CompletionItemLabelDetails {
-                description: release
-                    .published_at
-                    .map(|dt| dt.naive_local().format(" %b %d %Y").to_string()),
+                description: release.published_at,
                 detail: None,
             }),
             ..Default::default()

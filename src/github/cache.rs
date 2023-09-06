@@ -1,13 +1,12 @@
-use octocrab::models::{repos::Release, RepositoryMetrics};
-
 use crate::util::*;
 
+use super::models::*;
 use super::*;
 
 #[derive(Debug, Clone)]
 pub(super) struct GithubCache {
     pub repository_metrics: RequestCacheMap<GithubResult<RepositoryMetrics>>,
-    pub repository_releases: RequestCacheMap<GithubResult<Vec<Release>>>,
+    pub repository_releases: RequestCacheMap<GithubResult<Vec<RepositoryRelease>>>,
 }
 
 impl GithubCache {

@@ -52,11 +52,6 @@ rev = "d08ce4d2e36b073611d0db17e5a2b41a70d8daa4"
 version = "0.11"
 features = ["rustls-tls"]
 
-[dependencies.octocrab]
-version = "0.30"
-default-features = false
-features = ["rustls"]
-
 [dependencies.clap]
 version = "4.4"
 features = ["derive", "env"]

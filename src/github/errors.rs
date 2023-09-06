@@ -5,14 +5,26 @@ pub type GithubResult<T, E = GithubError> = Result<T, E>;
 #[derive(Debug, Clone)]
 pub struct GithubError(String);
 
+impl GithubError {
+    pub(super) fn new(s: impl Into<String>) -> Self {
+        Self(s.into())
+    }
+}
+
 impl fmt::Display for GithubError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
 
-impl From<octocrab::Error> for GithubError {
-    fn from(value: octocrab::Error) -> Self {
+impl From<reqwest::Error> for GithubError {
+    fn from(value: reqwest::Error) -> Self {
+        Self(value.to_string())
+    }
+}
+
+impl From<serde_json::Error> for GithubError {
+    fn from(value: serde_json::Error) -> Self {
         Self(value.to_string())
     }
 }

@@ -3,21 +3,28 @@ use std::sync::{
     Arc, Mutex,
 };
 
-use octocrab::Octocrab;
 use tokio::sync::broadcast;
 use tracing::error;
+
+use reqwest::{
+    header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE, USER_AGENT},
+    Client,
+};
 
 mod cache;
 use cache::*;
 
 mod errors;
-mod repository;
+mod models;
+mod requests;
 
 pub use errors::*;
 
+use self::requests::{GITHUB_API_CONTENT_TYPE, GITHUB_API_USER_AGENT};
+
 #[derive(Debug, Clone)]
 pub struct GithubWrapper {
-    client: Arc<Mutex<octocrab::Octocrab>>,
+    client: Arc<Mutex<Client>>,
     cache: GithubCache,
     rate_limit_tx: broadcast::Sender<()>,
     rate_limited: Arc<AtomicBool>,
@@ -28,7 +35,7 @@ impl GithubWrapper {
         Self::default()
     }
 
-    fn client(&self) -> Octocrab {
+    fn client(&self) -> Client {
         self.client.lock().unwrap().clone()
     }
 
@@ -55,9 +62,20 @@ impl GithubWrapper {
         self.is_rate_limited()
     }
 
-    pub fn set_auth_token(&self, token: impl Into<String>) {
-        let client = octocrab::Octocrab::builder()
-            .personal_token(token.into())
+    pub fn set_auth_token(&self, token: impl AsRef<str>) {
+        let mut headers = HeaderMap::new();
+        headers.insert(USER_AGENT, HeaderValue::from_static(GITHUB_API_USER_AGENT));
+        headers.insert(
+            AUTHORIZATION,
+            HeaderValue::from_str(&format!("Bearer {}", token.as_ref()))
+                .expect("Encountered invalid header value for auth"),
+        );
+        headers.insert(
+            CONTENT_TYPE,
+            HeaderValue::from_static(GITHUB_API_CONTENT_TYPE),
+        );
+        let client = Client::builder()
+            .default_headers(headers)
             .build()
             .expect("Failed to create GitHub client");
 
@@ -78,7 +96,14 @@ impl GithubWrapper {
 
 impl Default for GithubWrapper {
     fn default() -> Self {
-        let client = octocrab::Octocrab::builder()
+        let mut headers = HeaderMap::new();
+        headers.insert(USER_AGENT, HeaderValue::from_static(GITHUB_API_USER_AGENT));
+        headers.insert(
+            CONTENT_TYPE,
+            HeaderValue::from_static(GITHUB_API_CONTENT_TYPE),
+        );
+        let client = Client::builder()
+            .default_headers(headers)
             .build()
             .expect("Failed to create GitHub client");
         let (rate_limit_tx, _) = broadcast::channel(32);
