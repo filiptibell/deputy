@@ -6,8 +6,7 @@ mod integers;
 mod suites;
 
 fn iter_no_whitespace(source: &'static str) -> IntoIter<Token> {
-    Tokenizer::new(source)
-        .parse_all()
+    Tokenizer::parse(source)
         .expect("Failed to parse")
         .into_iter()
         .filter(|t| !t.kind.is_whitespace())

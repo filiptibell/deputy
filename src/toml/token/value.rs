@@ -1,96 +1,103 @@
 #![allow(dead_code)]
 
-use std::{borrow::Cow, fmt};
+use logos::{Lexer, Logos};
 
 use super::*;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TokenKind {
-    Comment,
-    Float,
-    Integer,
-    String,
-    Symbol,
-    Whitespace,
+fn parse_float<'a>(lex: &mut Lexer<'a, TokenValue<'a>>) -> TokenizerResult<f64> {
+    Ok(lex.slice().parse()?)
 }
 
-impl TokenKind {
-    #[inline]
-    pub const fn is_comment(&self) -> bool {
-        matches!(self, Self::Comment)
-    }
-
-    #[inline]
-    pub const fn is_float(&self) -> bool {
-        matches!(self, Self::Float)
-    }
-
-    #[inline]
-    pub const fn is_integer(&self) -> bool {
-        matches!(self, Self::Integer)
-    }
-
-    #[inline]
-    pub const fn is_string(&self) -> bool {
-        matches!(self, Self::String)
-    }
-
-    #[inline]
-    pub const fn is_symbol(&self) -> bool {
-        matches!(self, Self::Symbol)
-    }
-
-    #[inline]
-    pub const fn is_whitespace(&self) -> bool {
-        matches!(self, Self::Whitespace)
+fn parse_integer<'a>(
+    lex: &mut Lexer<'a, TokenValue<'a>>,
+    prefix: &'static str,
+    radix: u32,
+) -> TokenizerResult<u64> {
+    let slice = lex.slice();
+    let no_prefix = &slice[prefix.len()..];
+    if no_prefix.chars().any(|c| c == '_') {
+        let no_separator = no_prefix.chars().filter(|c| c != &'_').collect::<String>();
+        Ok(u64::from_str_radix(&no_separator, radix)?)
+    } else {
+        Ok(u64::from_str_radix(no_prefix, radix)?)
     }
 }
 
-impl fmt::Display for TokenKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let name = match self {
-            Self::Comment => "Comment",
-            Self::Float => "Float",
-            Self::Integer => "Integer",
-            Self::String => "String",
-            Self::Symbol => "Symbol",
-            Self::Whitespace => "Whitespace",
-        };
-        name.fmt(f)
+fn read_string_basic<'a>(lex: &mut Lexer<'a, TokenValue<'a>>) -> TokenizerResult<&'a str> {
+    let mut escape = false;
+    for char in lex.remainder().chars() {
+        match (escape, char) {
+            (true, ..) => escape = false,
+            (false, '\\') => escape = true,
+            (false, '\n' | '\r') => break,
+            (false, ..) if char == '"' => {
+                lex.bump(1);
+                return Ok(&lex.source()[lex.span()]);
+            }
+            _ => {}
+        }
+        lex.bump(char.len_utf8());
     }
+    Err(TokenizerError::IncompleteStringBasic)
 }
 
-impl From<RawToken<'_>> for TokenKind {
-    fn from(value: RawToken<'_>) -> Self {
-        match value {
-            RawToken::Comment(_) => Self::Comment,
-            RawToken::Dot => Self::Symbol,
-            RawToken::Equals => Self::Symbol,
-            RawToken::Integer(_) => Self::Integer,
-            RawToken::LeftBracket => Self::Symbol,
-            RawToken::LeftBrace => Self::Symbol,
-            RawToken::RightBracket => Self::Symbol,
-            RawToken::RightBrace => Self::Symbol,
-            RawToken::String(_) => Self::String,
-            RawToken::Whitespace(_) => Self::Whitespace,
+fn read_string_literal<'a>(lex: &mut Lexer<'a, TokenValue<'a>>) -> TokenizerResult<&'a str> {
+    for char in lex.remainder().chars() {
+        match char {
+            '\n' | '\r' => break,
+            '\'' => {
+                lex.bump(1);
+                return Ok(&lex.source()[lex.span()]);
+            }
+            _ => lex.bump(char.len_utf8()),
         }
     }
+    Err(TokenizerError::IncompleteStringLiteral)
 }
 
-impl From<&RawToken<'_>> for TokenKind {
-    fn from(value: &RawToken) -> Self {
-        value.into()
+fn read_comment<'a>(lex: &mut Lexer<'a, TokenValue<'a>>) -> TokenizerResult<&'a str> {
+    for char in lex.remainder().chars() {
+        if matches!(char, '\n' | '\r') {
+            break;
+        }
+        lex.bump(char.len_utf8());
     }
+    Ok(&lex.source()[lex.span()])
 }
 
-#[derive(Debug, Clone, PartialEq)]
+fn read_symbol<'a>(lex: &mut Lexer<'a, TokenValue<'a>>) -> TokenizerResult<Symbol> {
+    Ok(lex.slice().parse().expect("Unimplemented symbol"))
+}
+
+#[derive(Logos, Debug, Clone, Copy, PartialEq)]
+#[logos(error = TokenizerError)]
 pub enum TokenValue<'a> {
-    Comment(Cow<'a, str>),
+    #[regex(r"#.*", read_comment)]
+    Comment(&'a str),
+
+    #[token(".", read_symbol)]
+    #[token("=", read_symbol)]
+    #[token("[", read_symbol)]
+    #[token("]", read_symbol)]
+    #[token("{", read_symbol)]
+    #[token("}", read_symbol)]
+    Symbol(Symbol),
+
+    #[regex(r"[-+]?\d+(\.\d+)?", parse_float)]
     Float(f64),
+
+    #[regex(r"0x[a-fA-F0-9_]+", |lex| parse_integer(lex, "0x", 16))]
+    #[regex(r"0o[0-8_]+", |lex| parse_integer(lex, "0o", 8))]
+    #[regex(r"0b[01_]+", |lex| parse_integer(lex, "0b", 2))]
     Integer(u64),
-    String(Cow<'a, str>),
-    Symbol(&'static str),
-    Whitespace(Cow<'a, str>),
+
+    #[token("'", read_string_literal)]
+    #[token("\"", read_string_basic)]
+    #[regex(r"[a-zA-Z][a-zA-Z0-9\-_]*")]
+    String(&'a str),
+
+    #[regex(r"[ \t\n\f]+")]
+    Whitespace(&'a str),
 }
 
 impl<'a> TokenValue<'a> {
@@ -139,9 +146,9 @@ impl<'a> TokenValue<'a> {
     }
 
     #[inline]
-    pub fn as_symbol(&self) -> &'static str {
+    pub fn as_symbol(&self) -> Symbol {
         match self {
-            Self::Symbol(s) => s,
+            Self::Symbol(s) => *s,
             v => panic!("token kind mismatch - expected Symbol, got {}", v.kind()),
         }
     }
@@ -158,25 +165,15 @@ impl<'a> TokenValue<'a> {
     }
 }
 
-impl<'a> From<RawToken<'a>> for TokenValue<'a> {
-    fn from(value: RawToken<'a>) -> Self {
-        match value {
-            RawToken::Comment(c) => Self::Comment(Cow::Borrowed(c)),
-            RawToken::Dot => Self::Symbol("."),
-            RawToken::Equals => Self::Symbol("="),
-            RawToken::Integer(u) => Self::Integer(u),
-            RawToken::LeftBracket => Self::Symbol("["),
-            RawToken::LeftBrace => Self::Symbol("{"),
-            RawToken::RightBracket => Self::Symbol("]"),
-            RawToken::RightBrace => Self::Symbol("}"),
-            RawToken::String(s) => Self::String(Cow::Borrowed(s)),
-            RawToken::Whitespace(s) => Self::Whitespace(Cow::Borrowed(s)),
+impl std::hash::Hash for TokenValue<'_> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        match self {
+            Self::Comment(c) => c.hash(state),
+            Self::Float(f) => f.to_string().hash(state),
+            Self::Integer(u) => u.hash(state),
+            Self::String(s) => s.hash(state),
+            Self::Symbol(s) => s.hash(state),
+            Self::Whitespace(s) => s.hash(state),
         }
-    }
-}
-
-impl<'a> From<&'a RawToken<'a>> for TokenValue<'a> {
-    fn from(value: &'a RawToken) -> Self {
-        value.into()
     }
 }

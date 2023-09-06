@@ -1,62 +1,41 @@
 use std::ops::Range;
 
-use logos::{Lexer, Logos};
-
-mod raw;
-use raw::*;
+use logos::Logos;
 
 mod error;
+mod kind;
+mod symbol;
 mod value;
 
 pub use error::*;
+pub use kind::*;
+pub use symbol::*;
 pub use value::*;
 
 #[cfg(test)]
 mod tests;
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 pub struct Token<'a> {
     pub span: Range<usize>,
     pub kind: TokenKind,
     pub value: TokenValue<'a>,
 }
 
-pub struct Tokenizer<'a> {
-    lexer: Lexer<'a, RawToken<'a>>,
-}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Tokenizer;
 
-impl<'a> Tokenizer<'a> {
-    pub fn new(source: &'a str) -> Self {
-        Self {
-            lexer: RawToken::lexer(source),
-        }
-    }
-
-    pub fn next(&mut self) -> TokenizerResult<Option<Token>> {
-        if let Some(res) = self.lexer.next() {
-            let raw = res?;
-            let span = self.lexer.span();
-            Ok(Some(Token {
-                span: span.clone(),
-                kind: raw.into(),
-                value: raw.into(),
-            }))
-        } else {
-            Ok(None)
-        }
-    }
-
-    pub fn parse_all(mut self) -> TokenizerResult<Vec<Token<'a>>> {
-        let mut tokens = Vec::new();
-        while let Some(res) = self.lexer.next() {
-            let raw = res?;
-            let span = self.lexer.span();
-            tokens.push(Token {
-                span: span.clone(),
-                kind: raw.into(),
-                value: raw.into(),
+impl Tokenizer {
+    pub fn parse(source: &str) -> TokenizerResult<Vec<Token>> {
+        TokenValue::lexer(source)
+            .spanned()
+            .map(|(res, span)| {
+                res.map(|value| Token {
+                    span,
+                    kind: (&value).into(),
+                    value,
+                })
             })
-        }
-        Ok(tokens)
+            .collect()
     }
 }
