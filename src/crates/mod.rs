@@ -10,20 +10,16 @@ use bytes::Bytes;
 use tokio::{sync::broadcast, time::sleep};
 use tracing::error;
 
-use reqwest::{
-    header::{HeaderMap, HeaderValue, USER_AGENT},
-    Client, Method, StatusCode,
-};
+use reqwest::{Client, Method, StatusCode};
 
 use crate::util::*;
 
 mod cache;
 use cache::*;
 
+mod consts;
 mod models;
 mod requests;
-
-use self::requests::{CRAWL_MAX_INTERVAL_SECONDS, CRAWL_USER_AGENT_VALUE};
 
 #[derive(Debug, Clone)]
 pub struct CratesWrapper {
@@ -34,8 +30,14 @@ pub struct CratesWrapper {
 }
 
 impl CratesWrapper {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(client: Client) -> Self {
+        let (crawl_limit_tx, _) = broadcast::channel(32);
+        Self {
+            client: Arc::new(Mutex::new(client)),
+            cache: CratesCache::new(),
+            crawl_limit_tx,
+            crawl_limited: Arc::new(AtomicBool::new(false)),
+        }
     }
 
     async fn request(
@@ -44,12 +46,8 @@ impl CratesWrapper {
         url: impl Into<String>,
     ) -> Result<(StatusCode, Bytes), reqwest::Error> {
         let client = self.client.lock().unwrap().clone();
-        let response = client
-            .request(method, url.into())
-            .header(USER_AGENT, HeaderValue::from_static(CRAWL_USER_AGENT_VALUE))
-            .send()
-            .await?;
 
+        let response = client.request(method, url.into()).send().await?;
         let status = response.status();
         let bytes = response.bytes().await?;
 
@@ -72,7 +70,7 @@ impl CratesWrapper {
             let tx = self.crawl_limit_tx.clone();
             lim.store(true, Ordering::SeqCst);
             tokio::spawn(async move {
-                sleep(Duration::from_secs(CRAWL_MAX_INTERVAL_SECONDS)).await;
+                sleep(Duration::from_secs(consts::CRAWL_MAX_INTERVAL_SECONDS)).await;
                 lim.store(false, Ordering::SeqCst);
                 tx.send(()).ok();
             });
@@ -83,24 +81,6 @@ impl CratesWrapper {
         if self.is_crawl_limited() {
             let mut crawl_limit_rx = self.crawl_limit_tx.subscribe();
             crawl_limit_rx.recv().await.ok();
-        }
-    }
-}
-
-impl Default for CratesWrapper {
-    fn default() -> Self {
-        let mut headers = HeaderMap::new();
-        headers.insert(USER_AGENT, HeaderValue::from_static(CRAWL_USER_AGENT_VALUE));
-        let client = Client::builder()
-            .default_headers(headers)
-            .build()
-            .expect("Failed to create crates client");
-        let (crawl_limit_tx, _) = broadcast::channel(32);
-        Self {
-            client: Arc::new(Mutex::new(client)),
-            cache: CratesCache::new(),
-            crawl_limit_tx,
-            crawl_limited: Arc::new(AtomicBool::new(false)),
         }
     }
 }

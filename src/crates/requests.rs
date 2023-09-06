@@ -1,15 +1,8 @@
 use tracing::debug;
 
+use super::consts::*;
 use super::models::*;
 use super::*;
-
-const BASE_URL_INDEX: &str = "https://index.crates.io";
-const BASE_URL_CRATES: &str = "https://crates.io/api/v1/crates";
-const QUERY_STRING_CRATES: &str = "?include=downloads"; // Fetches only the most basic data instead of full
-
-pub const CRAWL_MAX_INTERVAL_SECONDS: u64 = 5;
-pub const CRAWL_USER_AGENT_VALUE: &str =
-    concat!(env!("CARGO_PKG_NAME"), "@", env!("CARGO_PKG_VERSION"),);
 
 impl CratesWrapper {
     pub async fn get_index_metadatas(&self, name: &str) -> RequestResult<Vec<IndexMetadata>> {

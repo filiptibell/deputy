@@ -29,8 +29,22 @@ pub struct Server {
 
 impl Server {
     fn new(client: Client, args: &Arguments) -> Self {
-        let github = GithubWrapper::new();
-        let crates = CratesWrapper::new();
+        let mut rheaders = reqwest::header::HeaderMap::new();
+        rheaders.insert(
+            reqwest::header::USER_AGENT,
+            reqwest::header::HeaderValue::from_static(concat!(
+                env!("CARGO_PKG_NAME"),
+                "@",
+                env!("CARGO_PKG_VERSION")
+            )),
+        );
+        let rclient = reqwest::Client::builder()
+            .default_headers(rheaders)
+            .build()
+            .expect("Failed to create reqwest client");
+
+        let github = GithubWrapper::new(rclient.clone());
+        let crates = CratesWrapper::new(rclient.clone());
 
         let documents = Arc::new(AsyncMutex::new(HashMap::new()));
 

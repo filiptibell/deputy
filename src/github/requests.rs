@@ -1,13 +1,9 @@
 use reqwest::Method;
 use tracing::debug;
 
+use super::consts::*;
 use super::models::*;
 use super::*;
-
-pub const GITHUB_API_BASE_URL: &str = "https://api.github.com";
-pub const GITHUB_API_USER_AGENT: &str =
-    concat!(env!("CARGO_PKG_NAME"), "@", env!("CARGO_PKG_VERSION"),);
-pub const GITHUB_API_CONTENT_TYPE: &str = "application/vnd.github.v3+json";
 
 impl GithubWrapper {
     pub async fn get_repository_metrics(
