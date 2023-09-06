@@ -3,6 +3,7 @@
 A language server for several tools:
 
 - [Aftman](https://github.com/LPGhatguy/aftman)
+- [Cargo](https://crates.io)
 - [Foreman](https://github.com/roblox/foreman)
 - [Wally](https://github.com/UpliftGames/wally)
 
@@ -26,12 +27,15 @@ Features that will be supported:
 
 ## Cargo
 
+Features that are currently supported:
+
+- Hover for information about a package (description)
+
 Features that will be supported:
 
 - Diagnostics for:
   - A newer package version is available
   - Invalid package name / version
-- Hover for information about a package (description)
 - Quick action to update to a new package version
 
 ## Wally
