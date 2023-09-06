@@ -17,7 +17,7 @@ Features that are currently supported:
   - A newer tool version is available
   - Invalid author / name / version
 - Hover for information about a tool (description)
-- Autocomplete for commonly used tool authors & names
+- Autocomplete for commonly used tool authors & names, versions
 - Quick action to update to new tool version
 
 Features that will be supported:
@@ -30,13 +30,14 @@ Features that will be supported:
 Features that are currently supported:
 
 - Hover for information about a package (description)
-
-Features that will be supported:
-
 - Diagnostics for:
   - A newer package version is available
   - Invalid package name / version
 - Quick action to update to a new package version
+
+Features that will be supported:
+
+- Autocomplete for versions, features
 
 ## Wally
 

@@ -32,7 +32,7 @@ impl CratesWrapper {
 
             // NOTE: We make this inner scope so that
             // we can catch and emit all errors at once
-            let inner = async {
+            let mut inner = async {
                 let response = self.client().get(&index_url).send().await?;
                 let status = response.status();
                 let text = response.text().await?;
@@ -47,6 +47,11 @@ impl CratesWrapper {
                 Ok(IndexMetadata::try_from_lines(text.lines().collect())?)
             }
             .await;
+
+            // NOTE: We should sort by most recent version first
+            if let Ok(vec) = &mut inner {
+                vec.reverse();
+            }
 
             self.emit_result(&inner);
 

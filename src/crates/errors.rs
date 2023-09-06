@@ -28,3 +28,27 @@ impl From<serde_json::Error> for CratesError {
         Self(value.to_string())
     }
 }
+
+fn is_not_found_error(error: impl AsRef<str>) -> bool {
+    let message = error.as_ref().to_ascii_lowercase();
+    message.contains("404") || message.contains("not found")
+}
+
+fn is_rate_limit_error(error: impl AsRef<str>) -> bool {
+    let message = error.as_ref().to_ascii_lowercase();
+    message.contains("rate limit")
+}
+
+pub trait CratesErrorExt {
+    fn is_not_found_error(&self) -> bool;
+    fn is_rate_limit_error(&self) -> bool;
+}
+
+impl CratesErrorExt for CratesError {
+    fn is_not_found_error(&self) -> bool {
+        is_not_found_error(&self.0)
+    }
+    fn is_rate_limit_error(&self) -> bool {
+        is_rate_limit_error(&self.0)
+    }
+}

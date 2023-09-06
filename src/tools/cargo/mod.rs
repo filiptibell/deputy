@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use futures::future::join_all;
 use tracing::trace;
 
 use tower_lsp::jsonrpc::Result;
@@ -14,9 +15,12 @@ use crate::util::*;
 
 use super::*;
 
+mod dependency_spec;
+mod diagnostics;
 mod lockfile;
 mod manifest;
 
+use diagnostics::*;
 use lockfile::*;
 use manifest::*;
 
@@ -84,16 +88,24 @@ impl Tool for Cargo {
         let offset = document.lsp_position_to_offset(pos);
         let try_find = |deps: &HashMap<String, ManifestDependency>| {
             deps.iter().find_map(|(key, dep)| {
-                let span = dep.version_span();
-                if offset >= span.start && offset <= span.end {
-                    Some((
+                let span_name = dep.name_span();
+                let span_version = dep.version_span();
+
+                let hovered_span = if offset >= span_version.start && offset <= span_version.end {
+                    Some(span_version)
+                } else if offset >= span_name.start && offset <= span_name.end {
+                    Some(span_name)
+                } else {
+                    None
+                };
+
+                hovered_span.map(|span| {
+                    (
                         document.lsp_range_from_range(span.clone()),
                         key.to_string(),
                         dep.version_source().to_string(),
-                    ))
-                } else {
-                    None
-                }
+                    )
+                })
             })
         };
 
@@ -161,5 +173,63 @@ impl Tool for Cargo {
                 value: lines.join("\n"),
             }),
         }))
+    }
+
+    async fn diagnostics(&self, params: DocumentDiagnosticParams) -> Result<Vec<Diagnostic>> {
+        let uri = params.text_document.uri;
+
+        let (document, lockdoc) = match self.get_documents(&uri).await {
+            None => return Ok(Vec::new()),
+            Some(d) => d,
+        };
+        let (manifest, _lockfile) = match (
+            document.as_str().parse::<Manifest>(),
+            lockdoc.as_str().parse::<Lockfile>(),
+        ) {
+            (Ok(m), Ok(l)) => (m, l),
+            _ => return Ok(Vec::new()),
+        };
+
+        let deps = (manifest.dependencies.values())
+            .chain(manifest.dev_dependencies.values())
+            .chain(manifest.build_dependencies.values())
+            .map(|dep| {
+                let range_name = document.lsp_range_from_range(dep.name_span().clone());
+                let range_version = document.lsp_range_from_range(dep.version_span().clone());
+                (dep.clone(), range_name, range_version)
+            })
+            .collect::<Vec<_>>();
+
+        let mut all_diagnostics = Vec::new();
+        let mut fut_diagnostics = Vec::new();
+        for (tool, range_name, range_version) in &deps {
+            fut_diagnostics.push(diagnose_dependency(
+                &self.crates,
+                &uri,
+                tool,
+                range_name,
+                range_version,
+            ));
+        }
+
+        for diag in join_all(fut_diagnostics).await.into_iter().flatten() {
+            all_diagnostics.push(diag);
+        }
+
+        Ok(all_diagnostics)
+    }
+
+    async fn code_action(&self, params: CodeActionParams) -> Result<Vec<CodeActionOrCommand>> {
+        let mut actions = Vec::new();
+        for diag in params.context.diagnostics {
+            if let Some(Ok(action)) = diag
+                .data
+                .as_ref()
+                .map(ResolveContext::<CodeActionMetadata>::try_from)
+            {
+                actions.push(action.into_inner().into_code_action(diag.clone()))
+            }
+        }
+        Ok(actions)
     }
 }

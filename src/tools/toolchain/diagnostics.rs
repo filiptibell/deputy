@@ -5,7 +5,6 @@ use crate::github::GithubErrorExt;
 use crate::github::GithubWrapper;
 
 use super::super::util::*;
-use super::actions::*;
 use super::manifest::*;
 use super::tool_spec::*;
 

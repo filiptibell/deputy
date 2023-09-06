@@ -12,14 +12,12 @@ use crate::server::*;
 
 use super::*;
 
-mod actions;
 mod completion;
 mod constants;
 mod diagnostics;
 mod manifest;
 mod tool_spec;
 
-use actions::*;
 use completion::*;
 use diagnostics::*;
 use manifest::*;
