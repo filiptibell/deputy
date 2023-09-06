@@ -1,18 +1,23 @@
-use std::{collections::HashMap, fmt, ops::Range, str::FromStr};
+use std::collections::HashMap;
+use std::fmt;
+use std::ops::Range;
+use std::str::FromStr;
 
-use serde::Deserialize;
-use serde_spanned::Spanned;
 use tracing::error;
 
 use super::tool_spec::*;
+use super::util::*;
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-#[serde(transparent)]
-pub struct ManifestTool(Spanned<String>);
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ManifestTool(TomlString);
 
 impl ManifestTool {
+    fn from_toml_value(value: &TomlValue) -> Option<Self> {
+        value.as_string().map(|s| Self(s.clone()))
+    }
+
     pub fn spec(&self) -> Result<ToolSpec, ToolSpecError> {
-        ToolSpec::from_str(self.0.as_ref())
+        self.0.parse::<ToolSpec>()
     }
 
     pub fn span(&self) -> Range<usize> {
@@ -22,21 +27,49 @@ impl ManifestTool {
 
 impl fmt::Display for ManifestTool {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.as_ref().fmt(f)
+        self.0.fmt(f)
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Default)]
 pub struct Manifest {
     pub tools: HashMap<String, ManifestTool>,
 }
 
 impl Manifest {
-    pub fn parse_aftman(source: impl AsRef<str>) -> Result<Self, toml::de::Error> {
-        let result = toml::from_str::<Manifest>(source.as_ref());
-        if let Err(e) = &result {
-            error!("failed to deserialize tool manifest - {e}")
+    fn from_toml_value(value: &TomlValue) -> Option<Self> {
+        match value.as_table() {
+            None => None,
+            Some(t) => {
+                let mut manifest = Manifest::default();
+                if let Some((_, tools)) = t.find("tools") {
+                    if let Some(tools_table) = tools.as_table() {
+                        for (k, v) in tools_table.iter() {
+                            if let Some(tool) = ManifestTool::from_toml_value(v) {
+                                manifest.tools.insert(k.to_string(), tool);
+                            }
+                        }
+                    }
+                }
+                Some(manifest)
+            }
         }
-        result
+    }
+
+    pub fn parse(source: impl AsRef<str>) -> Result<Self, TomlError> {
+        match TomlValue::new(source.as_ref()) {
+            Ok(value) => Ok(Self::from_toml_value(&value).expect("Toml root should be a table")),
+            Err(e) => {
+                error!("failed to deserialize tools manifest - {e}");
+                Err(e)
+            }
+        }
+    }
+}
+
+impl FromStr for Manifest {
+    type Err = TomlError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::parse(s)
     }
 }

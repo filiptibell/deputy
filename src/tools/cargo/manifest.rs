@@ -1,77 +1,86 @@
 use std::{collections::HashMap, fmt, ops::Range, str::FromStr};
 
-use serde::Deserialize;
-use toml::{Spanned, Value as TomlValue};
 use tracing::error;
 
-const INVALID_DEPS_PANIC_MSG: &str = "Invalid deps should have been filtered out";
+use super::util::*;
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
-#[serde(transparent)]
-pub struct ManifestDependency(Spanned<TomlValue>);
-
-// There's literally no way to make this enum work with serde
-// and properly keeping spans. I've tried all of the attributes,
-// making proxy structs, manual implementations of deserialize,
-// splitting string into parts and separately calling toml::from_str,
-// implementing several different kinds of visitors, nothing works.
-// Will have to go back to the old lexer implementation and try
-// to make some kind of reasonable dom we can traverse instead.
-// pub enum ManifestDependency {
-//     Plain(Spanned<String>),
-//     Struct { version: Spanned<String> },
-// }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ManifestDependency {
+    Plain(TomlString),
+    Struct { version: TomlString },
+}
 
 impl ManifestDependency {
+    fn from_toml_value(value: &TomlValue) -> Option<Self> {
+        value
+            .as_string()
+            .map(|s| Self::Plain(s.clone()))
+            .or_else(|| match value.as_table().and_then(|t| t.find("version")) {
+                Some((_, version)) if version.kind().is_string() => Some(Self::Struct {
+                    version: version.as_string().unwrap().clone(),
+                }),
+                _ => None,
+            })
+    }
+
     pub fn span(&self) -> Range<usize> {
-        self.0.span()
+        match self {
+            Self::Plain(s) => s.span(),
+            Self::Struct { version } => version.span(),
+        }
     }
 }
 
 impl fmt::Display for ManifestDependency {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.0.as_ref() {
-            TomlValue::String(s) => s.fmt(f),
-            TomlValue::Table(t) => match t.get("version").expect(INVALID_DEPS_PANIC_MSG) {
-                TomlValue::String(s) => s.fmt(f),
-                _ => unreachable!("{INVALID_DEPS_PANIC_MSG}"),
-            },
-            _ => unreachable!("{INVALID_DEPS_PANIC_MSG}"),
+        match self {
+            Self::Plain(s) => s.fmt(f),
+            Self::Struct { version } => version.fmt(f),
         }
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Default)]
 pub struct Manifest {
-    #[serde(default)]
     pub dependencies: HashMap<String, ManifestDependency>,
-    #[serde(default, alias = "dev-dependencies")]
     pub dev_dependencies: HashMap<String, ManifestDependency>,
-    #[serde(default, alias = "build-dependencies")]
     pub build_dependencies: HashMap<String, ManifestDependency>,
 }
 
-impl FromStr for Manifest {
-    type Err = toml::de::Error;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let result = toml::from_str::<Manifest>(s).map(remove_invalid_deps);
-        if let Err(e) = &result {
-            error!("failed to deserialize cargo manifest - {e}")
+impl Manifest {
+    fn from_toml_value(value: &TomlValue) -> Option<Self> {
+        match value.as_table() {
+            None => None,
+            Some(t) => {
+                let mut manifest = Manifest::default();
+                if let Some((_, deps)) = t.find("dependencies") {
+                    if let Some(deps_table) = deps.as_table() {
+                        for (k, v) in deps_table.iter() {
+                            if let Some(tool) = ManifestDependency::from_toml_value(v) {
+                                manifest.dependencies.insert(k.to_string(), tool);
+                            }
+                        }
+                    }
+                }
+                Some(manifest)
+            }
         }
-        result
+    }
+
+    pub fn parse(source: impl AsRef<str>) -> Result<Self, TomlError> {
+        match TomlValue::new(source.as_ref()) {
+            Ok(value) => Ok(Self::from_toml_value(&value).expect("Toml root should be a table")),
+            Err(e) => {
+                error!("failed to deserialize cargo manifest - {e}");
+                Err(e)
+            }
+        }
     }
 }
 
-fn remove_invalid_deps(mut manifest: Manifest) -> Manifest {
-    let check = |deps: &mut HashMap<String, ManifestDependency>| {
-        deps.retain(|_, val| match val.0.as_ref() {
-            TomlValue::String(_) => true,
-            TomlValue::Table(t) => matches!(t.get("version"), Some(TomlValue::String(_))),
-            _ => false,
-        });
-    };
-    check(&mut manifest.dependencies);
-    check(&mut manifest.dev_dependencies);
-    check(&mut manifest.build_dependencies);
-    manifest
+impl FromStr for Manifest {
+    type Err = TomlError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::parse(s)
+    }
 }

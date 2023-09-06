@@ -57,7 +57,7 @@ impl Tool for Toolchain {
             None => return Ok(None),
             Some(d) => d,
         };
-        let manifest = match Manifest::parse_aftman(document.as_str()) {
+        let manifest = match Manifest::parse(document.as_str()) {
             Err(_) => return Ok(None),
             Ok(m) => m,
         };
@@ -114,7 +114,7 @@ impl Tool for Toolchain {
             None => return Ok(CompletionResponse::Array(Vec::new())),
             Some(d) => d,
         };
-        let manifest = match Manifest::parse_aftman(document.as_str()) {
+        let manifest = match Manifest::parse(document.as_str()) {
             Err(_) => return Ok(CompletionResponse::Array(Vec::new())),
             Ok(m) => m,
         };
@@ -145,7 +145,7 @@ impl Tool for Toolchain {
             None => return Ok(Vec::new()),
             Some(d) => d,
         };
-        let manifest = match Manifest::parse_aftman(document.as_str()) {
+        let manifest = match Manifest::parse(document.as_str()) {
             Err(_) => return Ok(Vec::new()),
             Ok(m) => m,
         };
