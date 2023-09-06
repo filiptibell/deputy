@@ -20,13 +20,21 @@ impl From<(StatusCode, Bytes)> for ResponseError {
 
 impl fmt::Display for ResponseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{} {} - {}",
-            self.status.as_u16(),
-            self.status.canonical_reason().unwrap(),
-            String::from_utf8_lossy(&self.bytes)
-        )
+        if let Ok(s) = String::from_utf8(self.bytes.to_vec()) {
+            write!(
+                f,
+                "{} {} - {s}",
+                self.status.as_u16(),
+                self.status.canonical_reason().unwrap()
+            )
+        } else {
+            write!(
+                f,
+                "{} {} - N/A",
+                self.status.as_u16(),
+                self.status.canonical_reason().unwrap()
+            )
+        }
     }
 }
 
