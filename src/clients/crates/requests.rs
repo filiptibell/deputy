@@ -4,7 +4,7 @@ use super::consts::*;
 use super::models::*;
 use super::*;
 
-impl CratesWrapper {
+impl CratesClient {
     pub async fn get_index_metadatas(&self, name: &str) -> RequestResult<Vec<IndexMetadata>> {
         let name_low = name.to_ascii_lowercase();
         let index_url = if name_low.len() <= 2 {

@@ -4,7 +4,6 @@ use tower_lsp::Client;
 
 use crate::clients::*;
 use crate::server::*;
-use crate::util::*;
 
 use super::*;
 

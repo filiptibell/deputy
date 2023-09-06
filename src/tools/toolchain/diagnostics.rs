@@ -2,7 +2,6 @@ use semver::Version;
 use tower_lsp::lsp_types::*;
 
 use crate::clients::*;
-use crate::util::*;
 
 use super::super::util::*;
 use super::manifest::*;
@@ -32,13 +31,14 @@ pub fn diagnose_tool_spec(tool: &ManifestTool, range: &Range) -> Option<Diagnost
 }
 
 pub async fn diagnose_tool_version(
-    github: &GithubWrapper,
+    clients: &Clients,
     uri: &Url,
     tool: &ManifestTool,
     range: &Range,
 ) -> Option<Diagnostic> {
     let spec = tool.spec().ok()?;
-    let releases = github
+    let releases = clients
+        .github
         .get_repository_releases(&spec.author, &spec.name)
         .await;
 

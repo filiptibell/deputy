@@ -22,14 +22,14 @@ mod models;
 mod requests;
 
 #[derive(Debug, Clone)]
-pub struct CratesWrapper {
+pub struct CratesClient {
     client: Arc<Mutex<Client>>,
     cache: CratesCache,
     crawl_limit_tx: broadcast::Sender<()>,
     crawl_limited: Arc<AtomicBool>,
 }
 
-impl CratesWrapper {
+impl CratesClient {
     pub fn new(client: Client) -> Self {
         let (crawl_limit_tx, _) = broadcast::channel(32);
         Self {

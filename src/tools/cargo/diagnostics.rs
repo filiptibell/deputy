@@ -2,14 +2,13 @@ use semver::Version;
 use tower_lsp::lsp_types::*;
 
 use crate::clients::*;
-use crate::util::*;
 
 use super::super::util::*;
 use super::dependency_spec::*;
 use super::manifest::*;
 
 pub async fn diagnose_dependency(
-    crates: &CratesWrapper,
+    clients: &Clients,
     uri: &Url,
     dep: &ManifestDependency,
     range_name: &Range,
@@ -37,7 +36,7 @@ pub async fn diagnose_dependency(
         }
     };
 
-    let metadatas = crates.get_index_metadatas(&spec.name).await;
+    let metadatas = clients.crates.get_index_metadatas(&spec.name).await;
     if metadatas.as_deref().is_err_and(|e| e.is_not_found_error()) {
         return Some(Diagnostic {
             source: Some(String::from("Cargo")),

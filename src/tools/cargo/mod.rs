@@ -204,7 +204,7 @@ impl Tool for Cargo {
         let mut fut_diagnostics = Vec::new();
         for (tool, range_name, range_version) in &deps {
             fut_diagnostics.push(diagnose_dependency(
-                &self.clients.crates,
+                &self.clients,
                 &uri,
                 tool,
                 range_name,

@@ -7,12 +7,11 @@ use tower_lsp::lsp_types::*;
 
 use crate::clients::*;
 use crate::server::*;
-use crate::util::*;
 
 use super::constants::*;
 
 async fn complete_tool_author(
-    _github: &GithubWrapper,
+    _clients: &Clients,
     document: &Document,
     replace_range: StdRange<usize>,
     author: &str,
@@ -32,7 +31,7 @@ async fn complete_tool_author(
 }
 
 async fn complete_tool_name(
-    _github: &GithubWrapper,
+    _clients: &Clients,
     document: &Document,
     replace_range: StdRange<usize>,
     author: &str,
@@ -57,14 +56,14 @@ async fn complete_tool_name(
 }
 
 async fn complete_tool_version(
-    github: &GithubWrapper,
+    clients: &Clients,
     document: &Document,
     replace_range: StdRange<usize>,
     author: &str,
     name: &str,
     version: &str,
 ) -> Result<Vec<CompletionItem>> {
-    let releases = match github.get_repository_releases(author, name).await {
+    let releases = match clients.github.get_repository_releases(author, name).await {
         Err(e) if e.is_rate_limit_error() || e.is_not_found_error() => return Ok(Vec::new()),
         Err(_) => return Err(Error::invalid_request()),
         Ok(v) => v,
@@ -115,7 +114,7 @@ async fn complete_tool_version(
 }
 
 pub async fn get_tool_completions(
-    github: &GithubWrapper,
+    clients: &Clients,
     document: &Document,
     replace_range: StdRange<usize>,
     substring: &str,
@@ -133,7 +132,7 @@ pub async fn get_tool_completions(
                 start: replace_range.start + idx_at + 1,
                 end: replace_range.end,
             };
-            complete_tool_version(github, document, range, author, name, version).await
+            complete_tool_version(clients, document, range, author, name, version).await
         }
         (Some(idx_slash), _) => {
             let author = &substring[..idx_slash];
@@ -142,9 +141,9 @@ pub async fn get_tool_completions(
                 start: replace_range.start + idx_slash + 1,
                 end: replace_range.end,
             };
-            complete_tool_name(github, document, range, author, name).await
+            complete_tool_name(clients, document, range, author, name).await
         }
-        _ => complete_tool_author(github, document, replace_range, substring).await,
+        _ => complete_tool_author(clients, document, replace_range, substring).await,
     }?;
     Ok(CompletionResponse::Array(items))
 }

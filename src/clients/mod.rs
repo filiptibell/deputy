@@ -6,13 +6,13 @@ use reqwest::{
 pub mod crates;
 pub mod github;
 
-pub use crates::CratesWrapper;
-pub use github::GithubWrapper;
+use crates::CratesClient;
+use github::GithubClient;
 
 #[derive(Debug, Clone)]
 pub struct Clients {
-    pub crates: CratesWrapper,
-    pub github: GithubWrapper,
+    pub crates: CratesClient,
+    pub github: GithubClient,
 }
 
 impl Clients {
@@ -32,8 +32,8 @@ impl Clients {
             .build()
             .expect("Failed to create reqwest client");
 
-        let github = GithubWrapper::new(base.clone());
-        let crates = CratesWrapper::new(base.clone());
+        let github = GithubClient::new(base.clone());
+        let crates = CratesClient::new(base.clone());
 
         Self { crates, github }
     }

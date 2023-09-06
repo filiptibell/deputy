@@ -22,7 +22,7 @@ mod models;
 mod requests;
 
 #[derive(Debug, Clone)]
-pub struct GithubWrapper {
+pub struct GithubClient {
     client: Arc<Mutex<Client>>,
     client_auth: Arc<Mutex<Option<String>>>,
     cache: GithubCache,
@@ -30,7 +30,7 @@ pub struct GithubWrapper {
     rate_limited: Arc<AtomicBool>,
 }
 
-impl GithubWrapper {
+impl GithubClient {
     pub fn new(client: Client) -> Self {
         let (rate_limit_tx, _) = broadcast::channel(32);
         Self {

@@ -5,7 +5,7 @@ use super::consts::*;
 use super::models::*;
 use super::*;
 
-impl GithubWrapper {
+impl GithubClient {
     pub async fn get_repository_metrics(
         &self,
         owner: &str,

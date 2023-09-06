@@ -133,7 +133,7 @@ impl Tool for Toolchain {
         });
 
         let slice_before = &document.as_str()[range_before.clone()];
-        get_tool_completions(&self.clients.github, &document, range_before, slice_before).await
+        get_tool_completions(&self.clients, &document, range_before, slice_before).await
     }
 
     async fn diagnostics(&self, params: DocumentDiagnosticParams) -> Result<Vec<Diagnostic>> {
@@ -163,7 +163,7 @@ impl Tool for Toolchain {
             if let Some(diag) = diagnose_tool_spec(tool, range) {
                 all_diagnostics.push(diag);
             } else {
-                let fut = diagnose_tool_version(&self.clients.github, &uri, tool, range);
+                let fut = diagnose_tool_version(&self.clients, &uri, tool, range);
                 fut_diagnostics.push(fut);
             }
         }
