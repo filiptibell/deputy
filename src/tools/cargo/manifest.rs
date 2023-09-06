@@ -3,10 +3,18 @@ use std::{collections::HashMap, ops::Range, str::FromStr};
 use tracing::error;
 
 use super::dependency_spec::*;
-use super::util::*;
+use crate::util::*;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ManifestDependencyKind {
+    Default,
+    Dev,
+    Build,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ManifestDependency {
+    kind: ManifestDependencyKind,
     name: TomlString,
     version: TomlString,
 }
@@ -21,7 +29,12 @@ impl ManifestDependency {
                 _ => None,
             }
         })?;
-        Some(Self { name: key, version })
+
+        Some(Self {
+            kind: ManifestDependencyKind::Default,
+            name: key,
+            version,
+        })
     }
 
     pub fn spec(&self) -> Result<DependencySpec, DependencySpecError> {
@@ -54,34 +67,55 @@ pub struct Manifest {
 
 impl Manifest {
     fn from_toml_value(value: &TomlValue) -> Option<Self> {
-        match value.as_table() {
-            None => None,
-            Some(t) => {
-                let mut manifest = Manifest::default();
+        let tab = match value.as_table() {
+            None => return None,
+            Some(t) => t,
+        };
 
-                let fill = |map_key: &str, map: &mut HashMap<String, ManifestDependency>| {
-                    if let Some((_, deps)) = t.find(map_key) {
-                        if let Some(deps_table) = deps.as_table() {
-                            for (k, v) in deps_table.as_ref().iter() {
-                                if let Some(tool) =
-                                    ManifestDependency::from_toml_values(k.clone(), v)
-                                {
-                                    map.insert(k.value().to_string(), tool);
-                                }
-                            }
+        let mut manifest = Manifest::default();
+
+        let fill = |map_key: &str,
+                    map: &mut HashMap<String, ManifestDependency>,
+                    kind: ManifestDependencyKind| {
+            if let Some((_, deps)) = tab.find(map_key) {
+                if let Some(deps_table) = deps.as_table() {
+                    for (k, v) in deps_table.as_ref().iter() {
+                        if let Some(mut tool) = ManifestDependency::from_toml_values(k.clone(), v) {
+                            tool.kind = kind;
+                            map.insert(k.value().to_string(), tool);
                         }
                     }
-                };
-
-                fill("dependencies", &mut manifest.dependencies);
-                fill("dev-dependencies", &mut manifest.dev_dependencies);
-                fill("dev_dependencies", &mut manifest.dev_dependencies);
-                fill("build-dependencies", &mut manifest.build_dependencies);
-                fill("build_dependencies", &mut manifest.build_dependencies);
-
-                Some(manifest)
+                }
             }
-        }
+        };
+
+        fill(
+            "dependencies",
+            &mut manifest.dependencies,
+            ManifestDependencyKind::Default,
+        );
+        fill(
+            "dev-dependencies",
+            &mut manifest.dev_dependencies,
+            ManifestDependencyKind::Dev,
+        );
+        fill(
+            "dev_dependencies",
+            &mut manifest.dev_dependencies,
+            ManifestDependencyKind::Dev,
+        );
+        fill(
+            "build-dependencies",
+            &mut manifest.build_dependencies,
+            ManifestDependencyKind::Build,
+        );
+        fill(
+            "build_dependencies",
+            &mut manifest.build_dependencies,
+            ManifestDependencyKind::Build,
+        );
+
+        Some(manifest)
     }
 
     pub fn parse(source: impl AsRef<str>) -> Result<Self, TomlError> {

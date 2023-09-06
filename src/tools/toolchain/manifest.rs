@@ -5,7 +5,7 @@ use std::str::FromStr;
 use tracing::error;
 
 use super::tool_spec::*;
-use super::util::*;
+use crate::util::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ManifestTool(TomlString);
@@ -35,22 +35,22 @@ pub struct Manifest {
 
 impl Manifest {
     fn from_toml_value(value: &TomlValue) -> Option<Self> {
-        match value.as_table() {
-            None => None,
-            Some(t) => {
-                let mut manifest = Manifest::default();
-                if let Some((_, tools)) = t.find("tools") {
-                    if let Some(tools_table) = tools.as_table() {
-                        for (k, v) in tools_table.as_ref().iter() {
-                            if let Some(tool) = ManifestTool::from_toml_value(v) {
-                                manifest.tools.insert(k.value().to_string(), tool);
-                            }
-                        }
+        let tab = match value.as_table() {
+            None => return None,
+            Some(t) => t,
+        };
+
+        let mut manifest = Manifest::default();
+        if let Some((_, tools)) = tab.find("tools") {
+            if let Some(tools_table) = tools.as_table() {
+                for (k, v) in tools_table.as_ref().iter() {
+                    if let Some(tool) = ManifestTool::from_toml_value(v) {
+                        manifest.tools.insert(k.value().to_string(), tool);
                     }
                 }
-                Some(manifest)
             }
         }
+        Some(manifest)
     }
 
     pub fn parse(source: impl AsRef<str>) -> Result<Self, TomlError> {
