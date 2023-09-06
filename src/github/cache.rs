@@ -1,12 +1,11 @@
 use crate::util::*;
 
 use super::models::*;
-use super::*;
 
 #[derive(Debug, Clone)]
 pub(super) struct GithubCache {
-    pub repository_metrics: RequestCacheMap<GithubResult<RepositoryMetrics>>,
-    pub repository_releases: RequestCacheMap<GithubResult<Vec<RepositoryRelease>>>,
+    pub repository_metrics: RequestCacheMap<RequestResult<RepositoryMetrics>>,
+    pub repository_releases: RequestCacheMap<RequestResult<Vec<RepositoryRelease>>>,
 }
 
 impl GithubCache {

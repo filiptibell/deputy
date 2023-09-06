@@ -1,3 +1,4 @@
+use reqwest::Method;
 use tracing::debug;
 
 use super::models::*;
@@ -13,7 +14,7 @@ impl GithubWrapper {
         &self,
         owner: &str,
         repository: &str,
-    ) -> GithubResult<RepositoryMetrics> {
+    ) -> RequestResult<RepositoryMetrics> {
         let owner_low = owner.to_ascii_lowercase();
         let repository_low = repository.to_ascii_lowercase();
 
@@ -26,16 +27,9 @@ impl GithubWrapper {
             // NOTE: We make this inner scope so that
             // we can catch and emit all errors at once
             let inner = async {
-                let response = self.client().get(&metrics_url).send().await?;
-                let status = response.status();
-                let bytes = response.bytes().await?;
+                let (status, bytes) = self.request(Method::GET, &metrics_url).await?;
                 if !status.is_success() {
-                    return Err(GithubError::new(format!(
-                        "{} {} - {}",
-                        status.as_u16(),
-                        status.canonical_reason().unwrap(),
-                        String::from_utf8_lossy(&bytes)
-                    )));
+                    return Err(RequestError::from((status, bytes)));
                 }
                 Ok(serde_json::from_slice::<RepositoryMetrics>(&bytes)?)
             }
@@ -56,7 +50,7 @@ impl GithubWrapper {
         &self,
         owner: &str,
         repository: &str,
-    ) -> GithubResult<Vec<RepositoryRelease>> {
+    ) -> RequestResult<Vec<RepositoryRelease>> {
         let owner_low = owner.to_ascii_lowercase();
         let repository_low = repository.to_ascii_lowercase();
 
@@ -69,18 +63,10 @@ impl GithubWrapper {
             // NOTE: We make this inner scope so that
             // we can catch and emit all errors at once
             let inner = async {
-                let response = self.client().get(&releases_url).send().await?;
-                let status = response.status();
-                let bytes = response.bytes().await?;
+                let (status, bytes) = self.request(Method::GET, &releases_url).await?;
                 if !status.is_success() {
-                    return Err(GithubError::new(format!(
-                        "{} {} - {}",
-                        status.as_u16(),
-                        status.canonical_reason().unwrap(),
-                        String::from_utf8_lossy(&bytes)
-                    )));
+                    return Err(RequestError::from((status, bytes)));
                 }
-                // TODO: Handle pages
                 Ok(serde_json::from_slice::<Vec<RepositoryRelease>>(&bytes)?)
             }
             .await;

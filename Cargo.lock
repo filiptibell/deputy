@@ -1967,6 +1967,7 @@ dependencies = [
 name = "tooling-language-server"
 version = "0.0.1"
 dependencies = [
+ "bytes",
  "clap",
  "futures",
  "logos 0.13.0",

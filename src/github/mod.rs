@@ -3,28 +3,29 @@ use std::sync::{
     Arc, Mutex,
 };
 
+use bytes::Bytes;
 use tokio::sync::broadcast;
 use tracing::error;
 
 use reqwest::{
     header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE, USER_AGENT},
-    Client,
+    Client, Method, StatusCode,
 };
+
+use crate::util::*;
 
 mod cache;
 use cache::*;
 
-mod errors;
 mod models;
 mod requests;
-
-pub use errors::*;
 
 use self::requests::{GITHUB_API_CONTENT_TYPE, GITHUB_API_USER_AGENT};
 
 #[derive(Debug, Clone)]
 pub struct GithubWrapper {
     client: Arc<Mutex<Client>>,
+    client_auth: Arc<Mutex<Option<String>>>,
     cache: GithubCache,
     rate_limit_tx: broadcast::Sender<()>,
     rate_limited: Arc<AtomicBool>,
@@ -35,11 +36,33 @@ impl GithubWrapper {
         Self::default()
     }
 
-    fn client(&self) -> Client {
-        self.client.lock().unwrap().clone()
+    async fn request(
+        &self,
+        method: Method,
+        url: impl Into<String>,
+    ) -> Result<(StatusCode, Bytes), reqwest::Error> {
+        let client = self.client.lock().unwrap().clone();
+        let client_auth = self.client_auth.lock().unwrap().clone();
+
+        let mut request = client
+            .request(method, url.into())
+            .header(USER_AGENT, HeaderValue::from_static(GITHUB_API_USER_AGENT))
+            .header(
+                CONTENT_TYPE,
+                HeaderValue::from_static(GITHUB_API_CONTENT_TYPE),
+            );
+        if let Some(auth) = client_auth {
+            request = request.header(AUTHORIZATION, &auth);
+        }
+
+        let response = request.send().await?;
+        let status = response.status();
+        let bytes = response.bytes().await?;
+
+        Ok((status, bytes))
     }
 
-    fn emit_result<T>(&self, result: &GithubResult<T>) {
+    fn emit_result<T>(&self, result: &RequestResult<T>) {
         if let Err(e) = &result {
             if e.is_rate_limit_error() {
                 if !self.is_rate_limited() {
@@ -63,27 +86,11 @@ impl GithubWrapper {
     }
 
     pub fn set_auth_token(&self, token: impl AsRef<str>) {
-        let mut headers = HeaderMap::new();
-        headers.insert(USER_AGENT, HeaderValue::from_static(GITHUB_API_USER_AGENT));
-        headers.insert(
-            AUTHORIZATION,
-            HeaderValue::from_str(&format!("Bearer {}", token.as_ref()))
-                .expect("Encountered invalid header value for auth"),
-        );
-        headers.insert(
-            CONTENT_TYPE,
-            HeaderValue::from_static(GITHUB_API_CONTENT_TYPE),
-        );
-        let client = Client::builder()
-            .default_headers(headers)
-            .build()
-            .expect("Failed to create GitHub client");
-
-        let mut current_client = self
-            .client
+        let mut client_auth = self
+            .client_auth
             .try_lock()
             .expect("Failed to lock GitHub client");
-        *current_client = client;
+        *client_auth = Some(format!("Bearer {}", token.as_ref()));
 
         self.cache.invalidate();
 
@@ -109,6 +116,7 @@ impl Default for GithubWrapper {
         let (rate_limit_tx, _) = broadcast::channel(32);
         Self {
             client: Arc::new(Mutex::new(client)),
+            client_auth: Arc::new(Mutex::new(None)),
             cache: GithubCache::new(),
             rate_limit_tx,
             rate_limited: Arc::new(AtomicBool::new(false)),

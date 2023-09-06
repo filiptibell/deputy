@@ -2,6 +2,7 @@ use semver::Version;
 use tower_lsp::lsp_types::*;
 
 use crate::crates::*;
+use crate::util::*;
 
 use super::super::util::*;
 use super::dependency_spec::*;

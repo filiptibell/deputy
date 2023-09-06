@@ -6,22 +6,22 @@ use std::{
     time::Duration,
 };
 
+use bytes::Bytes;
 use tokio::{sync::broadcast, time::sleep};
 use tracing::error;
 
 use reqwest::{
     header::{HeaderMap, HeaderValue, USER_AGENT},
-    Client,
+    Client, Method, StatusCode,
 };
+
+use crate::util::*;
 
 mod cache;
 use cache::*;
 
-mod errors;
 mod models;
 mod requests;
-
-pub use errors::*;
 
 use self::requests::{CRAWL_MAX_INTERVAL_SECONDS, CRAWL_USER_AGENT_VALUE};
 
@@ -38,11 +38,25 @@ impl CratesWrapper {
         Self::default()
     }
 
-    fn client(&self) -> Client {
-        self.client.lock().unwrap().clone()
+    async fn request(
+        &self,
+        method: Method,
+        url: impl Into<String>,
+    ) -> Result<(StatusCode, Bytes), reqwest::Error> {
+        let client = self.client.lock().unwrap().clone();
+        let response = client
+            .request(method, url.into())
+            .header(USER_AGENT, HeaderValue::from_static(CRAWL_USER_AGENT_VALUE))
+            .send()
+            .await?;
+
+        let status = response.status();
+        let bytes = response.bytes().await?;
+
+        Ok((status, bytes))
     }
 
-    fn emit_result<T>(&self, result: &CratesResult<T>) {
+    fn emit_result<T>(&self, result: &RequestResult<T>) {
         if let Err(e) = &result {
             error!("Crates error: {e}");
         }

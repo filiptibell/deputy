@@ -7,6 +7,7 @@ use tower_lsp::lsp_types::*;
 
 use crate::github::*;
 use crate::server::*;
+use crate::util::*;
 
 use super::constants::*;
 

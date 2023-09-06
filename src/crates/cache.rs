@@ -1,12 +1,11 @@
 use crate::util::*;
 
 use super::models::*;
-use super::*;
 
 #[derive(Debug, Clone)]
 pub(super) struct CratesCache {
-    pub index_metadatas: RequestCacheMap<CratesResult<Vec<IndexMetadata>>>,
-    pub crate_datas: RequestCacheMap<CratesResult<CrateData>>,
+    pub index_metadatas: RequestCacheMap<RequestResult<Vec<IndexMetadata>>>,
+    pub crate_datas: RequestCacheMap<RequestResult<CrateData>>,
 }
 
 impl CratesCache {

@@ -1,8 +1,8 @@
 use semver::Version;
 use tower_lsp::lsp_types::*;
 
-use crate::github::GithubErrorExt;
-use crate::github::GithubWrapper;
+use crate::github::*;
+use crate::util::*;
 
 use super::super::util::*;
 use super::manifest::*;

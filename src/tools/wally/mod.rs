@@ -4,6 +4,7 @@ use tower_lsp::Client;
 
 use crate::github::*;
 use crate::server::*;
+use crate::util::*;
 
 use super::*;
 

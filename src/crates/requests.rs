@@ -12,7 +12,7 @@ pub const CRAWL_USER_AGENT_VALUE: &str =
     concat!(env!("CARGO_PKG_NAME"), "@", env!("CARGO_PKG_VERSION"),);
 
 impl CratesWrapper {
-    pub async fn get_index_metadatas(&self, name: &str) -> CratesResult<Vec<IndexMetadata>> {
+    pub async fn get_index_metadatas(&self, name: &str) -> RequestResult<Vec<IndexMetadata>> {
         let name_low = name.to_ascii_lowercase();
         let index_url = if name_low.len() <= 2 {
             format!("{BASE_URL_INDEX}/{}/{name_low}", name_low.len())
@@ -32,16 +32,10 @@ impl CratesWrapper {
             // NOTE: We make this inner scope so that
             // we can catch and emit all errors at once
             let mut inner = async {
-                let response = self.client().get(&index_url).send().await?;
-                let status = response.status();
-                let text = response.text().await?;
+                let (status, bytes) = self.request(Method::GET, &index_url).await?;
+                let text = String::from_utf8(bytes.to_vec())?;
                 if !status.is_success() {
-                    return Err(CratesError::new(format!(
-                        "{} {} - {}",
-                        status.as_u16(),
-                        status.canonical_reason().unwrap(),
-                        text
-                    )));
+                    return Err(RequestError::from((status, bytes)));
                 }
                 Ok(IndexMetadata::try_from_lines(text.lines().collect())?)
             }
@@ -82,7 +76,7 @@ impl CratesWrapper {
         ***one request every five seconds, globally***. This is due
         to the [crates.io crawling policy](https://crates.io/policies).
     */
-    pub async fn get_crate_data(&self, name: &str) -> CratesResult<CrateData> {
+    pub async fn get_crate_data(&self, name: &str) -> RequestResult<CrateData> {
         let name_low = name.to_ascii_lowercase();
         let crates_url = format!("{BASE_URL_CRATES}/{name_low}{QUERY_STRING_CRATES}");
 
@@ -95,16 +89,9 @@ impl CratesWrapper {
             // NOTE: We make this inner scope so that
             // we can catch and emit all errors at once
             let inner = async {
-                let response = self.client().get(&crates_url).send().await?;
-                let status = response.status();
-                let bytes = response.bytes().await?;
+                let (status, bytes) = self.request(Method::GET, &crates_url).await?;
                 if !status.is_success() {
-                    return Err(CratesError::new(format!(
-                        "{} {} - {}",
-                        status.as_u16(),
-                        status.canonical_reason().unwrap(),
-                        String::from_utf8_lossy(&bytes)
-                    )));
+                    return Err(RequestError::from((status, bytes)));
                 }
                 Ok(serde_json::from_slice::<CrateData>(&bytes)?)
             }
