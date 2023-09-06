@@ -28,7 +28,7 @@ impl CratesWrapper {
                 let (status, bytes) = self.request(Method::GET, &index_url).await?;
                 let text = String::from_utf8(bytes.to_vec())?;
                 if !status.is_success() {
-                    return Err(RequestError::from((status, bytes)));
+                    return Err(ResponseError::from((status, bytes)).into());
                 }
                 Ok(IndexMetadata::try_from_lines(text.lines().collect())?)
             }
@@ -84,7 +84,7 @@ impl CratesWrapper {
             let inner = async {
                 let (status, bytes) = self.request(Method::GET, &crates_url).await?;
                 if !status.is_success() {
-                    return Err(RequestError::from((status, bytes)));
+                    return Err(ResponseError::from((status, bytes)).into());
                 }
                 Ok(serde_json::from_slice::<CrateData>(&bytes)?)
             }

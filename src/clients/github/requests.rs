@@ -25,7 +25,7 @@ impl GithubWrapper {
             let inner = async {
                 let (status, bytes) = self.request(Method::GET, &metrics_url).await?;
                 if !status.is_success() {
-                    return Err(RequestError::from((status, bytes)));
+                    return Err(ResponseError::from((status, bytes)).into());
                 }
                 Ok(serde_json::from_slice::<RepositoryMetrics>(&bytes)?)
             }
@@ -61,7 +61,7 @@ impl GithubWrapper {
             let inner = async {
                 let (status, bytes) = self.request(Method::GET, &releases_url).await?;
                 if !status.is_success() {
-                    return Err(RequestError::from((status, bytes)));
+                    return Err(ResponseError::from((status, bytes)).into());
                 }
                 Ok(serde_json::from_slice::<Vec<RepositoryRelease>>(&bytes)?)
             }
