@@ -1,6 +1,6 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
-use tokio::sync::Mutex as AsyncMutex;
+use dashmap::DashMap;
 
 use tower_lsp::lsp_types::notification::Notification;
 use tower_lsp::{Client, LspService, Server as LspServer};
@@ -28,7 +28,7 @@ pub struct Server {
 impl Server {
     fn new(client: Client, args: &Arguments) -> Self {
         let clients = Clients::new();
-        let documents = Arc::new(AsyncMutex::new(HashMap::new()));
+        let documents = Arc::new(DashMap::new());
 
         if let Some(token) = &args.github_token {
             clients.github.set_auth_token(token);

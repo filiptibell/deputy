@@ -39,18 +39,17 @@ impl Cargo {
         }
     }
 
-    async fn get_documents(&self, uri: &Url) -> Option<(Document, Document)> {
+    fn get_documents(&self, uri: &Url) -> Option<(Document, Document)> {
         if matches!(
             uri.file_name().as_deref(),
             Some("Cargo.toml" | "cargo.toml")
         ) {
             let documents = Arc::clone(&self.documents);
-            let documents = documents.lock().await;
 
-            let manifest = documents.get(uri).cloned();
+            let manifest = documents.get(uri).map(|r| r.clone());
             let lockfile = documents
                 .get(&uri.with_file_name("Cargo.lock").unwrap())
-                .cloned();
+                .map(|r| r.clone());
 
             if lockfile.is_none() {
                 warn!("Cargo.lock missing for manifest at '{uri}'")
@@ -72,7 +71,7 @@ impl Tool for Cargo {
         let uri = params.text_document_position_params.text_document.uri;
         let pos = params.text_document_position_params.position;
 
-        let (document, lockdoc) = match self.get_documents(&uri).await {
+        let (document, lockdoc) = match self.get_documents(&uri) {
             None => return Ok(None),
             Some(d) => d,
         };
@@ -178,7 +177,7 @@ impl Tool for Cargo {
     async fn diagnostics(&self, params: DocumentDiagnosticParams) -> Result<Vec<Diagnostic>> {
         let uri = params.text_document.uri;
 
-        let (document, lockdoc) = match self.get_documents(&uri).await {
+        let (document, lockdoc) = match self.get_documents(&uri) {
             None => return Ok(Vec::new()),
             Some(d) => d,
         };

@@ -1,9 +1,6 @@
-use std::{
-    collections::HashMap,
-    sync::{Arc, Mutex},
-    time::Duration,
-};
+use std::{sync::Arc, time::Duration};
 
+use dashmap::DashMap;
 use futures::Future;
 use moka::future::Cache;
 use tokio::{
@@ -17,7 +14,7 @@ type CacheMap<T> = Cache<String, T>;
 // Map of senders, used to notify any listeners
 // that are waiting for a request to finish and
 // a cache value to become available to clone
-type Senders<T> = Arc<Mutex<HashMap<String, Sender<T>>>>;
+type Senders<T> = Arc<DashMap<String, Sender<T>>>;
 
 /**
     Generic cache map for web requests.
@@ -47,7 +44,7 @@ impl<T: Clone + Send + Sync + 'static> RequestCacheMap<T> {
             .build();
         RequestCacheMap {
             map,
-            sends: Arc::new(Mutex::new(HashMap::new())),
+            sends: Arc::new(DashMap::new()),
         }
     }
 
@@ -93,7 +90,7 @@ impl<T: Clone + Send + Sync + 'static> RequestCacheMap<T> {
         let key = key.into();
 
         let sends = Arc::clone(&self.sends);
-        let send = { sends.lock().unwrap().get(&key).cloned() };
+        let send = sends.get(&key).map(|r| r.clone());
 
         if let Some(send) = send {
             if let Ok(res) = send.subscribe().recv().await {
@@ -113,25 +110,19 @@ impl<T: Clone + Send + Sync + 'static> RequestCacheMap<T> {
                 let sends_timeout = Arc::clone(&sends);
                 tokio::spawn(async move {
                     sleep(Duration::from_secs(5)).await;
-                    if sends_timeout.lock().unwrap().remove(&sends_key).is_some() {
+                    if sends_timeout.remove(&sends_key).is_some() {
                         trace!("Request was cancelled, cleaning up")
                     }
                 });
 
-                let send = {
-                    let (send, _) = broadcast::channel(1);
-                    sends.lock().unwrap().insert(key.clone(), send.clone());
-                    send
-                };
+                let (send, _) = broadcast::channel(1);
+                sends.insert(key.clone(), send.clone());
 
                 let result = f.await;
 
                 self.map.insert(key.clone(), result.clone()).await;
 
-                {
-                    sends.lock().unwrap().remove(&key);
-                }
-
+                sends.remove(&key);
                 send.send(result.clone()).ok();
 
                 result

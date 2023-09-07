@@ -1969,6 +1969,7 @@ version = "0.0.1"
 dependencies = [
  "bytes",
  "clap",
+ "dashmap",
  "futures",
  "logos 0.13.0",
  "lsp-document",

@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use tower_lsp::Client;
 
 use crate::clients::*;
@@ -30,9 +28,7 @@ impl Wally {
     }
 
     async fn get_document(&self, uri: &Url) -> Option<Document> {
-        let documents = Arc::clone(&self.documents);
-        let documents = documents.lock().await;
-        documents.get(uri).cloned()
+        self.documents.get(uri).map(|r| r.clone())
     }
 }
 

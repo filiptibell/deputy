@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
+use dashmap::DashMap;
 use lsp_document::{IndexedText, TextAdapter, TextMap};
-use tokio::sync::Mutex as AsyncMutex;
 
 use tower_lsp::lsp_types::*;
 
@@ -11,7 +11,7 @@ use crate::util::*;
 
 type StdRange = std::ops::Range<usize>;
 
-pub type Documents = Arc<AsyncMutex<HashMap<Url, Document>>>;
+pub type Documents = Arc<DashMap<Url, Document>>;
 
 #[derive(Debug, Clone)]
 pub struct Document {

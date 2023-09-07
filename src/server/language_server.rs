@@ -26,7 +26,6 @@ impl LanguageServer for Server {
         let text = params.text_document.text.clone();
 
         let documents = Arc::clone(&self.documents);
-        let mut documents = documents.lock().await;
 
         let new_document = DocumentBuilder::new()
             .with_uri(uri.clone())
@@ -83,9 +82,7 @@ impl LanguageServer for Server {
         let version = params.text_document.version;
 
         let documents = Arc::clone(&self.documents);
-        let mut documents = documents.lock().await;
-
-        let document = documents
+        let mut document = documents
             .get_mut(&uri)
             .expect("Got change event for nonexistent document");
 
@@ -110,13 +107,12 @@ impl LanguageServer for Server {
 
     async fn did_rename_files(&self, params: RenameFilesParams) {
         let documents = Arc::clone(&self.documents);
-        let mut documents = documents.lock().await;
         for rename in params.files {
             let old = Url::parse(rename.old_uri.as_str())
                 .expect("Got invalid file path in rename notification");
             let new = Url::parse(rename.new_uri.as_str())
                 .expect("Got invalid file path in rename notification");
-            if let Some(old_doc) = documents.remove(&old) {
+            if let Some((_, old_doc)) = documents.remove(&old) {
                 trace!("File renamed: {old} -> {new}");
                 documents.insert(new, old_doc);
             } else {
@@ -127,7 +123,6 @@ impl LanguageServer for Server {
 
     async fn did_delete_files(&self, params: DeleteFilesParams) {
         let documents = Arc::clone(&self.documents);
-        let mut documents = documents.lock().await;
         for delete in params.files {
             let old = Url::parse(delete.uri.as_str())
                 .expect("Got invalid file path in delete notification");

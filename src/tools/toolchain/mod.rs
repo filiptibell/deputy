@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use futures::future::join_all;
 use tracing::trace;
 
@@ -37,10 +35,8 @@ impl Toolchain {
         }
     }
 
-    async fn get_document(&self, uri: &Url) -> Option<Document> {
-        let documents = Arc::clone(&self.documents);
-        let documents = documents.lock().await;
-        documents.get(uri).cloned()
+    fn get_document(&self, uri: &Url) -> Option<Document> {
+        self.documents.get(uri).map(|r| r.clone())
     }
 }
 
@@ -50,7 +46,7 @@ impl Tool for Toolchain {
         let uri = params.text_document_position_params.text_document.uri;
         let pos = params.text_document_position_params.position;
 
-        let document = match self.get_document(&uri).await {
+        let document = match self.get_document(&uri) {
             None => return Ok(None),
             Some(d) => d,
         };
@@ -108,7 +104,7 @@ impl Tool for Toolchain {
         let uri = params.text_document_position.text_document.uri;
         let pos = params.text_document_position.position;
 
-        let document = match self.get_document(&uri).await {
+        let document = match self.get_document(&uri) {
             None => return Ok(CompletionResponse::Array(Vec::new())),
             Some(d) => d,
         };
@@ -139,7 +135,7 @@ impl Tool for Toolchain {
     async fn diagnostics(&self, params: DocumentDiagnosticParams) -> Result<Vec<Diagnostic>> {
         let uri = params.text_document.uri;
 
-        let document = match self.get_document(&uri).await {
+        let document = match self.get_document(&uri) {
             None => return Ok(Vec::new()),
             Some(d) => d,
         };
