@@ -1,24 +1,32 @@
 ext := if os() == "windows" { ".exe" } else { "" }
 
+# Builds the language server
 [no-exit-message]
-build-server DEBUG="false":
+build DEBUG="false":
 	#!/usr/bin/env bash
 	set -euo pipefail
 	if [[ "{{DEBUG}}" == "true" ]]; then
-		echo "🖥️  Building language server... (debug)"
 		cargo build --bin server
+	else
+		cargo build --bin server --release &> /dev/null
+	fi
+
+# Bundles the language server into the VSCode extension build directory
+[no-exit-message]
+vscode-bundle DEBUG="false":
+	#!/usr/bin/env bash
+	set -euo pipefail
+	if [[ "{{DEBUG}}" == "true" ]]; then
 		mkdir -p ./editors/vscode/out/debug/
 		cp target/debug/server{{ext}} ./editors/vscode/out/debug/
 	else
-		echo "🖥️  Building language server..."
-		cargo build --bin server --release
 		mkdir -p ./editors/vscode/out/release/
 		cp target/release/server{{ext}} ./editors/vscode/out/release/
 	fi
-	echo "✅ Built language server successfully!"
 
+# Cleans up artifacts from building the VSCode extension
 [no-exit-message]
-cleanup-vscode-artifacts:
+vscode-cleanup:
 	#!/usr/bin/env bash
 	set -euo pipefail
 	cd "./editors/vscode/"
@@ -28,34 +36,56 @@ cleanup-vscode-artifacts:
 	mkdir -p "$WORKDIR/bin"
 	cd "../../"
 
+# Builds the VSCode extension
 [no-exit-message]
-build-vscode-extension DEBUG="false": cleanup-vscode-artifacts (build-server DEBUG)
+vscode-build:
 	#!/usr/bin/env bash
 	set -euo pipefail
 	cd "./editors/vscode/"
 	WORKDIR="$PWD"
-	echo "🛠️  Building extension..."
-	vsce package --out "$WORKDIR/bin/" > /dev/null
+	vsce package --out "$WORKDIR/bin/" &> /dev/null
 	cd "../../"
 
+# Builds and installs the VSCode extension locally
 [no-exit-message]
-install-vscode-extension DEBUG="false": (build-vscode-extension DEBUG)
+vscode-install DEBUG="false":
 	#!/usr/bin/env bash
 	set -euo pipefail
+
+	echo "🚧 [1/4] Building language server..."
+	just build {{DEBUG}}
+	echo "📦 [2/4] Packing language server..."
+	just vscode-cleanup
+	just vscode-bundle {{DEBUG}}
+	echo "🧰 [3/4] Building extension..."
+	just vscode-build
+	echo "🚀 [4/4] Installing extension..."
+
 	cd "./editors/vscode/"
 	WORKDIR="$PWD"
 	EXTENSION=$(find "$WORKDIR/bin/" -name "*.vsix")
-	echo "🚀 Installing extension..."
-	code --install-extension "$EXTENSION" > /dev/null
-	echo "✅ Installed extension successfully!"
+	code --install-extension "$EXTENSION" &> /dev/null
 	cd "../../"
 
+	echo "✅ Installed extension successfully!"
+
+# Builds and publishes the VSCode extension to the marketplace
 [no-exit-message]
-publish-vscode-extension: build-server
+vscode-publish: vscode-build
 	#!/usr/bin/env bash
 	set -euo pipefail
+
+	echo "🚧 [1/4] Building language server..."
+	just build
+	echo "📦 [2/4] Packing language server..."
+	just vscode-cleanup
+	just vscode-bundle
+	echo "🧰 [3/4] Building extension..."
+	just vscode-build
+	echo "🚀 [4/4] Publishing extension..."
+
 	cd "./editors/vscode/"
-	echo "🛠️  Publishing extension..."
 	vsce publish > /dev/null
-	echo "✅ Published extension successfully!"
 	cd "../../"
+
+	echo "✅ Published extension successfully!"
