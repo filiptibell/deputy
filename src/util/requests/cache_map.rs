@@ -1,12 +1,10 @@
 use std::{sync::Arc, time::Duration};
 
+use async_broadcast::{broadcast, Sender};
 use dashmap::DashMap;
 use futures::Future;
 use moka::future::Cache;
-use tokio::{
-    sync::broadcast::{self, Sender},
-    time::sleep,
-};
+use smol::Timer;
 use tracing::trace;
 
 type CacheMap<T> = Cache<String, T>;
@@ -93,7 +91,7 @@ impl<T: Clone + Send + Sync + 'static> RequestCacheMap<T> {
         let send = sends.get(&key).map(|r| r.clone());
 
         if let Some(send) = send {
-            if let Ok(res) = send.subscribe().recv().await {
+            if let Ok(res) = send.new_receiver().recv().await {
                 return res;
             } else {
                 // Existing request was cancelled / dropped, try again
@@ -108,14 +106,15 @@ impl<T: Clone + Send + Sync + 'static> RequestCacheMap<T> {
                 // We should really do this on future being dropped instead
                 let sends_key = key.clone();
                 let sends_timeout = Arc::clone(&sends);
-                tokio::spawn(async move {
-                    sleep(Duration::from_secs(5)).await;
+                smol::spawn(async move {
+                    Timer::after(Duration::from_secs(5)).await;
                     if sends_timeout.remove(&sends_key).is_some() {
                         trace!("Request was cancelled, cleaning up")
                     }
-                });
+                })
+                .detach();
 
-                let (send, _) = broadcast::channel(1);
+                let (send, _) = broadcast(1);
                 sends.insert(key.clone(), send.clone());
 
                 let result = f.await;
@@ -123,7 +122,7 @@ impl<T: Clone + Send + Sync + 'static> RequestCacheMap<T> {
                 self.map.insert(key.clone(), result.clone()).await;
 
                 sends.remove(&key);
-                send.send(result.clone()).ok();
+                send.try_broadcast(result.clone()).ok();
 
                 result
             }

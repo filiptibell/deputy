@@ -2,7 +2,7 @@ use std::io;
 use std::sync::Arc;
 
 use futures::future::join_all;
-use tokio::fs;
+use smol::fs;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::LanguageServer;

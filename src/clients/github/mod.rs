@@ -3,14 +3,9 @@ use std::sync::{
     Arc, Mutex,
 };
 
-use bytes::Bytes;
-use tokio::sync::broadcast;
+use async_broadcast::{broadcast, Sender};
 use tracing::error;
-
-use reqwest::{
-    header::{HeaderValue, AUTHORIZATION, CONTENT_TYPE},
-    Client, Method, StatusCode,
-};
+use ureq::Agent;
 
 use crate::util::*;
 
@@ -23,46 +18,34 @@ mod requests;
 
 #[derive(Debug, Clone)]
 pub struct GithubClient {
-    client: Arc<Mutex<Client>>,
-    client_auth: Arc<Mutex<Option<String>>>,
+    agent: Arc<Mutex<Agent>>,
+    agent_auth: Arc<Mutex<Option<String>>>,
     cache: GithubCache,
-    rate_limit_tx: broadcast::Sender<()>,
+    rate_limit_tx: Sender<()>,
     rate_limited: Arc<AtomicBool>,
 }
 
 impl GithubClient {
-    pub fn new(client: Client) -> Self {
-        let (rate_limit_tx, _) = broadcast::channel(32);
+    pub fn new(agent: Agent) -> Self {
+        let (rate_limit_tx, _) = broadcast(32);
         Self {
-            client: Arc::new(Mutex::new(client)),
-            client_auth: Arc::new(Mutex::new(None)),
+            agent: Arc::new(Mutex::new(agent)),
+            agent_auth: Arc::new(Mutex::new(None)),
             cache: GithubCache::new(),
             rate_limit_tx,
             rate_limited: Arc::new(AtomicBool::new(false)),
         }
     }
 
-    async fn request(
-        &self,
-        method: Method,
-        url: impl Into<String>,
-    ) -> Result<(StatusCode, Bytes), reqwest::Error> {
-        let client = self.client.lock().unwrap().clone();
-        let client_auth = self.client_auth.lock().unwrap().clone();
+    async fn request_get(&self, url: impl Into<String>) -> RequestResult<Vec<u8>> {
+        let client = self.agent.lock().unwrap().clone();
+        let client_auth = self.agent_auth.lock().unwrap().clone();
 
-        let mut request = client.request(method, url.into()).header(
-            CONTENT_TYPE,
-            HeaderValue::from_static(consts::GITHUB_API_CONTENT_TYPE),
-        );
-        if let Some(auth) = client_auth {
-            request = request.header(AUTHORIZATION, &auth);
-        }
-
-        let response = request.send().await?;
-        let status = response.status();
-        let bytes = response.bytes().await?;
-
-        Ok((status, bytes))
+        Request::get(url)
+            .with_header("Content-Type", consts::GITHUB_API_CONTENT_TYPE)
+            .with_header_opt("Authorization", client_auth)
+            .send(client)
+            .await
     }
 
     fn emit_result<T>(&self, result: &RequestResult<T>) {
@@ -70,7 +53,7 @@ impl GithubClient {
             if e.is_rate_limit_error() {
                 if !self.is_rate_limited() {
                     self.rate_limited.store(true, Ordering::SeqCst);
-                    self.rate_limit_tx.send(()).ok();
+                    self.rate_limit_tx.try_broadcast(()).ok();
                 }
             } else {
                 error!("GitHub error: {e}");
@@ -83,14 +66,14 @@ impl GithubClient {
     }
 
     pub async fn wait_until_rate_limited_changes(&self) -> bool {
-        let mut rate_limit_rx = self.rate_limit_tx.subscribe();
+        let mut rate_limit_rx = self.rate_limit_tx.new_receiver();
         rate_limit_rx.recv().await.ok();
         self.is_rate_limited()
     }
 
     pub fn set_auth_token(&self, token: impl AsRef<str>) {
         let mut client_auth = self
-            .client_auth
+            .agent_auth
             .try_lock()
             .expect("Failed to lock GitHub client");
         *client_auth = Some(format!("Bearer {}", token.as_ref()));
@@ -99,7 +82,7 @@ impl GithubClient {
 
         if self.is_rate_limited() {
             self.rate_limited.store(false, Ordering::SeqCst);
-            self.rate_limit_tx.send(()).ok();
+            self.rate_limit_tx.try_broadcast(()).ok();
         }
     }
 }

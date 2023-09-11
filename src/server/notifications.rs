@@ -43,7 +43,7 @@ impl Server {
     pub fn watch_rate_limit(&self) {
         let client = self.client.clone();
         let github = self.clients.github.clone();
-        tokio::spawn(async move {
+        smol::spawn(async move {
             loop {
                 let is_rate_limited = github.wait_until_rate_limited_changes().await;
                 if is_rate_limited {
@@ -53,7 +53,8 @@ impl Server {
                         .await;
                 }
             }
-        });
+        })
+        .detach();
     }
 
     pub async fn on_notified_rate_limit(&self, notif: RateLimitNotification) {

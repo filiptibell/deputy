@@ -1,4 +1,3 @@
-use reqwest::Method;
 use tracing::debug;
 
 use super::consts::*;
@@ -23,10 +22,7 @@ impl GithubClient {
             // NOTE: We make this inner scope so that
             // we can catch and emit all errors at once
             let inner = async {
-                let (status, bytes) = self.request(Method::GET, &metrics_url).await?;
-                if !status.is_success() {
-                    return Err(ResponseError::from((status, bytes)).into());
-                }
+                let bytes = self.request_get(&metrics_url).await?;
                 Ok(serde_json::from_slice::<RepositoryMetrics>(&bytes)?)
             }
             .await;
@@ -59,10 +55,7 @@ impl GithubClient {
             // NOTE: We make this inner scope so that
             // we can catch and emit all errors at once
             let inner = async {
-                let (status, bytes) = self.request(Method::GET, &releases_url).await?;
-                if !status.is_success() {
-                    return Err(ResponseError::from((status, bytes)).into());
-                }
+                let bytes = self.request_get(&releases_url).await?;
                 Ok(serde_json::from_slice::<Vec<RepositoryRelease>>(&bytes)?)
             }
             .await;

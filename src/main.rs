@@ -1,4 +1,3 @@
-use tokio::runtime::Builder;
 use tracing_subscriber::filter::{EnvFilter, LevelFilter};
 
 mod clients;
@@ -16,11 +15,10 @@ fn main() {
     let tracing_filter = EnvFilter::builder()
         .with_default_directive(LevelFilter::INFO.into())
         .from_env_lossy()
-        .add_directive("hyper=warn".parse().unwrap())
         .add_directive("rustls=warn".parse().unwrap())
         .add_directive("tower_lsp=warn".parse().unwrap())
         .add_directive("tower=info".parse().unwrap())
-        .add_directive("reqwest=info".parse().unwrap());
+        .add_directive("ureq=info".parse().unwrap());
     tracing_subscriber::fmt()
         .compact()
         .with_env_filter(tracing_filter)
@@ -32,9 +30,6 @@ fn main() {
         .init();
 
     // Create and run our language server
-    let rt = Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .expect("Failed to create runtime");
-    rt.block_on(Server::serve(&args));
+    let exec = smol::Executor::new();
+    smol::block_on(exec.run(Server::serve(&args)));
 }
