@@ -26,7 +26,17 @@
         "onStartupFinished"
     ],
     "main": "./out/extension.js",
-    "contributes": {},
+    "contributes": {
+        "languages": [
+            {
+                "id": "toml",
+                "filenames": [
+                    "wally.toml",
+                    "wally.lock"
+                ]
+            }
+        ]
+    },
     "scripts": {
         "vscode:prepublish": "npm run esbuild -- --minify",
         "esbuild": "esbuild ./src/extension.js --bundle --outfile=out/extension.js --external:vscode --platform=node --target=node16.13 --sourcemap",
