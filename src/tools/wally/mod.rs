@@ -9,9 +9,11 @@ use crate::server::*;
 
 use super::*;
 
+mod completion;
 mod diagnostics;
 mod manifest;
 
+use completion::*;
 use diagnostics::*;
 use manifest::*;
 
@@ -149,6 +151,52 @@ impl Tool for Wally {
                 value: lines.join("\n"),
             }),
         }))
+    }
+
+    async fn completion(&self, params: CompletionParams) -> Result<CompletionResponse> {
+        let uri = params.text_document_position.text_document.uri;
+        let pos = params.text_document_position.position;
+
+        let (document, manifest, registry_urls) =
+            match self.get_manifest_with_registries(&uri).await {
+                None => return Ok(CompletionResponse::Array(Vec::new())),
+                Some(d) => d,
+            };
+
+        let offset = document.lsp_position_to_offset(pos);
+        let try_find = |deps: &HashMap<String, ManifestDependency>| {
+            deps.iter().find_map(|(_, dep)| {
+                let span = dep.span();
+                if offset >= span.start && offset <= span.end {
+                    Some((span.clone(), dep.clone()))
+                } else {
+                    None
+                }
+            })
+        };
+
+        let found = try_find(&manifest.dependencies)
+            .or_else(|| try_find(&manifest.dev_dependencies))
+            .or_else(|| try_find(&manifest.server_dependencies));
+        let (found_range, _) = match found {
+            Some((range, dep)) => (range, dep),
+            _ => return Ok(CompletionResponse::Array(Vec::new())),
+        };
+
+        let range_before = document.lsp_range_to_span(Range {
+            start: document.lsp_position_from_offset(found_range.start + 1),
+            end: pos,
+        });
+
+        let slice_before = &document.as_str()[range_before.clone()];
+        get_package_completions(
+            &self.clients,
+            &document,
+            &registry_urls,
+            range_before,
+            slice_before,
+        )
+        .await
     }
 
     async fn diagnostics(&self, params: DocumentDiagnosticParams) -> Result<Vec<Diagnostic>> {

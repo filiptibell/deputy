@@ -15,7 +15,7 @@ pub struct GitTreeNode {
     pub url: String,
     #[serde(rename = "type")]
     pub kind: GitNodeKind,
-    pub size: u64,
+    pub size: Option<u64>,
     pub path: String,
 }
 

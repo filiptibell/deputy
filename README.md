@@ -27,7 +27,6 @@ Features that are currently supported:
 Features that will be supported:
 
 - Diagnostic for unsupported platform/arch
-- All of the listed Aftman features for Foreman as well
 
 </details>
 
@@ -36,15 +35,24 @@ Features that will be supported:
 
 Features that are currently supported:
 
-- Hover for information about a package (description, links)
+- Hover for information about a dependency (description, links)
 - Diagnostics for:
-  - A newer package version is available
-  - Invalid package name / version
-- Quick action to update to a new package version
+  - A newer dependency version is available
+  - Invalid dependency name / version
+- Quick action to update to a new dependency version
 
 Features that will be supported:
 
-- Autocomplete for versions, features
+- Autocomplete for dependencies - versions, features
+
+</details>
+
+<details>
+<summary>Foreman</summary>
+
+See the Aftman section.
+
+All features supported by Aftman will also be supported for Foreman.
 
 </details>
 
@@ -54,16 +62,16 @@ Features that will be supported:
 Features that are currently supported:
 
 - Diagnostics for:
-  - A newer package version is available
+  - A newer dependency version is available
   - Invalid author / name / version
-- Hover for information about a package (description, links)
-- Quick action to update to a new package version
+- Hover for information about a dependency (description, links)
+- Autocomplete for dependencies - authors + names + versions
+- Quick action to update to a new dependency version
 
 Features that will be supported:
 
 - Diagnostics for:
-  - Invalid package realm
-- Autocomplete for packages - authors + names + versions
+  - Invalid dependency realm
 
 </details>
 
@@ -72,9 +80,10 @@ Features that will be supported:
 The VSCode extension can be compiled and installed locally:
 
 1. Clone the repository
-2. Install [Just], [VSCE] and the [VSCode CLI]
+2. Install [Just], [Rust], [VSCE] and the [VSCode CLI]
 3. Run `just vscode-install` in the repository to install the extension
 
 [Just]: https://github.com/casey/just
+[Rust]: https://www.rust-lang.org/tools/install
 [VSCE]: https://github.com/microsoft/vscode-vsce
 [VSCode CLI]: https://code.visualstudio.com/docs/editor/command-line
