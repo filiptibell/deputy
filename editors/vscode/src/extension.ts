@@ -55,7 +55,10 @@ export async function activate(extensionContext: vscode.ExtensionContext) {
 
 	// Find which executable was bundled with the extension - either debug or release
 
-	let exeName = os.platform() === "win32" ? "server.exe" : "server";
+	let exeName =
+		os.platform() === "win32"
+			? "tooling-language-server.exe"
+			: "tooling-language-server";
 
 	let exeDebug = vscode.Uri.joinPath(
 		context.extensionUri,

@@ -6,9 +6,9 @@ build DEBUG="false":
 	#!/usr/bin/env bash
 	set -euo pipefail
 	if [[ "{{DEBUG}}" == "true" ]]; then
-		cargo build --bin server
+		cargo build --bin tooling-language-server
 	else
-		cargo build --bin server --release &> /dev/null
+		cargo build --bin tooling-language-server --release > /dev/null
 	fi
 
 # Bundles the language server into the VSCode extension build directory
@@ -18,10 +18,10 @@ vscode-bundle DEBUG="false":
 	set -euo pipefail
 	if [[ "{{DEBUG}}" == "true" ]]; then
 		mkdir -p ./editors/vscode/out/debug/
-		cp target/debug/server{{ext}} ./editors/vscode/out/debug/
+		cp target/debug/tooling-language-server{{ext}} ./editors/vscode/out/debug/
 	else
 		mkdir -p ./editors/vscode/out/release/
-		cp target/release/server{{ext}} ./editors/vscode/out/release/
+		cp target/release/tooling-language-server{{ext}} ./editors/vscode/out/release/
 	fi
 
 # Cleans up artifacts from building the VSCode extension
@@ -43,7 +43,7 @@ vscode-build:
 	set -euo pipefail
 	cd "./editors/vscode/"
 	WORKDIR="$PWD"
-	vsce package --out "$WORKDIR/bin/" &> /dev/null
+	vsce package --out "$WORKDIR/bin/" > /dev/null
 	cd "../../"
 
 # Builds and installs the VSCode extension locally
@@ -64,7 +64,7 @@ vscode-install DEBUG="false":
 	cd "./editors/vscode/"
 	WORKDIR="$PWD"
 	EXTENSION=$(find "$WORKDIR/bin/" -name "*.vsix")
-	code --install-extension "$EXTENSION" &> /dev/null
+	code --install-extension "$EXTENSION" > /dev/null
 	cd "../../"
 
 	echo "✅ Installed extension successfully!"
