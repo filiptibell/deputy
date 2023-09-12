@@ -2,8 +2,7 @@
 
 use std::{collections::HashMap, fmt};
 
-use smol::unblock;
-use ureq::Agent;
+use surf::{http::headers::HeaderName, Client};
 
 use super::{RequestResult, ResponseError};
 
@@ -82,11 +81,11 @@ impl Request {
         self
     }
 
-    pub async fn send(self, agent: &Agent) -> RequestResult<Vec<u8>> {
+    pub async fn send(self, surf: &Client) -> RequestResult<Vec<u8>> {
         // TODO: We should probably switch to using something like surf
         // instead of ureq and spawning blocking threads, we can depend
         // on surf with default-features = false + h1-client-rustls
-        let agent = agent.clone();
+        let agent = surf.clone();
 
         let mut request = match self.method {
             Method::GET => agent.get(&self.url),
@@ -98,29 +97,17 @@ impl Request {
         };
 
         for (key, value) in self.headers {
-            request = request.set(&key, &value)
+            request = request.header(
+                HeaderName::from_string(key).expect("Passed invalid header name"),
+                &value,
+            )
         }
 
-        let response = unblock(move || request.send_bytes(&self.body)).await?;
+        let mut response = request.body_bytes(&self.body).send().await?;
         let status = response.status();
+        let body = response.body_bytes().await?;
 
-        let len: usize = response
-            .header("Content-Length")
-            .unwrap_or_default()
-            .parse()
-            .unwrap_or(0);
-
-        let body = unblock(move || {
-            let mut bytes = Vec::<u8>::with_capacity(len);
-            response
-                .into_reader()
-                .read_to_end(&mut bytes)
-                .map_err(ureq::Error::from)?;
-            Ok::<_, ureq::Error>(bytes)
-        })
-        .await?;
-
-        if status >= 400 {
+        if status.is_client_error() || status.is_server_error() {
             let e = ResponseError {
                 status,
                 bytes: body,

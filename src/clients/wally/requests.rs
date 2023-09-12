@@ -1,7 +1,6 @@
 use std::collections::{HashSet, VecDeque};
 
 use tower_lsp::lsp_types::Url;
-use tracing::debug;
 
 use super::models::*;
 use super::*;

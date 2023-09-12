@@ -1,12 +1,13 @@
 use std::{fmt, string::FromUtf8Error};
 
+use surf::StatusCode;
 use thiserror::Error;
 
 pub type RequestResult<T, E = RequestError> = Result<T, E>;
 
 #[derive(Debug, Clone, Error)]
 pub struct ResponseError {
-    pub(super) status: u16,
+    pub(super) status: StatusCode,
     pub(super) bytes: Vec<u8>,
 }
 
@@ -42,7 +43,7 @@ pub enum RequestError {
 impl RequestError {
     pub fn is_not_found_error(&self) -> bool {
         if let RequestError::Response(e) = self {
-            e.status == 404
+            e.status == StatusCode::NotFound
         } else {
             false
         }
@@ -50,7 +51,7 @@ impl RequestError {
 
     pub fn is_rate_limit_error(&self) -> bool {
         if let RequestError::Response(e) = self {
-            if e.status == 429 {
+            if e.status == StatusCode::TooManyRequests {
                 true
             } else {
                 let message = String::from_utf8_lossy(&e.bytes).to_ascii_lowercase();
@@ -64,8 +65,8 @@ impl RequestError {
     }
 }
 
-impl From<ureq::Error> for RequestError {
-    fn from(value: ureq::Error) -> Self {
+impl From<surf::Error> for RequestError {
+    fn from(value: surf::Error) -> Self {
         Self::Client(value.to_string())
     }
 }

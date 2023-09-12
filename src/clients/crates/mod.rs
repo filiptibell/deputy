@@ -8,9 +8,8 @@ use std::{
 
 use async_broadcast::{broadcast, Sender};
 use smol::Timer;
+use surf::Client;
 use tracing::error;
-
-use ureq::Agent;
 
 use crate::util::*;
 
@@ -24,17 +23,17 @@ pub mod models;
 
 #[derive(Debug, Clone)]
 pub struct CratesClient {
-    agent: Agent,
+    surf: Client,
     cache: CratesCache,
     crawl_limit_tx: Sender<()>,
     crawl_limited: Arc<AtomicBool>,
 }
 
 impl CratesClient {
-    pub fn new(agent: Agent) -> Self {
+    pub fn new(surf: Client) -> Self {
         let (crawl_limit_tx, _) = broadcast(32);
         Self {
-            agent,
+            surf,
             cache: CratesCache::new(),
             crawl_limit_tx,
             crawl_limited: Arc::new(AtomicBool::new(false)),
@@ -42,7 +41,7 @@ impl CratesClient {
     }
 
     async fn request_get(&self, url: impl Into<String>) -> RequestResult<Vec<u8>> {
-        Request::get(url).send(&self.agent).await
+        Request::get(url).send(&self.surf).await
     }
 
     fn emit_result<T>(&self, result: &RequestResult<T>) {

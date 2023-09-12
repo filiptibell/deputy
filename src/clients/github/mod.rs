@@ -3,8 +3,8 @@ use std::sync::{
     Arc, Mutex,
 };
 
+use surf::Client;
 use tracing::error;
-use ureq::Agent;
 
 use crate::util::*;
 
@@ -18,25 +18,25 @@ pub mod models;
 
 #[derive(Debug, Clone)]
 pub struct GithubClient {
-    agent: Arc<Mutex<Agent>>,
-    agent_auth: Arc<Mutex<Option<String>>>,
+    surf: Arc<Mutex<Client>>,
+    surf_auth: Arc<Mutex<Option<String>>>,
     cache: GithubCache,
     rate_limited: Arc<AtomicBool>,
 }
 
 impl GithubClient {
-    pub fn new(agent: Agent) -> Self {
+    pub fn new(surf: Client) -> Self {
         Self {
-            agent: Arc::new(Mutex::new(agent)),
-            agent_auth: Arc::new(Mutex::new(None)),
+            surf: Arc::new(Mutex::new(surf)),
+            surf_auth: Arc::new(Mutex::new(None)),
             cache: GithubCache::new(),
             rate_limited: Arc::new(AtomicBool::new(false)),
         }
     }
 
     async fn request_get(&self, url: impl Into<String>) -> RequestResult<Vec<u8>> {
-        let agent = self.agent.lock().unwrap().clone();
-        let agent_auth = self.agent_auth.lock().unwrap().clone();
+        let agent = self.surf.lock().unwrap().clone();
+        let agent_auth = self.surf_auth.lock().unwrap().clone();
 
         Request::get(url)
             .with_header("Content-Type", consts::GITHUB_API_CONTENT_TYPE)
@@ -61,7 +61,7 @@ impl GithubClient {
 
     pub fn set_auth_token(&self, token: impl AsRef<str>) {
         let mut client_auth = self
-            .agent_auth
+            .surf_auth
             .try_lock()
             .expect("Failed to lock GitHub client");
         *client_auth = Some(format!("Bearer {}", token.as_ref()));

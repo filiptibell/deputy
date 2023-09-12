@@ -118,8 +118,8 @@ impl GithubClient {
         let git_file_url =
             format!("{GITHUB_API_BASE_URL}/repos/{owner_low}/{repository_low}/contents/{path}");
 
-        let agent = self.agent.lock().unwrap().clone();
-        let agent_auth = self.agent_auth.lock().unwrap().clone();
+        let agent = self.surf.lock().unwrap().clone();
+        let agent_auth = self.surf_auth.lock().unwrap().clone();
         let fut = async move {
             debug!("Fetching GitHub file for {owner}/{repository} at {path}");
 

@@ -1,5 +1,5 @@
+use surf::Client;
 use tracing::error;
-use ureq::Agent;
 
 use super::github::*;
 use crate::util::*;
@@ -13,22 +13,22 @@ pub mod models;
 
 #[derive(Debug, Clone)]
 pub struct WallyClient {
-    agent: Agent,
+    surf: Client,
     cache: WallyCache,
     github: GithubClient,
 }
 
 impl WallyClient {
-    pub fn new(agent: Agent, github: GithubClient) -> Self {
+    pub fn new(surf: Client, github: GithubClient) -> Self {
         Self {
-            agent,
+            surf,
             cache: WallyCache::new(),
             github,
         }
     }
 
     async fn request_get(&self, url: impl Into<String>) -> RequestResult<Vec<u8>> {
-        Request::get(url).send(&self.agent).await
+        Request::get(url).send(&self.surf).await
     }
 
     fn emit_result<T>(&self, result: &RequestResult<T>) {
