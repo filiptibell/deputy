@@ -2,7 +2,7 @@ use std::{collections::HashMap, ops::Range, str::FromStr};
 
 use tracing::error;
 
-use super::dependency_spec::*;
+use super::util::*;
 use crate::util::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -15,16 +15,15 @@ pub enum ManifestDependencyKind {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ManifestDependency {
     kind: ManifestDependencyKind,
-    name: TomlString,
-    version: TomlString,
+    spec: Spec,
 }
 
 impl ManifestDependency {
-    fn from_toml_values(key: TomlString, value: &TomlValue) -> Option<Self> {
-        let version = value.as_string().cloned().or_else(|| {
+    fn from_toml_values(key: &TomlString, value: &TomlValue) -> Option<Self> {
+        let version = value.as_string().or_else(|| {
             match value.as_table().and_then(|t| t.find("version")) {
                 Some((_, version)) if version.kind().is_string() => {
-                    Some(version.as_string().unwrap().clone())
+                    Some(version.as_string().unwrap())
                 }
                 _ => None,
             }
@@ -32,29 +31,28 @@ impl ManifestDependency {
 
         Some(Self {
             kind: ManifestDependencyKind::Default,
-            name: key,
-            version,
+            spec: Spec::from_key_value_pair(key, version),
         })
     }
 
-    pub fn spec(&self) -> Result<DependencySpec, DependencySpecError> {
-        DependencySpec::parse(self.name.value(), self.version.value())
+    pub fn spec(&self) -> Result<SpecCargo, SpecError> {
+        self.spec.as_cargo()
     }
 
     pub fn name_span(&self) -> Range<usize> {
-        self.name.span()
+        self.spec.key_span()
     }
 
     pub fn version_span(&self) -> Range<usize> {
-        self.version.span()
+        self.spec.value_span()
     }
 
     pub fn version_source(&self) -> &str {
-        self.version.source()
+        self.spec.value_source()
     }
 
     pub fn version_text(&self) -> &str {
-        self.version.value()
+        self.spec.value_text()
     }
 }
 
@@ -80,7 +78,7 @@ impl Manifest {
             if let Some((_, deps)) = tab.find(map_key) {
                 if let Some(deps_table) = deps.as_table() {
                     for (k, v) in deps_table.as_ref().iter() {
-                        if let Some(mut tool) = ManifestDependency::from_toml_values(k.clone(), v) {
+                        if let Some(mut tool) = ManifestDependency::from_toml_values(k, v) {
                             tool.kind = kind;
                             map.insert(k.value().to_string(), tool);
                         }

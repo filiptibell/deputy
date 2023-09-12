@@ -9,7 +9,6 @@ use crate::server::*;
 
 use super::*;
 
-mod dependency_spec;
 mod diagnostics;
 mod manifest;
 
@@ -102,13 +101,9 @@ impl Tool for Wally {
                 .get_index_metadatas(&registry_url, &found_spec.author, &found_spec.name)
                 .await
             {
-                let exact_match = metadatas.iter().find(|m| {
-                    if let Some(version) = &found_spec.version {
-                        version.to_string() == m.package.version
-                    } else {
-                        false
-                    }
-                });
+                let exact_match = metadatas
+                    .iter()
+                    .find(|m| found_spec.version == m.package.version);
                 let version_match = metadatas.iter().find(|m| {
                     Version::parse(&m.package.version)
                         .map(|version| found_spec.version_req.matches(&version))

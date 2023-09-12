@@ -4,36 +4,34 @@ use std::str::FromStr;
 
 use tracing::error;
 
-use super::dependency_spec::*;
+use super::util::*;
 use crate::clients::wally::models::*;
 use crate::util::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ManifestDependency {
     realm: MetadataRealm,
-    key: TomlString,
-    spec: TomlString,
+    spec: Spec,
 }
 
 impl ManifestDependency {
     fn from_toml_values(key: &TomlString, value: &TomlValue) -> Option<Self> {
         value.as_string().map(|s| Self {
             realm: MetadataRealm::Shared,
-            key: key.clone(),
-            spec: s.clone(),
+            spec: Spec::from_key_value_pair(key, s),
         })
     }
 
-    pub fn spec(&self) -> Result<DependencySpec, DependencySpecError> {
-        self.spec.value().parse::<DependencySpec>()
+    pub fn spec(&self) -> Result<SpecWally, SpecError> {
+        self.spec.as_wally()
     }
 
     pub fn span(&self) -> Range<usize> {
-        self.spec.span()
+        self.spec.value_span()
     }
 
     pub fn source(&self) -> &str {
-        self.spec.source()
+        self.spec.value_source()
     }
 }
 

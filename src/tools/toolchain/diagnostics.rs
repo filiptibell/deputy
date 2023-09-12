@@ -5,28 +5,17 @@ use crate::clients::*;
 
 use super::super::util::*;
 use super::manifest::*;
-use super::tool_spec::*;
 
 pub fn diagnose_tool_spec(tool: &ManifestTool, range: &Range) -> Option<Diagnostic> {
     match tool.spec() {
         Ok(_) => None,
-        Err(e) => {
-            // Missing author / name / version usually happens
-            // when the user is typing, and is not really an error
-            let severity = match e {
-                ToolSpecError::MissingAuthor
-                | ToolSpecError::MissingName
-                | ToolSpecError::MissingVersion => DiagnosticSeverity::WARNING,
-                _ => DiagnosticSeverity::ERROR,
-            };
-            Some(Diagnostic {
-                source: Some(String::from("Tools")),
-                range: *range,
-                message: e.to_string(),
-                severity: Some(severity),
-                ..Default::default()
-            })
-        }
+        Err(e) => Some(Diagnostic {
+            source: Some(String::from("Tools")),
+            range: *range,
+            message: e.to_string(),
+            severity: Some(e.diagnostic_severity()),
+            ..Default::default()
+        }),
     }
 }
 
@@ -63,8 +52,8 @@ pub async fn diagnose_tool_version(
         });
     }
 
-    let spec_ver_name = spec.version.to_string();
-    let spec_tag_name = format!("v{}", spec.version);
+    let spec_ver_name = spec.tag.to_string();
+    let spec_tag_name = format!("v{}", spec.tag);
     if !releases
         .iter()
         .any(|r| r.tag_name == spec_ver_name || r.tag_name == spec_tag_name)
@@ -72,10 +61,7 @@ pub async fn diagnose_tool_version(
         return Some(Diagnostic {
             source: Some(String::from("Tools")),
             range: *range,
-            message: format!(
-                "No release was found matching the version '{}'",
-                spec.version
-            ),
+            message: format!("No release was found matching the tag '{}'", spec.tag),
             severity: Some(DiagnosticSeverity::ERROR),
             ..Default::default()
         });
@@ -83,11 +69,12 @@ pub async fn diagnose_tool_version(
 
     let latest_tag = releases[0].tag_name.trim_start_matches('v');
     let latest_version = Version::parse(latest_tag).ok()?;
-    if latest_version > spec.version {
+    let current_version = Version::parse(&spec_ver_name).ok()?;
+    if latest_version > current_version {
         let metadata = CodeActionMetadata::LatestVersion {
             source_uri: uri.clone(),
             source_text: tool.source().to_string(),
-            version_current: spec.version.to_string(),
+            version_current: spec.tag.to_string(),
             version_latest: latest_version.to_string(),
         };
         return Some(Diagnostic {

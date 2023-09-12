@@ -14,7 +14,6 @@ use crate::util::*;
 
 use super::*;
 
-mod dependency_spec;
 mod diagnostics;
 mod lockfile;
 mod manifest;

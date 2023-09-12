@@ -4,7 +4,6 @@ use tower_lsp::lsp_types::*;
 use crate::clients::*;
 
 use super::super::util::*;
-use super::dependency_spec::*;
 use super::manifest::*;
 
 pub async fn diagnose_dependency(
@@ -16,12 +15,12 @@ pub async fn diagnose_dependency(
 ) -> Option<Diagnostic> {
     let spec = match dep.spec() {
         Ok(spec) => spec,
-        Err(e) if matches!(e, DependencySpecError::InvalidName(_)) => {
+        Err(e) if matches!(e, SpecError::InvalidName(_)) => {
             return Some(Diagnostic {
                 source: Some(String::from("Cargo")),
                 range: *range_name,
                 message: e.to_string(),
-                severity: Some(DiagnosticSeverity::ERROR),
+                severity: Some(e.diagnostic_severity()),
                 ..Default::default()
             })
         }
@@ -30,7 +29,7 @@ pub async fn diagnose_dependency(
                 source: Some(String::from("Cargo")),
                 range: *range_version,
                 message: e.to_string(),
-                severity: Some(DiagnosticSeverity::ERROR),
+                severity: Some(e.diagnostic_severity()),
                 ..Default::default()
             })
         }
@@ -76,7 +75,7 @@ pub async fn diagnose_dependency(
         // HACK: If we have an exact version specified,
         // and it is more recent than the latest non-prerelease, we
         // should not tell the user that a more recent version exists
-        if let Some(exact_version) = spec.version {
+        if let Ok(exact_version) = Version::parse(&spec.version) {
             if exact_version > latest_non_prerelease_version {
                 return None;
             }

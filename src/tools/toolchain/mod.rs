@@ -13,7 +13,6 @@ mod completion;
 mod constants;
 mod diagnostics;
 mod manifest;
-mod tool_spec;
 
 use completion::*;
 use diagnostics::*;
@@ -76,7 +75,7 @@ impl Tool for Toolchain {
         lines.push(format!("## {}", found_spec.name));
         lines.push(format!(
             "By **{}** - **{}**",
-            found_spec.author, found_spec.version
+            found_spec.author, found_spec.tag
         ));
 
         if let Ok(metrics) = self

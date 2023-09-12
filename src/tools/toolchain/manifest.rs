@@ -4,27 +4,31 @@ use std::str::FromStr;
 
 use tracing::error;
 
-use super::tool_spec::*;
+use super::util::*;
 use crate::util::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ManifestTool(TomlString);
+pub struct ManifestTool {
+    spec: Spec,
+}
 
 impl ManifestTool {
-    fn from_toml_value(value: &TomlValue) -> Option<Self> {
-        value.as_string().map(|s| Self(s.clone()))
+    fn from_toml_values(key: &TomlString, value: &TomlValue) -> Option<Self> {
+        value.as_string().map(|s| Self {
+            spec: Spec::from_key_value_pair(key, s),
+        })
     }
 
-    pub fn spec(&self) -> Result<ToolSpec, ToolSpecError> {
-        self.0.value().parse::<ToolSpec>()
+    pub fn spec(&self) -> Result<SpecAftman, SpecError> {
+        self.spec.as_aftman()
     }
 
     pub fn span(&self) -> Range<usize> {
-        self.0.span()
+        self.spec.value_span()
     }
 
     pub fn source(&self) -> &str {
-        self.0.source()
+        self.spec.value_source()
     }
 }
 
@@ -44,7 +48,7 @@ impl Manifest {
         if let Some((_, tools)) = tab.find("tools") {
             if let Some(tools_table) = tools.as_table() {
                 for (k, v) in tools_table.as_ref().iter() {
-                    if let Some(tool) = ManifestTool::from_toml_value(v) {
+                    if let Some(tool) = ManifestTool::from_toml_values(k, v) {
                         manifest.tools.insert(k.value().to_string(), tool);
                     }
                 }

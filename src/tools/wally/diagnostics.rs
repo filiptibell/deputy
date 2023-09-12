@@ -20,7 +20,7 @@ pub async fn diagnose_dependency(
                 source: Some(String::from("Wally")),
                 range: *range,
                 message: e.to_string(),
-                severity: Some(DiagnosticSeverity::ERROR),
+                severity: Some(e.diagnostic_severity()),
                 ..Default::default()
             })
         }
@@ -78,7 +78,7 @@ pub async fn diagnose_dependency(
         // HACK: If we have an exact version specified,
         // and it is more recent than the latest non-prerelease, we
         // should not tell the user that a more recent version exists
-        if let Some(exact_version) = spec.version {
+        if let Ok(exact_version) = Version::parse(&spec.version) {
             if exact_version > latest_non_prerelease_version {
                 return None;
             }
@@ -86,7 +86,7 @@ pub async fn diagnose_dependency(
         let metadata = CodeActionMetadata::LatestVersion {
             source_uri: uri.clone(),
             source_text: dep.source().to_string(),
-            version_current: spec.version_text.to_string(),
+            version_current: spec.version.to_string(),
             version_latest: latest_non_prerelease_version.to_string(),
         };
         return Some(Diagnostic {
