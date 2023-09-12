@@ -14,7 +14,7 @@
         "type": "git",
         "url": "https://github.com/filiptibell/tooling-language-server.git"
     },
-    "icon": "assets/icon.png",
+    "icon": "../../assets/icon-128.png",
     "engines": {
         "vscode": "^1.81.0"
     },

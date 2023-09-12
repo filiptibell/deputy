@@ -1,6 +1,15 @@
 <!-- markdownlint-disable MD033 -->
+<!-- markdownlint-disable MD041 -->
 
-# Tooling Language Server
+<img align="right" width="256" src="assets/icon-256.png" />
+
+<h1 align="center">Tooling Language Server</h1>
+
+<div align="center">
+  <img src="https://vsmarketplacebadges.dev/version/filiptibell.tooling-language-server.png"/>
+</div>
+
+<br/>
 
 A language server for several tools - [Aftman], [Cargo], [Foreman] and [Wally]. <br/>
 Personal / free time project, to learn how to write a language server.
