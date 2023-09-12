@@ -51,7 +51,7 @@ vscode-build:
 vscode-install DEBUG="false":
 	#!/usr/bin/env bash
 	set -euo pipefail
-
+	#
 	echo "🚧 [1/4] Building language server..."
 	just build {{DEBUG}}
 	echo "📦 [2/4] Packing language server..."
@@ -60,13 +60,13 @@ vscode-install DEBUG="false":
 	echo "🧰 [3/4] Building extension..."
 	just vscode-build
 	echo "🚀 [4/4] Installing extension..."
-
+	#
 	cd "./editors/vscode/"
 	WORKDIR="$PWD"
 	EXTENSION=$(find "$WORKDIR/bin/" -name "*.vsix")
 	code --install-extension "$EXTENSION" > /dev/null
 	cd "../../"
-
+	#
 	echo "✅ Installed extension successfully!"
 
 # Builds and publishes the VSCode extension to the marketplace
@@ -74,7 +74,7 @@ vscode-install DEBUG="false":
 vscode-publish: vscode-build
 	#!/usr/bin/env bash
 	set -euo pipefail
-
+	#
 	echo "🚧 [1/4] Building language server..."
 	just build
 	echo "📦 [2/4] Packing language server..."
@@ -83,9 +83,9 @@ vscode-publish: vscode-build
 	echo "🧰 [3/4] Building extension..."
 	just vscode-build
 	echo "🚀 [4/4] Publishing extension..."
-
+	#
 	cd "./editors/vscode/"
 	vsce publish > /dev/null
 	cd "../../"
-
+	#
 	echo "✅ Published extension successfully!"
