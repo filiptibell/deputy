@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use futures::future::join_all;
 use semver::Version;
 use tower_lsp::Client;
 use tracing::trace;
@@ -9,8 +10,10 @@ use crate::server::*;
 use super::*;
 
 mod dependency_spec;
+mod diagnostics;
 mod manifest;
 
+use diagnostics::*;
 use manifest::*;
 
 #[derive(Debug, Clone)]
@@ -141,5 +144,72 @@ impl Tool for Wally {
                 value: lines.join("\n"),
             }),
         }))
+    }
+
+    async fn diagnostics(&self, params: DocumentDiagnosticParams) -> Result<Vec<Diagnostic>> {
+        let uri = params.text_document.uri;
+
+        let document = match self.get_document(&uri) {
+            None => return Ok(Vec::new()),
+            Some(d) => d,
+        };
+        let manifest = match document.as_str().parse::<Manifest>() {
+            Err(_) => return Ok(Vec::new()),
+            Ok(m) => m,
+        };
+        let registry_url = match manifest.metadata {
+            None => return Ok(Vec::new()),
+            Some(m) => m.package.registry,
+        };
+        let registry_urls = match self
+            .clients
+            .wally
+            .get_index_configs_following_fallbacks(&registry_url)
+            .await
+        {
+            Err(_) => return Ok(Vec::new()),
+            Ok(u) => u.into_iter().map(|(k, _)| k).collect::<Vec<_>>(),
+        };
+
+        let deps = (manifest.dependencies.values())
+            .chain(manifest.dev_dependencies.values())
+            .chain(manifest.server_dependencies.values())
+            .map(|dep| {
+                let range = document.lsp_range_from_span(dep.span().clone());
+                (dep.clone(), range)
+            })
+            .collect::<Vec<_>>();
+
+        let mut all_diagnostics = Vec::new();
+        let mut fut_diagnostics = Vec::new();
+        for (dep, range) in &deps {
+            fut_diagnostics.push(diagnose_dependency(
+                &self.clients,
+                &uri,
+                &registry_urls,
+                dep,
+                range,
+            ));
+        }
+
+        for diag in join_all(fut_diagnostics).await.into_iter().flatten() {
+            all_diagnostics.push(diag);
+        }
+
+        Ok(all_diagnostics)
+    }
+
+    async fn code_action(&self, params: CodeActionParams) -> Result<Vec<CodeActionOrCommand>> {
+        let mut actions = Vec::new();
+        for diag in params.context.diagnostics {
+            if let Some(Ok(action)) = diag
+                .data
+                .as_ref()
+                .map(ResolveContext::<CodeActionMetadata>::try_from)
+            {
+                actions.push(action.into_inner().into_code_action(diag.clone()))
+            }
+        }
+        Ok(actions)
     }
 }

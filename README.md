@@ -51,15 +51,19 @@ Features that will be supported:
 <details>
 <summary>Wally</summary>
 
-Features that will be supported:
+Features that are currently supported:
 
 - Diagnostics for:
   - A newer package version is available
   - Invalid author / name / version
-  - Invalid package realm
-- Autocomplete for packages - authors + names + versions
 - Hover for information about a package (description, links)
 - Quick action to update to a new package version
+
+Features that will be supported:
+
+- Diagnostics for:
+  - Invalid package realm
+- Autocomplete for packages - authors + names + versions
 
 </details>
 

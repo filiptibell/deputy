@@ -27,6 +27,7 @@ pub struct DependencySpec {
     pub name: String,
     pub version: Option<Version>,
     pub version_req: VersionReq,
+    pub version_text: String,
 }
 
 impl FromStr for DependencySpec {
@@ -64,13 +65,15 @@ impl FromStr for DependencySpec {
             return Err(DependencySpecError::MissingVersion);
         }
 
-        let package_version = validate_version(&s[idx_at + 1..])?;
+        let version_text = &s[idx_at + 1..];
+        let package_version = validate_version(version_text)?;
 
         Ok(Self {
             author: package_author,
             name: package_name,
-            version: Version::parse(&s[idx_at + 1..]).ok(),
+            version: Version::parse(version_text).ok(),
             version_req: package_version,
+            version_text: version_text.to_string(),
         })
     }
 }
