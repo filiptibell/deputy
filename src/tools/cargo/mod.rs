@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use futures::future::join_all;
 use tracing::trace;
@@ -7,7 +6,6 @@ use tracing::trace;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::Client;
-use tracing::warn;
 
 use crate::server::*;
 use crate::util::*;
@@ -38,29 +36,24 @@ impl Cargo {
         }
     }
 
-    fn get_documents(&self, uri: &Url) -> Option<(Document, Document)> {
-        if matches!(
+    fn get_documents(&self, uri: &Url) -> Option<(Document, Document, Manifest, Lockfile)> {
+        if !matches!(
             uri.file_name().as_deref(),
             Some("Cargo.toml" | "cargo.toml")
         ) {
-            let documents = Arc::clone(&self.documents);
-
-            let manifest = documents.get(uri).map(|r| r.clone());
-            let lockfile = documents
-                .get(&uri.with_file_name("Cargo.lock").unwrap())
-                .map(|r| r.clone());
-
-            if lockfile.is_none() {
-                warn!("Cargo.lock missing for manifest at '{uri}'")
-            }
-
-            match (manifest, lockfile) {
-                (Some(m), Some(l)) => Some((m, l)),
-                _ => None,
-            }
-        } else {
-            None
+            return None;
         }
+
+        let doc_manifest = self.documents.get(uri).map(|r| r.clone())?;
+        let doc_lockfile = self
+            .documents
+            .get(&uri.with_file_name("Cargo.lock").unwrap())
+            .map(|r| r.clone())?;
+
+        let manifest = doc_manifest.as_str().parse::<Manifest>().ok()?;
+        let lockfile = doc_lockfile.as_str().parse::<Lockfile>().ok()?;
+
+        Some((doc_manifest, doc_lockfile, manifest, lockfile))
     }
 }
 
@@ -70,16 +63,9 @@ impl Tool for Cargo {
         let uri = params.text_document_position_params.text_document.uri;
         let pos = params.text_document_position_params.position;
 
-        let (document, lockdoc) = match self.get_documents(&uri) {
+        let (document, _, manifest, lockfile) = match self.get_documents(&uri) {
             None => return Ok(None),
             Some(d) => d,
-        };
-        let (manifest, lockfile) = match (
-            document.as_str().parse::<Manifest>(),
-            lockdoc.as_str().parse::<Lockfile>(),
-        ) {
-            (Ok(m), Ok(l)) => (m, l),
-            _ => return Ok(None),
         };
 
         let offset = document.lsp_position_to_offset(pos);
@@ -176,16 +162,9 @@ impl Tool for Cargo {
     async fn diagnostics(&self, params: DocumentDiagnosticParams) -> Result<Vec<Diagnostic>> {
         let uri = params.text_document.uri;
 
-        let (document, lockdoc) = match self.get_documents(&uri) {
+        let (document, _, manifest, _) = match self.get_documents(&uri) {
             None => return Ok(Vec::new()),
             Some(d) => d,
-        };
-        let (manifest, _lockfile) = match (
-            document.as_str().parse::<Manifest>(),
-            lockdoc.as_str().parse::<Lockfile>(),
-        ) {
-            (Ok(m), Ok(l)) => (m, l),
-            _ => return Ok(Vec::new()),
         };
 
         let deps = (manifest.dependencies.values())

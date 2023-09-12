@@ -34,8 +34,10 @@ impl Toolchain {
         }
     }
 
-    fn get_document(&self, uri: &Url) -> Option<Document> {
-        self.documents.get(uri).map(|r| r.clone())
+    fn get_document(&self, uri: &Url) -> Option<(Document, Manifest)> {
+        let document = self.documents.get(uri).map(|r| r.clone())?;
+        let manifest = Manifest::parse(document.as_str()).ok()?;
+        Some((document, manifest))
     }
 }
 
@@ -45,13 +47,9 @@ impl Tool for Toolchain {
         let uri = params.text_document_position_params.text_document.uri;
         let pos = params.text_document_position_params.position;
 
-        let document = match self.get_document(&uri) {
+        let (document, manifest) = match self.get_document(&uri) {
             None => return Ok(None),
             Some(d) => d,
-        };
-        let manifest = match Manifest::parse(document.as_str()) {
-            Err(_) => return Ok(None),
-            Ok(m) => m,
         };
 
         let offset = document.lsp_position_to_offset(pos);
@@ -103,13 +101,9 @@ impl Tool for Toolchain {
         let uri = params.text_document_position.text_document.uri;
         let pos = params.text_document_position.position;
 
-        let document = match self.get_document(&uri) {
+        let (document, manifest) = match self.get_document(&uri) {
             None => return Ok(CompletionResponse::Array(Vec::new())),
             Some(d) => d,
-        };
-        let manifest = match Manifest::parse(document.as_str()) {
-            Err(_) => return Ok(CompletionResponse::Array(Vec::new())),
-            Ok(m) => m,
         };
 
         let offset = document.lsp_position_to_offset(pos);
@@ -134,13 +128,9 @@ impl Tool for Toolchain {
     async fn diagnostics(&self, params: DocumentDiagnosticParams) -> Result<Vec<Diagnostic>> {
         let uri = params.text_document.uri;
 
-        let document = match self.get_document(&uri) {
+        let (document, manifest) = match self.get_document(&uri) {
             None => return Ok(Vec::new()),
             Some(d) => d,
-        };
-        let manifest = match Manifest::parse(document.as_str()) {
-            Err(_) => return Ok(Vec::new()),
-            Ok(m) => m,
         };
 
         let tools = manifest

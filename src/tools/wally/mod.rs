@@ -31,8 +31,34 @@ impl Wally {
         }
     }
 
-    fn get_document(&self, uri: &Url) -> Option<Document> {
-        self.documents.get(uri).map(|r| r.clone())
+    async fn get_manifest_with_registries(
+        &self,
+        uri: &Url,
+    ) -> Option<(Document, Manifest, Vec<String>)> {
+        let document = self.documents.get(uri).map(|r| r.clone())?;
+        let manifest = Manifest::parse(document.as_str()).ok()?;
+
+        let primary_registry_url = match &manifest.metadata {
+            None => return None,
+            Some(m) => m.package.registry.as_ref(),
+        };
+
+        let index_configs = match self
+            .clients
+            .wally
+            .get_index_configs_following_fallbacks(primary_registry_url)
+            .await
+        {
+            Err(_) => return None,
+            Ok(c) => c,
+        };
+
+        let registry_urls = index_configs
+            .into_iter()
+            .map(|(k, _)| k)
+            .collect::<Vec<_>>();
+
+        Some((document, manifest, registry_urls))
     }
 }
 
@@ -42,27 +68,11 @@ impl Tool for Wally {
         let uri = params.text_document_position_params.text_document.uri;
         let pos = params.text_document_position_params.position;
 
-        let document = match self.get_document(&uri) {
-            None => return Ok(None),
-            Some(d) => d,
-        };
-        let manifest = match document.as_str().parse::<Manifest>() {
-            Err(_) => return Ok(None),
-            Ok(m) => m,
-        };
-        let registry_url = match manifest.metadata {
-            None => return Ok(None),
-            Some(m) => m.package.registry,
-        };
-        let registry_urls = match self
-            .clients
-            .wally
-            .get_index_configs_following_fallbacks(&registry_url)
-            .await
-        {
-            Err(_) => return Ok(None),
-            Ok(u) => u.into_iter().map(|(k, _)| k).collect::<Vec<_>>(),
-        };
+        let (document, manifest, registry_urls) =
+            match self.get_manifest_with_registries(&uri).await {
+                None => return Ok(None),
+                Some(d) => d,
+            };
 
         let offset = document.lsp_position_to_offset(pos);
         let try_find = |deps: &HashMap<String, ManifestDependency>| {
@@ -144,27 +154,11 @@ impl Tool for Wally {
     async fn diagnostics(&self, params: DocumentDiagnosticParams) -> Result<Vec<Diagnostic>> {
         let uri = params.text_document.uri;
 
-        let document = match self.get_document(&uri) {
-            None => return Ok(Vec::new()),
-            Some(d) => d,
-        };
-        let manifest = match document.as_str().parse::<Manifest>() {
-            Err(_) => return Ok(Vec::new()),
-            Ok(m) => m,
-        };
-        let registry_url = match manifest.metadata {
-            None => return Ok(Vec::new()),
-            Some(m) => m.package.registry,
-        };
-        let registry_urls = match self
-            .clients
-            .wally
-            .get_index_configs_following_fallbacks(&registry_url)
-            .await
-        {
-            Err(_) => return Ok(Vec::new()),
-            Ok(u) => u.into_iter().map(|(k, _)| k).collect::<Vec<_>>(),
-        };
+        let (document, manifest, registry_urls) =
+            match self.get_manifest_with_registries(&uri).await {
+                None => return Ok(Vec::new()),
+                Some(d) => d,
+            };
 
         let deps = (manifest.dependencies.values())
             .chain(manifest.dev_dependencies.values())
