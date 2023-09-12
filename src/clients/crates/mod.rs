@@ -1,7 +1,7 @@
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc, Mutex,
+        Arc,
     },
     time::Duration,
 };
@@ -18,12 +18,13 @@ mod cache;
 use cache::*;
 
 mod consts;
-mod models;
 mod requests;
+
+pub mod models;
 
 #[derive(Debug, Clone)]
 pub struct CratesClient {
-    agent: Arc<Mutex<Agent>>,
+    agent: Agent,
     cache: CratesCache,
     crawl_limit_tx: Sender<()>,
     crawl_limited: Arc<AtomicBool>,
@@ -33,7 +34,7 @@ impl CratesClient {
     pub fn new(agent: Agent) -> Self {
         let (crawl_limit_tx, _) = broadcast(32);
         Self {
-            agent: Arc::new(Mutex::new(agent)),
+            agent,
             cache: CratesCache::new(),
             crawl_limit_tx,
             crawl_limited: Arc::new(AtomicBool::new(false)),
@@ -41,8 +42,7 @@ impl CratesClient {
     }
 
     async fn request_get(&self, url: impl Into<String>) -> RequestResult<Vec<u8>> {
-        let client = self.agent.lock().unwrap().clone();
-        Request::get(url).send(client).await
+        Request::get(url).send(&self.agent).await
     }
 
     fn emit_result<T>(&self, result: &RequestResult<T>) {

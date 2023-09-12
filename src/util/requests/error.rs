@@ -26,10 +26,14 @@ pub enum RequestError {
     FromUtf8(#[from] FromUtf8Error),
     #[error("request failed - {0}")]
     Response(#[from] ResponseError),
+    #[error("failed to parse url - {0}")]
+    UrlParse(#[from] url::ParseError),
     #[error("client error - {0}")]
     Client(String), // Request builder error, before sending
     #[error("json error - {0}")]
     Json(String),
+    #[error("error - {0}")]
+    Custom(String),
     #[error("unknown error")]
     #[default]
     Unknown,

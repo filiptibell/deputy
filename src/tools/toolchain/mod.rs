@@ -59,7 +59,7 @@ impl Tool for Toolchain {
         let found = manifest.tools.iter().find_map(|(_, tool)| {
             let span = tool.span();
             if offset >= span.start && offset <= span.end {
-                Some((document.lsp_range_from_range(span.clone()), tool.spec()))
+                Some((document.lsp_range_from_span(span.clone()), tool.spec()))
             } else {
                 None
             }
@@ -123,7 +123,7 @@ impl Tool for Toolchain {
             Some(tool) => tool,
         };
 
-        let range_before = document.lsp_range_to_range(Range {
+        let range_before = document.lsp_range_to_span(Range {
             start: document.lsp_position_from_offset(found.1.span().start + 1),
             end: pos,
         });
@@ -148,7 +148,7 @@ impl Tool for Toolchain {
             .tools
             .values()
             .map(|tool| {
-                let range = document.lsp_range_from_range(tool.span().clone());
+                let range = document.lsp_range_from_span(tool.span().clone());
                 (tool.clone(), range)
             })
             .collect::<Vec<_>>();

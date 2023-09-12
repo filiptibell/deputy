@@ -9,7 +9,7 @@ use tower_lsp::lsp_types::*;
 
 use crate::util::*;
 
-type StdRange = std::ops::Range<usize>;
+type Span = std::ops::Range<usize>;
 
 pub type Documents = Arc<DashMap<Url, Document>>;
 
@@ -48,21 +48,21 @@ impl Document {
         self.text.pos_to_lsp_pos(&pos).unwrap()
     }
 
-    pub fn lsp_range_from_range(&self, range: StdRange) -> Range {
-        let start = self.lsp_position_from_offset(range.start);
-        let end = self.lsp_position_from_offset(range.end);
+    pub fn lsp_range_from_span(&self, span: Span) -> Range {
+        let start = self.lsp_position_from_offset(span.start);
+        let end = self.lsp_position_from_offset(span.end);
         Range::new(start, end)
     }
 
-    pub fn lsp_range_to_range(&self, range: Range) -> StdRange {
+    pub fn lsp_range_to_span(&self, range: Range) -> Span {
         let start = self.lsp_position_to_offset(range.start);
         let end = self.lsp_position_to_offset(range.end);
-        StdRange { start, end }
+        Span { start, end }
     }
 
-    pub fn create_edit(&self, range: StdRange, new_text: impl Into<String>) -> TextEdit {
+    pub fn create_edit(&self, span: Span, new_text: impl Into<String>) -> TextEdit {
         TextEdit {
-            range: self.lsp_range_from_range(range),
+            range: self.lsp_range_from_span(span),
             new_text: new_text.into(),
         }
     }

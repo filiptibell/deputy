@@ -99,7 +99,7 @@ impl Tool for Cargo {
 
                 hovered_span.map(|span| {
                     (
-                        document.lsp_range_from_range(span.clone()),
+                        document.lsp_range_from_span(span.clone()),
                         key.to_string(),
                         dep.version_source().to_string(),
                     )
@@ -193,8 +193,8 @@ impl Tool for Cargo {
             .chain(manifest.dev_dependencies.values())
             .chain(manifest.build_dependencies.values())
             .map(|dep| {
-                let range_name = document.lsp_range_from_range(dep.name_span().clone());
-                let range_version = document.lsp_range_from_range(dep.version_span().clone());
+                let range_name = document.lsp_range_from_span(dep.name_span().clone());
+                let range_version = document.lsp_range_from_span(dep.version_span().clone());
                 (dep.clone(), range_name, range_version)
             })
             .collect::<Vec<_>>();

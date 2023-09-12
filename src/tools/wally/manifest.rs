@@ -5,18 +5,12 @@ use std::str::FromStr;
 use tracing::error;
 
 use super::dependency_spec::*;
+use crate::clients::wally::models::*;
 use crate::util::*;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ManifestDependencyKind {
-    Shared,
-    Dev,
-    Server,
-}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ManifestDependency {
-    kind: ManifestDependencyKind,
+    realm: MetadataRealm,
     key: TomlString,
     spec: TomlString,
 }
@@ -24,7 +18,7 @@ pub struct ManifestDependency {
 impl ManifestDependency {
     fn from_toml_values(key: &TomlString, value: &TomlValue) -> Option<Self> {
         value.as_string().map(|s| Self {
-            kind: ManifestDependencyKind::Shared,
+            realm: MetadataRealm::Shared,
             key: key.clone(),
             spec: s.clone(),
         })
@@ -45,6 +39,7 @@ impl ManifestDependency {
 
 #[derive(Debug, Clone, Default)]
 pub struct Manifest {
+    pub metadata: Option<Metadata>,
     pub dependencies: HashMap<String, ManifestDependency>,
     pub dev_dependencies: HashMap<String, ManifestDependency>,
     pub server_dependencies: HashMap<String, ManifestDependency>,
@@ -59,48 +54,53 @@ impl Manifest {
 
         let mut manifest = Manifest::default();
 
-        let fill = |map_key: &str,
-                    map: &mut HashMap<String, ManifestDependency>,
-                    kind: ManifestDependencyKind| {
-            if let Some((_, deps)) = tab.find(map_key) {
-                if let Some(deps_table) = deps.as_table() {
-                    for (k, v) in deps_table.as_ref().iter() {
-                        if let Some(mut tool) = ManifestDependency::from_toml_values(k, v) {
-                            tool.kind = kind;
-                            map.insert(k.value().to_string(), tool);
+        let fill =
+            |map_key: &str, map: &mut HashMap<String, ManifestDependency>, realm: MetadataRealm| {
+                if let Some((_, deps)) = tab.find(map_key) {
+                    if let Some(deps_table) = deps.as_table() {
+                        for (k, v) in deps_table.as_ref().iter() {
+                            if let Some(mut tool) = ManifestDependency::from_toml_values(k, v) {
+                                tool.realm = realm;
+                                map.insert(k.value().to_string(), tool);
+                            }
                         }
                     }
                 }
-            }
-        };
+            };
 
         fill(
             "dependencies",
             &mut manifest.dependencies,
-            ManifestDependencyKind::Shared,
+            MetadataRealm::Shared,
         );
         fill(
             "dev-dependencies",
             &mut manifest.dev_dependencies,
-            ManifestDependencyKind::Dev,
+            MetadataRealm::Dev,
         );
         fill(
             "server-dependencies",
             &mut manifest.server_dependencies,
-            ManifestDependencyKind::Server,
+            MetadataRealm::Server,
         );
 
         Some(manifest)
     }
 
     pub fn parse(source: impl AsRef<str>) -> Result<Self, TomlError> {
-        match TomlValue::new(source.as_ref()) {
+        let mut manifest = match TomlValue::new(source.as_ref()) {
             Ok(value) => Ok(Self::from_toml_value(&value).expect("Toml root should be a table")),
             Err(e) => {
                 error!("failed to deserialize tools manifest - {e}");
                 Err(e)
             }
+        }?;
+
+        if let Ok(metadata) = toml::from_str(source.as_ref()) {
+            manifest.metadata = metadata;
         }
+
+        Ok(manifest)
     }
 }
 

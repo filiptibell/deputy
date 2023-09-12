@@ -13,8 +13,9 @@ mod cache;
 use cache::*;
 
 mod consts;
-mod models;
 mod requests;
+
+pub mod models;
 
 #[derive(Debug, Clone)]
 pub struct GithubClient {
@@ -38,13 +39,13 @@ impl GithubClient {
     }
 
     async fn request_get(&self, url: impl Into<String>) -> RequestResult<Vec<u8>> {
-        let client = self.agent.lock().unwrap().clone();
-        let client_auth = self.agent_auth.lock().unwrap().clone();
+        let agent = self.agent.lock().unwrap().clone();
+        let agent_auth = self.agent_auth.lock().unwrap().clone();
 
         Request::get(url)
             .with_header("Content-Type", consts::GITHUB_API_CONTENT_TYPE)
-            .with_header_opt("Authorization", client_auth)
-            .send(client)
+            .with_header_opt("Authorization", agent_auth)
+            .send(&agent)
             .await
     }
 
