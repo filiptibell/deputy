@@ -1,6 +1,9 @@
+use std::time::Duration;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
-use tracing::{debug, warn};
+use smol::Timer;
+use tracing::{debug, trace, warn};
 
 use tower_lsp::lsp_types::notification::Notification;
 
@@ -45,12 +48,14 @@ impl Server {
         let github = self.clients.github.clone();
         smol::spawn(async move {
             loop {
-                let is_rate_limited = github.wait_until_rate_limited_changes().await;
-                if is_rate_limited {
+                Timer::after(Duration::from_secs(2)).await;
+                trace!("Checking rate limits");
+                if github.is_rate_limited() {
                     let notif = RateLimitNotification::github();
                     client
                         .send_notification::<RateLimitNotification>(notif)
                         .await;
+                    Timer::after(Duration::from_secs(240)).await;
                 }
             }
         })
