@@ -83,6 +83,7 @@ pub async fn diagnose_dependency(
                 return None;
             }
         }
+        let name = spec.name.as_str();
         let metadata = CodeActionMetadata::LatestVersion {
             source_uri: uri.clone(),
             source_text: dep.source().to_string(),
@@ -93,7 +94,7 @@ pub async fn diagnose_dependency(
             source: Some(String::from("Wally")),
             range: *range,
             message: format!(
-                "A newer version is available.\
+                "A newer version of `{name}` is available.\
                 \nThe latest version is `{latest_non_prerelease_version}`"
             ),
             severity: Some(DiagnosticSeverity::INFORMATION),

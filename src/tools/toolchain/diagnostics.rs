@@ -71,6 +71,7 @@ pub async fn diagnose_tool_version(
     let latest_version = Version::parse(latest_tag).ok()?;
     let current_version = Version::parse(&spec_ver_name).ok()?;
     if latest_version > current_version {
+        let name = spec.name;
         let metadata = CodeActionMetadata::LatestVersion {
             source_uri: uri.clone(),
             source_text: tool.source().to_string(),
@@ -81,7 +82,7 @@ pub async fn diagnose_tool_version(
             source: Some(String::from("Tools")),
             range: *range,
             message: format!(
-                "A newer version is available.\
+                "A newer version of `{name}` is available.\
                 \nThe latest version is `{latest_version}`"
             ),
             severity: Some(DiagnosticSeverity::INFORMATION),

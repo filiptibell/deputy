@@ -70,6 +70,7 @@ pub async fn diagnose_dependency(
             .map(|version| version.pre.is_empty())
             .unwrap_or_default()
     })?;
+    let latest_non_prerelease_name = latest_non_prerelease.name.as_str();
     let latest_non_prerelease_version = Version::parse(&latest_non_prerelease.version).ok()?;
     if !spec.version_req.matches(&latest_non_prerelease_version) {
         // HACK: If we have an exact version specified,
@@ -90,7 +91,7 @@ pub async fn diagnose_dependency(
             source: Some(String::from("Cargo")),
             range: *range_version,
             message: format!(
-                "A newer version is available.\
+                "A newer version of `{latest_non_prerelease_name}` is available.\
                 \nThe latest version is `{latest_non_prerelease_version}`"
             ),
             severity: Some(DiagnosticSeverity::INFORMATION),
