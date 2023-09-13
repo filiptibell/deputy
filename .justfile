@@ -23,6 +23,8 @@ vscode-bundle DEBUG="false":
 		mkdir -p ./editors/vscode/out/release/
 		cp target/release/tooling-language-server{{ext}} ./editors/vscode/out/release/
 	fi
+	cp CHANGELOG.md ./editors/vscode/CHANGELOG.md
+	cp LICENSE.txt ./editors/vscode/LICENSE.txt
 
 # Cleans up artifacts from building the VSCode extension
 [no-exit-message]
@@ -33,6 +35,8 @@ vscode-cleanup:
 	WORKDIR="$PWD"
 	rm -rf "$WORKDIR/out"
 	rm -rf "$WORKDIR/bin"
+	rm -rf "$WORKDIR/CHANGELOG.md"
+	rm -rf "$WORKDIR/LICENSE.txt"
 	mkdir -p "$WORKDIR/bin"
 	cd "../../"
 

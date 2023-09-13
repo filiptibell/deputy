@@ -19,15 +19,16 @@
 
 <br/>
 
-A language server for several tools - [Aftman], [Cargo], [Foreman] and [Wally]. <br/>
-Personal / free time project, to learn how to write a language server.
+A language server for several tools - [Aftman], [Cargo], [Foreman] and [Wally].
+
+Provides autocomplete for tools & dependencies, diagnostics for out-of-date versions, and more.
 
 [Aftman]: https://github.com/LPGhatguy/aftman
 [Cargo]: https://crates.io
 [Foreman]: https://github.com/roblox/foreman
 [Wally]: https://github.com/UpliftGames/wally
 
-## Tools
+## Features
 
 <details>
 <summary>Aftman</summary>

@@ -12,3 +12,8 @@
 
 /*.vsix
 /**/*.vsix
+
+# Generated / copied files
+
+/CHANGELOG.md
+/LICENSE.txt
