@@ -11,30 +11,14 @@ import {
 	ServerOptions,
 } from "vscode-languageclient/node";
 
-import { getAuthForGitHub } from "./auth";
-import { fileExists } from "./fs";
-import {
-	RATE_LIMIT_METHOD,
-	handleRateLimitRequest,
-	RateLimitRequest,
-} from "./requests";
+import { getExtensionContext } from "./extension";
+
+import auth from "./auth";
+import requests from "./requests";
+import util from "./util";
 
 let client: LanguageClient | undefined;
-let context: vscode.ExtensionContext;
 let outputChannel: vscode.OutputChannel;
-
-/**
-	Sets the extension context for the language server.
-
-	This will be used to retrieve stored authentication tokens.
-*/
-export const setExtensionContext = (ctx: vscode.ExtensionContext) => {
-	if (context === undefined) {
-		context = ctx;
-	} else {
-		throw new Error("Extension context can only be set once");
-	}
-};
 
 /**
 	Starts the language server.
@@ -42,12 +26,11 @@ export const setExtensionContext = (ctx: vscode.ExtensionContext) => {
 	Will throw an error if the language server has already been started.
 */
 export const startServer = async () => {
-	if (context === undefined) {
-		throw new Error("Extension context must be set");
-	}
 	if (client !== undefined) {
 		throw new Error("Language server has already been started");
 	}
+
+	const context = getExtensionContext();
 
 	// Create persistent output channel if one does not exist
 
@@ -59,7 +42,7 @@ export const startServer = async () => {
 
 	// Retrieve and validate stored authentication, if any
 
-	const githubAuthToken = await getAuthForGitHub(context);
+	const githubAuthToken = await auth.github.get();
 
 	// Find which executable was bundled with the extension - either debug or release
 
@@ -82,9 +65,9 @@ export const startServer = async () => {
 		exeName
 	);
 
-	const command = (await fileExists(exeRelease))
+	const command = (await util.fs.fileExists(exeRelease))
 		? exeRelease.fsPath
-		: (await fileExists(exeDebug))
+		: (await util.fs.fileExists(exeDebug))
 		? exeDebug.fsPath
 		: null;
 	if (!command) {
@@ -138,9 +121,10 @@ export const startServer = async () => {
 	client.start();
 
 	// Listen for custom requests from server
-	client.onRequest(RATE_LIMIT_METHOD, async (request: RateLimitRequest) => {
-		return await handleRateLimitRequest(context, request);
-	});
+	client.onRequest(
+		requests.rateLimit.RATE_LIMIT_METHOD,
+		requests.rateLimit.handleRateLimitRequest
+	);
 };
 
 /**

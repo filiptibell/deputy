@@ -35,6 +35,12 @@
                     "wally.lock"
                 ]
             }
+        ],
+        "commands": [
+            {
+                "command": "tooling-language-server.resetAuthForGitHub",
+                "title": "Tooling Language Server - Reset GitHub Personal Access Token"
+            }
         ]
     },
     "scripts": {

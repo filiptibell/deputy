@@ -3,13 +3,12 @@
 import * as vscode from "vscode";
 import axios from "axios";
 
+import { getExtensionContext } from "../extension";
+
 const GITHUB_AUTH_TOKEN_STORAGE_KEY = "auth.github.token";
 
 // https://docs.github.com/en/rest/overview/authenticating-to-the-rest-api
-const validateAuthForGitHub = async (
-	context: vscode.ExtensionContext,
-	token: string
-): Promise<boolean> => {
+const validate = async (token: string): Promise<boolean> => {
 	return new Promise((resolve) => {
 		axios
 			.get("https://api.github.com/octocat", {
@@ -35,14 +34,15 @@ const validateAuthForGitHub = async (
 
 	Any token returned from this function is guaranteed to currently be valid.
 */
-export const promptAuthForGitHub = async (
-	context: vscode.ExtensionContext
-): Promise<string | null> => {
+export const prompt = async (): Promise<string | null> => {
+	const context = getExtensionContext();
+
 	const result = await vscode.window.showInformationMessage(
 		"The GitHub API rate limit has been reached." +
 			"\nSome functionality will be disabled until authenticated.",
 		"Set Personal Access Token"
 	);
+
 	if (result === "Set Personal Access Token") {
 		let prompt = "Enter a token";
 		while (true) {
@@ -53,10 +53,7 @@ export const promptAuthForGitHub = async (
 				ignoreFocusOut: true,
 			});
 			if (token !== undefined) {
-				if (
-					token !== "" &&
-					(await validateAuthForGitHub(context, token))
-				) {
+				if (token !== "" && (await validate(token))) {
 					await context.globalState.update(
 						GITHUB_AUTH_TOKEN_STORAGE_KEY,
 						token
@@ -71,6 +68,7 @@ export const promptAuthForGitHub = async (
 			}
 		}
 	}
+
 	return null;
 };
 
@@ -82,12 +80,12 @@ export const promptAuthForGitHub = async (
 
 	Any token returned from this function is guaranteed to currently be valid.
 */
-export const getAuthForGitHub = async (
-	context: vscode.ExtensionContext
-): Promise<string | undefined> => {
+export const get = async (): Promise<string | undefined> => {
+	const context = getExtensionContext();
+
 	const token = context.globalState.get(GITHUB_AUTH_TOKEN_STORAGE_KEY);
 	if (typeof token === "string" && token.length > 0) {
-		if (await validateAuthForGitHub(context, token)) {
+		if (await validate(token)) {
 			return token;
 		} else {
 			await context.globalState.update(
@@ -96,6 +94,7 @@ export const getAuthForGitHub = async (
 			);
 		}
 	}
+
 	return undefined;
 };
 
@@ -104,9 +103,9 @@ export const getAuthForGitHub = async (
 
 	Returns `true` if the token was removed from global storage, `false` if it did not exist.
 */
-export const resetAuthForGitHub = async (
-	context: vscode.ExtensionContext
-): Promise<boolean> => {
+export const reset = async (): Promise<boolean> => {
+	const context = getExtensionContext();
+
 	if (!!context.globalState.get(GITHUB_AUTH_TOKEN_STORAGE_KEY)) {
 		await context.globalState.update(
 			GITHUB_AUTH_TOKEN_STORAGE_KEY,

@@ -1,6 +1,4 @@
-import * as vscode from "vscode";
-
-import { promptAuthForGitHub } from "./auth";
+import auth from "../auth";
 
 export const RATE_LIMIT_METHOD = "$/internal_request/rate_limit";
 
@@ -17,7 +15,6 @@ export type RateLimitResponse = {
 };
 
 export const handleRateLimitRequest = async (
-	context: vscode.ExtensionContext,
 	request: RateLimitRequest
 ): Promise<RateLimitResponse> => {
 	let response: RateLimitResponse = {
@@ -26,9 +23,9 @@ export const handleRateLimitRequest = async (
 	};
 
 	if (request.kind === "GitHub") {
-		const auth = await promptAuthForGitHub(context);
-		if (auth) {
-			response.value = auth;
+		const token = await auth.github.prompt();
+		if (token) {
+			response.value = token;
 		}
 	}
 
