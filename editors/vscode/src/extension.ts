@@ -11,63 +11,36 @@ import {
 	ServerOptions,
 } from "vscode-languageclient/node";
 
-import { promptAuthForGitHub } from "./auth";
+import { getAuthForGitHub } from "./auth";
 import { fileExists } from "./fs";
-import { RateLimitNotification } from "./notifications";
+import {
+	RATE_LIMIT_METHOD,
+	handleRateLimitRequest,
+	RateLimitRequest,
+} from "./requests";
 
 let client: LanguageClient;
-let context: vscode.ExtensionContext;
-let outputChannel: vscode.OutputChannel;
 
-const GITHUB_AUTH_TOKEN_STORAGE_KEY = "auth.github.token";
-
-const sendAuthForGitHub = async () => {
-	const auth = await promptAuthForGitHub();
-	if (!auth) {
-		outputChannel.appendLine("AUTH GitHub token prompt was dismissed");
-		return;
-	}
-
-	const notification: RateLimitNotification = {
-		kind: "GitHub",
-		value: auth,
-	};
-
-	outputChannel.appendLine("AUTH saving GitHub token to global context");
-	await context.globalState.update(GITHUB_AUTH_TOKEN_STORAGE_KEY, auth);
-
-	outputChannel.appendLine("AUTH sending GitHub token to server");
-	client.sendNotification("$/internal_message/rate_limit", notification);
-};
-
-export async function activate(extensionContext: vscode.ExtensionContext) {
-	context = extensionContext;
-
-	// Try to load previously stored auth
-	let githubAuthToken = context.globalState.get(
-		GITHUB_AUTH_TOKEN_STORAGE_KEY
-	);
-
-	// Create a persistent output channel to use
-	outputChannel = vscode.window.createOutputChannel(
+export async function activate(context: vscode.ExtensionContext) {
+	const outputChannel = vscode.window.createOutputChannel(
 		"Tooling Language Server"
 	);
 
 	// Find which executable was bundled with the extension - either debug or release
 
-	let exeName =
+	const exeName =
 		os.platform() === "win32"
 			? "tooling-language-server.exe"
 			: "tooling-language-server";
 
-	let exeDebug = vscode.Uri.joinPath(
+	const exeDebug = vscode.Uri.joinPath(
 		context.extensionUri,
 		"out",
 		"debug",
 		exeName
 	);
 
-	let exeRelease = vscode.Uri.joinPath(
+	const exeRelease = vscode.Uri.joinPath(
 		context.extensionUri,
 		"out",
 		"release",
@@ -84,29 +57,28 @@ export async function activate(extensionContext: vscode.ExtensionContext) {
 		return;
 	}
 
-	// Create args for language server
+	// Create args for language server, including any stored auth
 
-	let isDebug = command === exeDebug.fsPath;
-	let options: ExecutableOptions = isDebug
+	const isDebug = command === exeDebug.fsPath;
+	const options: ExecutableOptions = isDebug
 		? { env: { RUST_LOG: "debug", RUST_BACKTRACE: "1" } }
 		: { env: {} };
-	if (typeof githubAuthToken === "string" && githubAuthToken.length > 0) {
-		outputChannel.appendLine(" AUTH found stored GitHub token");
-		options.env["GITHUB_TOKEN"] = githubAuthToken;
-	}
-	let server: Executable = {
+
+	options.env["GITHUB_TOKEN"] = getAuthForGitHub(context);
+
+	const server: Executable = {
 		command,
 		options,
 	};
 
 	// Create language server & client config
 
-	let serverOptions: ServerOptions = {
+	const serverOptions: ServerOptions = {
 		run: server,
 		debug: server,
 	};
 
-	let clientOptions: LanguageClientOptions = {
+	const clientOptions: LanguageClientOptions = {
 		stdioEncoding: "utf8",
 		documentSelector: [{ scheme: "file", language: "toml" }],
 		diagnosticCollectionName: "Tooling Language Server",
@@ -130,15 +102,10 @@ export async function activate(extensionContext: vscode.ExtensionContext) {
 
 	client.start();
 
-	// Listen for custom notifications from server
-	client.onNotification(
-		"$/internal_message/rate_limit",
-		(value: RateLimitNotification) => {
-			if (value.kind === "GitHub") {
-				sendAuthForGitHub();
-			}
-		}
-	);
+	// Listen for custom requests from server
+	client.onRequest(RATE_LIMIT_METHOD, async (request: RateLimitRequest) => {
+		return await handleRateLimitRequest(context, request);
+	});
 }
 
 export function deactivate() {

@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use dashmap::DashMap;
 
-use tower_lsp::lsp_types::notification::Notification;
 use tower_lsp::{Client, LspService, Server as LspServer};
 
 use crate::clients::*;
@@ -12,9 +11,7 @@ use crate::util::*;
 mod document;
 mod initialize;
 mod language_server;
-mod notifications;
-
-use notifications::*;
+mod requests;
 
 pub use document::*;
 
@@ -47,7 +44,7 @@ impl Server {
 
     pub async fn serve(args: &Arguments) {
         let (service, socket) = LspService::build(|client| Self::new(client, args))
-            .custom_method(RateLimitNotification::METHOD, Self::on_notified_rate_limit)
+            // FUTURE: Add custom notifications here
             .finish();
 
         match args.transport {
