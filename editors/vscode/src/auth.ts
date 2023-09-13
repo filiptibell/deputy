@@ -27,6 +27,14 @@ const validateAuthForGitHub = async (
 	});
 };
 
+/**
+	Prompts the user for a GitHub Personal Access Token.
+
+	If provided, this token will be validated against the GitHub
+	authorization API and permanently stored in the global storage.
+
+	Any token returned from this function is guaranteed to currently be valid.
+*/
 export const promptAuthForGitHub = async (
 	context: vscode.ExtensionContext
 ): Promise<string | null> => {
@@ -66,22 +74,44 @@ export const promptAuthForGitHub = async (
 	return null;
 };
 
-export const getAuthForGitHub = (
+/**
+	Retrieves any currently stored GitHub Personal Access Token from global storage.
+
+	This will perform validation against the GitHub authorization API, and if the
+	stored token is no longer valid, it will be removed, and `undefined` is returned.
+
+	Any token returned from this function is guaranteed to currently be valid.
+*/
+export const getAuthForGitHub = async (
 	context: vscode.ExtensionContext
-): string | undefined => {
+): Promise<string | undefined> => {
 	const token = context.globalState.get(GITHUB_AUTH_TOKEN_STORAGE_KEY);
 	if (typeof token === "string" && token.length > 0) {
-		return token;
-	} else {
-		return undefined;
+		if (await validateAuthForGitHub(context, token)) {
+			return token;
+		} else {
+			await context.globalState.update(
+				GITHUB_AUTH_TOKEN_STORAGE_KEY,
+				undefined
+			);
+		}
 	}
+	return undefined;
 };
 
-export const resetAuthForGitHub = (
+/**
+	Removes any currently stored GitHub Personal Access Token from global storage.
+
+	Returns `true` if the token was removed from global storage, `false` if it did not exist.
+*/
+export const resetAuthForGitHub = async (
 	context: vscode.ExtensionContext
-): boolean => {
+): Promise<boolean> => {
 	if (!!context.globalState.get(GITHUB_AUTH_TOKEN_STORAGE_KEY)) {
-		context.globalState.update(GITHUB_AUTH_TOKEN_STORAGE_KEY, undefined);
+		await context.globalState.update(
+			GITHUB_AUTH_TOKEN_STORAGE_KEY,
+			undefined
+		);
 		return true;
 	} else {
 		return false;

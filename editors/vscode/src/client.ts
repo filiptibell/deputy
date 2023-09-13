@@ -57,6 +57,10 @@ export const startServer = async () => {
 		);
 	}
 
+	// Retrieve and validate stored authentication, if any
+
+	const githubAuthToken = await getAuthForGitHub(context);
+
 	// Find which executable was bundled with the extension - either debug or release
 
 	const exeName =
@@ -95,7 +99,7 @@ export const startServer = async () => {
 		? { env: { RUST_LOG: "debug", RUST_BACKTRACE: "1" } }
 		: { env: {} };
 
-	options.env["GITHUB_TOKEN"] = getAuthForGitHub(context);
+	options.env["GITHUB_TOKEN"] = githubAuthToken;
 
 	const server: Executable = {
 		command,
