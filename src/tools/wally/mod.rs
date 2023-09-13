@@ -10,10 +10,12 @@ use crate::server::*;
 use super::*;
 
 mod completion;
+mod constants;
 mod diagnostics;
 mod manifest;
 
 use completion::*;
+use constants::*;
 use diagnostics::*;
 use manifest::*;
 
@@ -33,34 +35,16 @@ impl Wally {
         }
     }
 
-    async fn get_manifest_with_registries(
-        &self,
-        uri: &Url,
-    ) -> Option<(Document, Manifest, Vec<String>)> {
+    fn get_documents(&self, uri: &Url) -> Option<(Document, Manifest, String)> {
         let document = self.documents.get(uri).map(|r| r.clone())?;
         let manifest = Manifest::parse(document.as_str()).ok()?;
 
-        let primary_registry_url = match &manifest.metadata {
+        let primary_index_url = match &manifest.metadata {
             None => return None,
-            Some(m) => m.package.registry.as_ref(),
+            Some(m) => m.package.registry.clone(),
         };
 
-        let index_configs = match self
-            .clients
-            .wally
-            .get_index_configs_following_fallbacks(primary_registry_url)
-            .await
-        {
-            Err(_) => return None,
-            Ok(c) => c,
-        };
-
-        let registry_urls = index_configs
-            .into_iter()
-            .map(|(k, _)| k)
-            .collect::<Vec<_>>();
-
-        Some((document, manifest, registry_urls))
+        Some((document, manifest, primary_index_url))
     }
 }
 
@@ -70,11 +54,10 @@ impl Tool for Wally {
         let uri = params.text_document_position_params.text_document.uri;
         let pos = params.text_document_position_params.position;
 
-        let (document, manifest, registry_urls) =
-            match self.get_manifest_with_registries(&uri).await {
-                None => return Ok(None),
-                Some(d) => d,
-            };
+        let (document, manifest, index_url) = match self.get_documents(&uri) {
+            None => return Ok(None),
+            Some(d) => d,
+        };
 
         let offset = document.lsp_position_to_offset(pos);
         let try_find = |deps: &HashMap<String, ManifestDependency>| {
@@ -103,44 +86,55 @@ impl Tool for Wally {
 
         trace!("Hovering: {found_spec:?}");
 
+        let metadatas = self
+            .clients
+            .wally
+            .get_index_metadatas(&index_url, &found_spec.author, &found_spec.name)
+            .await;
+        let metadatas = match metadatas {
+            Err(_) => return Ok(None),
+            Ok(m) => m,
+        };
+
         let mut lines = Vec::new();
         lines.push(format!("## {}", found_spec.name));
 
-        for registry_url in registry_urls {
-            if let Ok(metadatas) = self
-                .clients
-                .wally
-                .get_index_metadatas(&registry_url, &found_spec.author, &found_spec.name)
-                .await
-            {
-                let exact_match = metadatas
-                    .iter()
-                    .find(|m| found_spec.version == m.package.version);
-                let version_match = metadatas.iter().find(|m| {
-                    Version::parse(&m.package.version)
-                        .map(|version| found_spec.version_req.matches(&version))
-                        .unwrap_or_default()
-                });
-                if let Some(best_match) = exact_match.or(version_match) {
-                    lines.push(format!(
-                        "By **{}** - **{}**",
-                        format_authors(
-                            &found_spec.author,
-                            &best_match
-                                .package
-                                .authors
-                                .iter()
-                                .map(|s| s.as_str())
-                                .collect::<Vec<_>>()
-                        ),
-                        best_match.package.version
-                    ));
-                    if let Some(desc) = &best_match.package.description {
-                        lines.push(String::new());
-                        lines.push(desc.to_string());
-                    }
-                }
-                break;
+        let exact_match = metadatas
+            .iter()
+            .find(|m| found_spec.version == m.package.version);
+        let version_match = metadatas.iter().find(|m| {
+            Version::parse(&m.package.version)
+                .map(|version| found_spec.version_req.matches(&version))
+                .unwrap_or_default()
+        });
+        if let Some(best_match) = exact_match.or(version_match) {
+            lines.push(format!(
+                "By **{}** - **{}**",
+                format_authors(
+                    &found_spec.author,
+                    &best_match
+                        .package
+                        .authors
+                        .iter()
+                        .map(|s| s.as_str())
+                        .collect::<Vec<_>>()
+                ),
+                best_match.package.version
+            ));
+            if let Some(desc) = &best_match.package.description {
+                lines.push(String::new());
+                lines.push(desc.to_string());
+            }
+            if is_default_index(&best_match.package.registry) {
+                lines.push(String::new());
+                lines.push(String::from("### Links"));
+                lines.push(format!(
+                    "- [Wally]({})",
+                    get_default_frontend_link(
+                        &best_match.package.name,
+                        Some(&best_match.package.version)
+                    )
+                ));
             }
         }
 
@@ -157,11 +151,10 @@ impl Tool for Wally {
         let uri = params.text_document_position.text_document.uri;
         let pos = params.text_document_position.position;
 
-        let (document, manifest, registry_urls) =
-            match self.get_manifest_with_registries(&uri).await {
-                None => return Ok(CompletionResponse::Array(Vec::new())),
-                Some(d) => d,
-            };
+        let (document, manifest, index_url) = match self.get_documents(&uri) {
+            None => return Ok(CompletionResponse::Array(Vec::new())),
+            Some(d) => d,
+        };
 
         let offset = document.lsp_position_to_offset(pos);
         let try_find = |deps: &HashMap<String, ManifestDependency>| {
@@ -192,7 +185,7 @@ impl Tool for Wally {
         get_package_completions(
             &self.clients,
             &document,
-            &registry_urls,
+            &index_url,
             range_before,
             slice_before,
         )
@@ -202,11 +195,10 @@ impl Tool for Wally {
     async fn diagnostics(&self, params: DocumentDiagnosticParams) -> Result<Vec<Diagnostic>> {
         let uri = params.text_document.uri;
 
-        let (document, manifest, registry_urls) =
-            match self.get_manifest_with_registries(&uri).await {
-                None => return Ok(Vec::new()),
-                Some(d) => d,
-            };
+        let (document, manifest, index_url) = match self.get_documents(&uri) {
+            None => return Ok(Vec::new()),
+            Some(d) => d,
+        };
 
         let deps = (manifest.dependencies.values())
             .chain(manifest.dev_dependencies.values())
@@ -223,7 +215,7 @@ impl Tool for Wally {
             fut_diagnostics.push(diagnose_dependency(
                 &self.clients,
                 &uri,
-                &registry_urls,
+                &index_url,
                 dep,
                 range,
             ));

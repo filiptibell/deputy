@@ -1,12 +1,15 @@
 use std::collections::{HashSet, VecDeque};
 
+use surf::StatusCode;
 use tower_lsp::lsp_types::Url;
 
 use super::models::*;
 use super::*;
 
+const DEFAULT_INDEX_BRANCH: &str = "main";
+
 impl WallyClient {
-    pub async fn get_index_config(&self, index_url: &str) -> RequestResult<IndexConfig> {
+    async fn get_index_config(&self, index_url: &str) -> RequestResult<IndexConfig> {
         let (owner, repo) = parse_index_url(index_url)?;
 
         let bytes = self
@@ -17,7 +20,7 @@ impl WallyClient {
         Ok(serde_json::from_slice::<IndexConfig>(&bytes)?)
     }
 
-    pub async fn get_index_configs_following_fallbacks(
+    async fn get_index_configs_following_fallbacks(
         &self,
         index_url: &str,
     ) -> RequestResult<Vec<(String, IndexConfig)>> {
@@ -42,25 +45,35 @@ impl WallyClient {
         Ok(results)
     }
 
-    pub async fn get_index_scopes(&self, index_url: &str) -> RequestResult<Vec<String>> {
-        let (owner, repo) = parse_index_url(index_url)?;
-
-        let root = self
-            .github
-            .get_repository_tree(&owner, &repo, "main") // FUTURE: Fetch proper default branch
+    async fn get_index_urls_following_fallbacks(
+        &self,
+        index_url: &str,
+    ) -> RequestResult<Vec<String>> {
+        let index_configs = self
+            .get_index_configs_following_fallbacks(index_url)
             .await?;
 
-        Ok(root
-            .tree
+        Ok(index_configs
             .into_iter()
-            .filter_map(|node| {
-                if node.is_tree() {
-                    Some(node.path)
-                } else {
-                    None
-                }
-            })
-            .collect())
+            .map(|(k, _)| k)
+            .collect::<Vec<_>>())
+    }
+
+    pub async fn get_index_scopes(&self, index_url: &str) -> RequestResult<Vec<String>> {
+        let mut all_scopes = HashSet::new();
+
+        for index_url in self.get_index_urls_following_fallbacks(index_url).await? {
+            let (owner, repo) = parse_index_url(&index_url)?;
+
+            let root = self
+                .github
+                .get_repository_tree(&owner, &repo, DEFAULT_INDEX_BRANCH)
+                .await?;
+
+            all_scopes.extend(root.get_directory_paths());
+        }
+
+        Ok(Vec::from_iter(all_scopes))
     }
 
     pub async fn get_index_packages(
@@ -68,48 +81,44 @@ impl WallyClient {
         index_url: &str,
         scope: &str,
     ) -> RequestResult<Vec<String>> {
-        let (owner, repo) = parse_index_url(index_url)?;
         let scope_low = scope.to_ascii_lowercase();
 
-        // Fetch the root of the index so that we can search through
-        // nodes and find the sha hash of an inner git tree to fetch
-        let root = self
-            .github
-            .get_repository_tree(&owner, &repo, "main") // FUTURE: Fetch proper default branch
-            .await?;
+        for index_url in self.get_index_urls_following_fallbacks(index_url).await? {
+            let (owner, repo) = parse_index_url(&index_url)?;
 
-        let scope_sha = root
-            .tree
-            .iter()
-            .find_map(|node| {
-                if node.path.eq_ignore_ascii_case(&scope_low) {
-                    Some(node.sha.clone())
-                } else {
-                    None
+            let res = self
+                .github
+                .get_repository_tree(&owner, &repo, DEFAULT_INDEX_BRANCH)
+                .await;
+
+            match res {
+                Err(_) => {}
+                Ok(root) => {
+                    // NOTE: We found the scope, if the scope does not
+                    // have any matching package we can return early
+                    let scope_node = root.find_node_by_path(&scope_low).ok_or_else(|| {
+                        RequestError::Response(ResponseError::from_status_and_string(
+                            StatusCode::NotFound,
+                            format!("No packages were found for scope `{scope_low}`"),
+                        ))
+                    })?;
+
+                    let root_for_scope = self
+                        .github
+                        .get_repository_tree(&owner, &repo, &scope_node.sha)
+                        .await?;
+
+                    return Ok(root_for_scope.get_file_paths_excluding_json());
                 }
-            })
-            .ok_or_else(|| {
-                RequestError::Custom(format!("No packages were found for scope '{scope_low}'"))
-            })?;
+            }
+        }
 
-        // If we find a git node for the given package
-        // scope, we try to then fetch that full subtree
-        let root_for_scope = self
-            .github
-            .get_repository_tree(&owner, &repo, &scope_sha)
-            .await?;
-
-        Ok(root_for_scope
-            .tree
-            .into_iter()
-            .filter_map(|node| {
-                if node.is_blob() && !node.path.ends_with(".json") {
-                    Some(node.path)
-                } else {
-                    None
-                }
-            })
-            .collect())
+        Err(RequestError::Response(
+            ResponseError::from_status_and_string(
+                StatusCode::NotFound,
+                format!("No packages were found for scope `{scope_low}`"),
+            ),
+        ))
     }
 
     pub async fn get_index_metadatas(
@@ -118,27 +127,37 @@ impl WallyClient {
         scope: &str,
         name: &str,
     ) -> RequestResult<Vec<Metadata>> {
-        let (owner, repo) = parse_index_url(index_url)?;
         let scope_low = scope.to_ascii_lowercase();
         let name_low = name.to_ascii_lowercase();
 
-        let bytes = self
-            .github
-            .get_repository_file(&owner, &repo, &format!("{scope_low}/{name_low}"))
-            .await?;
+        for index_url in self.get_index_urls_following_fallbacks(index_url).await? {
+            let (owner, repo) = parse_index_url(&index_url)?;
 
-        let text = String::from_utf8(bytes.to_vec())?;
-        let mut metas = Metadata::try_from_lines(text.lines().collect())?;
+            let res = self
+                .github
+                .get_repository_file(&owner, &repo, &format!("{scope_low}/{name_low}"))
+                .await;
 
-        // NOTE: We should sort by most recent version first
-        metas.reverse();
+            match res {
+                Err(_) => {}
+                Ok(bytes) => {
+                    let text = String::from_utf8(bytes.to_vec())?;
+                    let mut metas = Metadata::try_from_lines(text.lines().collect())?;
 
-        Ok(metas)
+                    metas.reverse(); // NOTE: We should sort by most recent version first
+
+                    return Ok(metas);
+                }
+            }
+        }
+
+        Err(RequestError::Response(
+            ResponseError::from_status_and_string(
+                StatusCode::NotFound,
+                format!("No metadatas were found for package `{scope_low}`{scope_low}'"),
+            ),
+        ))
     }
-
-    // TODO: Add get_package_metadatas as an alternative to
-    // get_index_metadatas, using the wally rest api instead,
-    // this will let us use less of the github request budget
 }
 
 fn parse_index_url(index_url: &str) -> RequestResult<(String, String)> {
@@ -156,6 +175,6 @@ fn parse_index_url(index_url: &str) -> RequestResult<(String, String)> {
     }
 
     Err(RequestError::Client(format!(
-        "malformed index url - failed to parse github owner & repo from '{url}'"
+        "malformed index url - failed to parse github owner & repo from `{url}`"
     )))
 }

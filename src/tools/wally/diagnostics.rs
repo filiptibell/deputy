@@ -9,7 +9,7 @@ use super::manifest::*;
 pub async fn diagnose_dependency(
     clients: &Clients,
     uri: &Url,
-    registry_urls: &[String],
+    index_url: &str,
     dep: &ManifestDependency,
     range: &Range,
 ) -> Option<Diagnostic> {
@@ -26,29 +26,37 @@ pub async fn diagnose_dependency(
         }
     };
 
-    let mut metadatas = None;
-    for registry_url in registry_urls {
-        let registry_metadatas = clients
-            .wally
-            .get_index_metadatas(registry_url, &spec.author, &spec.name)
-            .await;
-        if registry_metadatas.is_ok() {
-            metadatas = Some(registry_metadatas);
-            break;
-        }
-    }
-    let metadatas = metadatas?;
-    if metadatas.as_deref().is_err_and(|e| e.is_not_found_error()) {
+    let authors = clients.wally.get_index_scopes(index_url).await.ok()?;
+    if !authors.contains(&spec.author) {
         return Some(Diagnostic {
             source: Some(String::from("Wally")),
             range: *range,
-            message: format!("No package was found for '{}'", spec.name),
+            message: format!("No author exists with the name `{}`", spec.name),
             severity: Some(DiagnosticSeverity::ERROR),
             ..Default::default()
         });
     }
 
-    let metadatas = metadatas.ok()?;
+    let packages = clients
+        .wally
+        .get_index_packages(index_url, &spec.author)
+        .await
+        .ok()?;
+    if !packages.contains(&spec.name) {
+        return Some(Diagnostic {
+            source: Some(String::from("Wally")),
+            range: *range,
+            message: format!("No package exists with the name `{}`", spec.name),
+            severity: Some(DiagnosticSeverity::ERROR),
+            ..Default::default()
+        });
+    }
+
+    let metadatas = clients
+        .wally
+        .get_index_metadatas(index_url, &spec.author, &spec.name)
+        .await
+        .ok()?;
     if !metadatas.iter().any(|m| {
         Version::parse(&m.package.version)
             .map(|version| spec.version_req.matches(&version))

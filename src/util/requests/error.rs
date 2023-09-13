@@ -11,6 +11,15 @@ pub struct ResponseError {
     pub(super) bytes: Vec<u8>,
 }
 
+impl ResponseError {
+    pub fn from_status_and_string(status: StatusCode, string: impl AsRef<str>) -> Self {
+        Self {
+            status,
+            bytes: string.as_ref().as_bytes().to_vec(),
+        }
+    }
+}
+
 impl fmt::Display for ResponseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Ok(s) = String::from_utf8(self.bytes.to_vec()) {
@@ -33,8 +42,6 @@ pub enum RequestError {
     Client(String), // Request builder error, before sending
     #[error("json error - {0}")]
     Json(String),
-    #[error("error - {0}")]
-    Custom(String),
     #[error("unknown error")]
     #[default]
     Unknown,

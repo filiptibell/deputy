@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::ops::Range as StdRange;
 
 use semver::Version;
@@ -12,17 +11,15 @@ use crate::server::*;
 async fn complete_package_author(
     clients: &Clients,
     document: &Document,
-    registry_urls: &[String],
+    index_url: &str,
     replace_range: StdRange<usize>,
     author: &str,
 ) -> Result<Vec<CompletionItem>> {
-    let mut authors = HashSet::new();
-    for registry_url in registry_urls {
-        let registry_metadatas = clients.wally.get_index_scopes(registry_url).await;
-        if let Ok(metas) = registry_metadatas {
-            authors.extend(metas);
-        }
-    }
+    let authors = clients.wally.get_index_scopes(index_url).await;
+    let authors = match authors {
+        Err(_) => return Ok(Vec::new()),
+        Ok(a) => a,
+    };
 
     let mut valid_authors = authors
         .into_iter()
@@ -56,22 +53,15 @@ async fn complete_package_author(
 async fn complete_package_name(
     clients: &Clients,
     document: &Document,
-    registry_urls: &[String],
+    index_url: &str,
     replace_range: StdRange<usize>,
     author: &str,
     name: &str,
 ) -> Result<Vec<CompletionItem>> {
-    let mut names = None;
-    for registry_url in registry_urls {
-        let registry_metadatas = clients.wally.get_index_packages(registry_url, author).await;
-        if let Ok(metas) = registry_metadatas {
-            names = Some(metas);
-            break;
-        }
-    }
+    let names = clients.wally.get_index_packages(index_url, author).await;
     let names = match names {
-        None => return Ok(Vec::new()),
-        Some(m) => m,
+        Err(_) => return Ok(Vec::new()),
+        Ok(n) => n,
     };
 
     let mut valid_names = names
@@ -105,26 +95,19 @@ async fn complete_package_name(
 async fn complete_package_version(
     clients: &Clients,
     document: &Document,
-    registry_urls: &[String],
+    index_url: &str,
     replace_range: StdRange<usize>,
     author: &str,
     name: &str,
     version: &str,
 ) -> Result<Vec<CompletionItem>> {
-    let mut metadatas = None;
-    for registry_url in registry_urls {
-        let registry_metadatas = clients
-            .wally
-            .get_index_metadatas(registry_url, author, name)
-            .await;
-        if let Ok(metas) = registry_metadatas {
-            metadatas = Some(metas);
-            break;
-        }
-    }
+    let metadatas = clients
+        .wally
+        .get_index_metadatas(index_url, author, name)
+        .await;
     let metadatas = match metadatas {
-        None => return Ok(Vec::new()),
-        Some(m) => m,
+        Err(_) => return Ok(Vec::new()),
+        Ok(m) => m,
     };
 
     let mut valid_metadatas = metadatas
@@ -145,9 +128,7 @@ async fn complete_package_version(
             }
         })
         .collect::<Vec<_>>();
-
-    valid_metadatas.sort_by(|left, right| left.0.cmp(&right.0));
-    valid_metadatas.reverse();
+    valid_metadatas.sort_by(|left, right| right.0.cmp(&left.0));
 
     Ok(valid_metadatas
         .into_iter()
@@ -167,7 +148,7 @@ async fn complete_package_version(
 pub async fn get_package_completions(
     clients: &Clients,
     document: &Document,
-    registry_urls: &[String],
+    index_url: &str,
     replace_range: StdRange<usize>,
     substring: &str,
 ) -> Result<CompletionResponse> {
@@ -184,16 +165,8 @@ pub async fn get_package_completions(
                 start: replace_range.start + idx_at + 1,
                 end: replace_range.end,
             };
-            complete_package_version(
-                clients,
-                document,
-                registry_urls,
-                range,
-                author,
-                name,
-                version,
-            )
-            .await
+            complete_package_version(clients, document, index_url, range, author, name, version)
+                .await
         }
         (Some(idx_slash), _) => {
             let author = &substring[..idx_slash];
@@ -202,12 +175,9 @@ pub async fn get_package_completions(
                 start: replace_range.start + idx_slash + 1,
                 end: replace_range.end,
             };
-            complete_package_name(clients, document, registry_urls, range, author, name).await
+            complete_package_name(clients, document, index_url, range, author, name).await
         }
-        _ => {
-            complete_package_author(clients, document, registry_urls, replace_range, substring)
-                .await
-        }
+        _ => complete_package_author(clients, document, index_url, replace_range, substring).await,
     }?;
     Ok(CompletionResponse::Array(items))
 }
