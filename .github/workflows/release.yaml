@@ -98,13 +98,13 @@ jobs:
       - name: Build extension - VSCode
         run: just vscode-build
 
-      - name: Create release archive
-        run: just zip-release ${{ matrix.cargo-target }}
-
       - name: Publish extension - VSCode
         run: just vscode-publish ${{ matrix.vscode-target }}
         env:
           VSCE_PAT: ${{ secrets.VSCE_TOKEN }}
+
+      - name: Create release archive
+        run: just zip-release ${{ matrix.cargo-target }}
 
       - name: Upload release artifact
         uses: actions/upload-artifact@v3
