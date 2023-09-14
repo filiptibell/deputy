@@ -76,7 +76,7 @@ vscode-install DEBUG="false":
 
 # Builds and publishes the VSCode extension to the marketplace
 [no-exit-message]
-vscode-publish:
+vscode-publish TARGET:
 	#!/usr/bin/env bash
 	set -euo pipefail
 	#
@@ -89,7 +89,7 @@ vscode-publish:
 	echo "🚀 [4/4] Publishing extension..."
 	#
 	cd "{{VSCODE}}/"
-	vsce publish
+	vsce publish --target {{TARGET}}
 	#
 	echo "✅ Published extension successfully!"
 
