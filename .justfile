@@ -108,7 +108,7 @@ zip-release TARGET_TRIPLE:
 	cp "target/{{TARGET_TRIPLE}}/release/{{BIN_NAME}}{{EXT}}" staging/
 	cp "$(find "{{VSCODE}}/bin/" -name "*.vsix")" staging/extension.vsix
 	cd staging
-	if [ "{{os_family()}}" = "windows-latest" ]; then
+	if [ "{{os_family()}}" = "windows" ]; then
 		7z a ../release.zip *
 	else
 		chmod +x {{BIN_NAME}}
