@@ -127,7 +127,7 @@ impl<T: Clone + Send + Sync + 'static> RequestCacheMap<T> {
 
                 recvs
                     .remove(&key)
-                    .expect("Cache sender was removed unexpectedly");
+                    .expect("Cache receiver was removed unexpectedly");
                 send.try_broadcast(result.clone()).ok();
 
                 result
