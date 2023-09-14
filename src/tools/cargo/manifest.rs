@@ -21,18 +21,35 @@ pub struct ManifestDependency {
 impl ManifestDependency {
     fn from_toml_values(key: &TomlString, value: &TomlValue) -> Option<Self> {
         let version = value.as_string().or_else(|| {
-            match value.as_table().and_then(|t| t.find("version")) {
-                Some((_, version)) if version.kind().is_string() => {
-                    Some(version.as_string().unwrap())
-                }
-                _ => None,
+            let (_, version) = value.as_table().and_then(|t| t.find("version"))?;
+            if version.kind().is_string() {
+                Some(version.as_string().unwrap())
+            } else {
+                None
             }
         })?;
 
-        Some(Self {
-            kind: ManifestDependencyKind::Default,
-            spec: Spec::from_key_value_pair(key, version),
-        })
+        let features = value
+            .as_table()
+            .and_then(|t| t.find("features"))
+            .map(|f| f.1)
+            .and_then(|t| t.as_table());
+
+        if let Some(features) = features {
+            Some(Self {
+                kind: ManifestDependencyKind::Default,
+                spec: Spec::from_key_value_pair_with_extras(
+                    key,
+                    version,
+                    &TomlValue::Table(Box::new(features.clone())),
+                ),
+            })
+        } else {
+            Some(Self {
+                kind: ManifestDependencyKind::Default,
+                spec: Spec::from_key_value_pair(key, version),
+            })
+        }
     }
 
     pub fn spec(&self) -> Result<SpecCargo, SpecError> {
