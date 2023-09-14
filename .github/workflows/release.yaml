@@ -37,7 +37,7 @@ jobs:
             runner-os: windows-latest
             artifact-name: tooling-language-server-${{ needs.init.outputs.version }}-windows-x86_64
             cargo-target: x86_64-pc-windows-msvc
-            vscode-target: windows-x64
+            vscode-target: win32-x64
 
           - name: Linux x86_64
             runner-os: ubuntu-latest
