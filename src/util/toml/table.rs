@@ -19,14 +19,13 @@ impl TomlTable {
                 for range in node.text_ranges() {
                     if range_first.is_none() {
                         range_first = Some(range)
-                    } else {
-                        range_last = Some(range)
                     }
+                    range_last = Some(range)
                 }
 
                 let span = Range {
-                    start: u32::from(range_first.unwrap().start()) as usize,
-                    end: u32::from(range_last.unwrap().end()) as usize,
+                    start: u32::from(range_first?.start()) as usize,
+                    end: u32::from(range_last?.end()) as usize,
                 };
 
                 let source = source.as_ref();
