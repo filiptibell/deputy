@@ -120,16 +120,16 @@ zip-release TARGET_TRIPLE:
 # Used in GitHub workflow to move per-matrix release zips
 [no-exit-message]
 [private]
-unpack-releases:
+unpack-releases RELEASES_DIR:
 	#!/usr/bin/env bash
 	set -euo pipefail
 	#
-	if [ ! -d "releases" ]; then
+	if [ ! -d "{{RELEASES_DIR}}" ]; then
 		echo "Releases directory is missing"
 		exit 1
 	fi
 	#
-	cd releases
+	cd "{{RELEASES_DIR}}"
 	echo ""
 	echo "Releases dir:"
 	ls -lhrt
@@ -155,4 +155,3 @@ unpack-releases:
 	echo ""
 	echo "Releases dir:"
 	ls -lhrt
-	cd ..
