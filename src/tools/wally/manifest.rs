@@ -8,7 +8,7 @@ use super::util::*;
 use crate::clients::wally::models::*;
 use crate::util::*;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ManifestDependency {
     realm: MetadataRealm,
     spec: Spec,

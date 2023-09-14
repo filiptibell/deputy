@@ -12,7 +12,7 @@ pub enum ManifestDependencyKind {
     Build,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ManifestDependency {
     kind: ManifestDependencyKind,
     spec: Spec,

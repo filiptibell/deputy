@@ -7,7 +7,7 @@ use tracing::error;
 use super::util::*;
 use crate::util::*;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ManifestTool {
     spec: Spec,
 }

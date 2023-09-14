@@ -6,12 +6,14 @@ use semver::VersionReq;
 use thiserror::Error;
 use tower_lsp::lsp_types::DiagnosticSeverity;
 
-use crate::util::TomlString;
+use crate::util::{TomlString, TomlValue};
 
 #[derive(Debug, Error)]
 pub enum SpecError {
     #[error("internal error - missing extras in struct")]
     InternalMissingExtras,
+    #[error("internal error - invalid extras in struct")]
+    InternalInvalidExtras,
     #[error("missing author")]
     MissingAuthor,
     #[error("missing name")]
@@ -77,11 +79,11 @@ pub struct SpecWally {
     pub version_req: VersionReq,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Spec {
     key: TomlString,
     value: TomlString,
-    extras: Option<TomlString>,
+    extras: Option<TomlValue>,
 }
 
 impl Spec {
@@ -96,7 +98,7 @@ impl Spec {
     pub fn from_key_value_pair_with_extras(
         key: &TomlString,
         value: &TomlString,
-        extras: &TomlString,
+        extras: &TomlValue,
     ) -> Self {
         Self {
             key: key.clone(),
@@ -133,8 +135,8 @@ impl Spec {
         self.extras.as_ref().map(|e| e.span())
     }
 
-    pub fn extras_text(&self) -> Option<&str> {
-        self.extras.as_ref().map(|e| e.value())
+    pub fn extras_value(&self) -> Option<&TomlValue> {
+        self.extras.as_ref()
     }
 
     pub fn extras_source(&self) -> Option<&str> {
@@ -188,9 +190,13 @@ impl Spec {
             return Err(SpecError::MissingAuthor);
         }
 
-        let e = match self.extras_text() {
+        let e = match self.extras_value() {
             None => return Err(SpecError::InternalMissingExtras),
             Some(e) => e,
+        };
+        let e = match e.as_string() {
+            None => return Err(SpecError::InternalInvalidExtras),
+            Some(e) => e.value(),
         };
         if e.is_empty() {
             return Err(SpecError::MissingVersion);
