@@ -8,6 +8,11 @@ mod util;
 use server::Server;
 use util::Arguments;
 
+#[cfg(debug)]
+const IS_DEBUG: bool = true;
+#[cfg(not(debug))]
+const IS_DEBUG: bool = false;
+
 fn main() {
     let args = Arguments::new();
 
@@ -23,7 +28,7 @@ fn main() {
         .compact()
         .with_env_filter(tracing_filter)
         .without_time()
-        .with_target(true)
+        .with_target(IS_DEBUG)
         .with_level(true)
         .with_ansi(false) // Editor output does not support ANSI ... yet?
         .with_writer(std::io::stderr) // Stdio transport takes up stdout, so emit output to stderr

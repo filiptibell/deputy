@@ -2,6 +2,7 @@ use std::collections::{HashSet, VecDeque};
 
 use surf::StatusCode;
 use tower_lsp::lsp_types::Url;
+use tracing::info;
 
 use super::models::*;
 use super::*;
@@ -12,12 +13,22 @@ impl WallyClient {
     async fn get_index_config(&self, index_url: &str) -> RequestResult<IndexConfig> {
         let (owner, repo) = parse_index_url(index_url)?;
 
-        let bytes = self
-            .github
-            .get_repository_file(&owner, &repo, "config.json")
-            .await?;
+        let fut = async {
+            let bytes = self
+                .github
+                .get_repository_file(&owner, &repo, "config.json")
+                .await?;
+            let config = serde_json::from_slice::<IndexConfig>(&bytes)?;
 
-        Ok(serde_json::from_slice::<IndexConfig>(&bytes)?)
+            info!("Wally registry config found: {config:#?}");
+
+            Ok(config)
+        };
+
+        self._cache
+            .index_configs
+            .with_caching(format!("{owner}/{repo}"), fut)
+            .await
     }
 
     async fn get_index_configs_following_fallbacks(
@@ -170,7 +181,7 @@ fn parse_index_url(index_url: &str) -> RequestResult<(String, String)> {
         .strip_prefix("https://github.com/")
     {
         if let Some((owner, repo)) = stripped.split_once('/') {
-            return Ok((owner.to_string(), repo.to_string()));
+            return Ok((owner.to_ascii_lowercase(), repo.to_ascii_lowercase()));
         }
     }
 
