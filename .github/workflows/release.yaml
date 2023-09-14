@@ -95,10 +95,7 @@ jobs:
       - name: Build server
         run: just build --locked --release --target ${{ matrix.cargo-target }}
 
-      - name: Build extension - VSCode
-        run: just vscode-build
-
-      - name: Publish extension - VSCode
+      - name: Build & publish extension - VSCode
         run: just vscode-publish ${{ matrix.vscode-target }}
         env:
           VSCE_PAT: ${{ secrets.VSCE_TOKEN }}

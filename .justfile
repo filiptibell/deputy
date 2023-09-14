@@ -30,6 +30,7 @@ vscode-pack DEBUG="false":
 	rm -rf "{{VSCODE}}/bin"
 	rm -rf "{{VSCODE}}/CHANGELOG.md"
 	rm -rf "{{VSCODE}}/LICENSE.txt"
+	mkdir -p "{{VSCODE}}/out"
 	mkdir -p "{{VSCODE}}/bin"
 	#
 	if [[ "{{DEBUG}}" == "true" ]]; then
@@ -43,8 +44,9 @@ vscode-pack DEBUG="false":
 	cp CHANGELOG.md {{VSCODE}}/CHANGELOG.md
 	cp LICENSE.txt {{VSCODE}}/LICENSE.txt
 
-# Builds the VSCode extension
+# Builds the VSCode extension - must be used after vscode-pack
 [no-exit-message]
+[private]
 vscode-build:
 	#!/usr/bin/env bash
 	set -euo pipefail
