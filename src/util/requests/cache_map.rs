@@ -1,6 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-use async_broadcast::{broadcast, Sender};
+use async_broadcast::{broadcast, Receiver};
 use dashmap::DashMap;
 use futures::Future;
 use moka::future::Cache;
@@ -12,7 +12,7 @@ type CacheMap<T> = Cache<String, T>;
 // Map of senders, used to notify any listeners
 // that are waiting for a request to finish and
 // a cache value to become available to clone
-type Senders<T> = Arc<DashMap<String, Sender<T>>>;
+type Receivers<T> = Arc<DashMap<String, Receiver<T>>>;
 
 /**
     Generic cache map for web requests.
@@ -22,7 +22,7 @@ type Senders<T> = Arc<DashMap<String, Sender<T>>>;
 #[derive(Debug, Clone)]
 pub struct RequestCacheMap<T: Clone + Send + Sync + 'static> {
     map: CacheMap<T>,
-    sends: Senders<T>,
+    recvs: Receivers<T>,
 }
 
 impl<T: Clone + Send + Sync + 'static> RequestCacheMap<T> {
@@ -42,7 +42,7 @@ impl<T: Clone + Send + Sync + 'static> RequestCacheMap<T> {
             .build();
         RequestCacheMap {
             map,
-            sends: Arc::new(DashMap::new()),
+            recvs: Arc::new(DashMap::new()),
         }
     }
 
@@ -87,41 +87,47 @@ impl<T: Clone + Send + Sync + 'static> RequestCacheMap<T> {
     {
         let key = key.into();
 
-        let sends = Arc::clone(&self.sends);
-        let send = sends.get(&key).map(|r| r.clone());
+        let recvs = Arc::clone(&self.recvs);
+        let recv = recvs.get(&key).map(|r| r.new_receiver());
 
-        if let Some(send) = send {
-            if let Ok(res) = send.new_receiver().recv().await {
-                return res;
-            } else {
-                // Existing request was cancelled / dropped, try again
+        if let Some(mut recv) = recv {
+            match recv.recv().await {
+                Ok(res) => {
+                    // Got cached value, either old or just produced
+                    return res;
+                }
+                Err(_) => {
+                    // Existing request was cancelled / dropped, try again
+                }
             }
         }
 
         match self.map.get(&key) {
             Some(cached) => cached.clone(),
             None => {
+                let (send, recv) = broadcast(1);
+                recvs.insert(key.clone(), recv);
+
                 // HACK: Spawn a timeout task that will clear out any
                 // senders if for some reason this request was cancelled
                 // We should really do this on future being dropped instead
                 let sends_key = key.clone();
-                let sends_timeout = Arc::clone(&sends);
+                let sends_timeout = Arc::clone(&recvs);
                 smol::spawn(async move {
-                    Timer::after(Duration::from_secs(5)).await;
+                    Timer::after(Duration::from_secs(30)).await;
                     if sends_timeout.remove(&sends_key).is_some() {
                         trace!("Request was cancelled, cleaning up")
                     }
                 })
                 .detach();
 
-                let (send, _) = broadcast(1);
-                sends.insert(key.clone(), send.clone());
-
                 let result = f.await;
 
                 self.map.insert(key.clone(), result.clone()).await;
 
-                sends.remove(&key);
+                recvs
+                    .remove(&key)
+                    .expect("Cache sender was removed unexpectedly");
                 send.try_broadcast(result.clone()).ok();
 
                 result
