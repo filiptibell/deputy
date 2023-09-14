@@ -4,3 +4,7 @@ src/**
 **/.eslintrc.json
 **/*.map
 **/*.ts
+
+!/README.md
+!/CHANGELOG.md
+!/LICENSE.txt
