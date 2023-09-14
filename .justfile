@@ -79,12 +79,12 @@ vscode-install DEBUG="false":
 
 # Builds and publishes the VSCode extension to the marketplace
 [no-exit-message]
-vscode-publish TARGET:
+vscode-publish TARGET_TRIPLE VSCODE_TARGET:
 	#!/usr/bin/env bash
 	set -euo pipefail
 	#
 	echo "🚧 [1/4] Building language server..."
-	just build --release
+	just build --release --target {{TARGET_TRIPLE}}
 	echo "📦 [2/4] Packing language server..."
 	just vscode-pack
 	echo "🧰 [3/4] Building extension..."
@@ -92,7 +92,7 @@ vscode-publish TARGET:
 	echo "🚀 [4/4] Publishing extension..."
 	#
 	cd "{{VSCODE}}/"
-	vsce publish --target {{TARGET}}
+	vsce publish --target {{VSCODE_TARGET}}
 	#
 	echo "✅ Published extension successfully!"
 
@@ -105,7 +105,7 @@ zip-release TARGET_TRIPLE:
 	rm -rf release.zip
 	mkdir -p staging
 	cp "target/{{TARGET_TRIPLE}}/release/{{BIN_NAME}}{{EXT}}" staging/
-	cp "$(find "{{VSCODE}}/bin/" -name "*.vsix")" staging/
+	cp "$(find "{{VSCODE}}/bin/" -name "*.vsix")" staging/extension.vsix
 	cd staging
 	if [ "{{os_family()}}" = "windows-latest" ]; then
 		7z a ../release.zip *

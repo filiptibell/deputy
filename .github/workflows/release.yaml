@@ -30,6 +30,7 @@ jobs:
   build:
     needs: ["init"]
     strategy:
+      fail-fast: false
       matrix:
         include:
           - name: Windows x86_64
@@ -96,7 +97,7 @@ jobs:
         run: just build --locked --release --target ${{ matrix.cargo-target }}
 
       - name: Build & publish extension - VSCode
-        run: just vscode-publish ${{ matrix.vscode-target }}
+        run: just vscode-publish ${{ matrix.cargo-target }} ${{ matrix.vscode-target }}
         env:
           VSCE_PAT: ${{ secrets.VSCE_TOKEN }}
 
