@@ -50,7 +50,7 @@ vscode-build:
 	set -euo pipefail
 	cd "{{VSCODE}}/"
 	npm install
-	vsce package --out "{{VSCODE}}/bin/" > /dev/null
+	vsce package --out "{{VSCODE}}/bin/"
 
 # Builds and installs the VSCode extension locally
 [no-exit-message]
@@ -65,9 +65,9 @@ vscode-install DEBUG="false":
 		just build --release
 	fi
 	echo "📦 [2/4] Packing language server..."
-	just vscode-pack {{DEBUG}}
+	just vscode-pack {{DEBUG}} > /dev/null
 	echo "🧰 [3/4] Building extension..."
-	just vscode-build
+	just vscode-build > /dev/null
 	echo "🚀 [4/4] Installing extension..."
 	#
 	EXTENSION=$(find "{{VSCODE}}/bin/" -name "*.vsix")
