@@ -1,6 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-use async_broadcast::{broadcast, Receiver};
+use async_channel::{bounded, Receiver};
 use dashmap::DashMap;
 use futures::Future;
 use moka::future::Cache;
@@ -88,9 +88,9 @@ impl<T: Clone + Send + Sync + 'static> RequestCacheMap<T> {
         let key = key.into();
 
         let recvs = Arc::clone(&self.recvs);
-        let recv = recvs.get(&key).map(|r| r.new_receiver());
+        let recv = recvs.get(&key).map(|r| r.clone());
 
-        if let Some(mut recv) = recv {
+        if let Some(recv) = recv {
             match recv.recv().await {
                 Ok(res) => {
                     // Got cached value, either old or just produced
@@ -105,7 +105,7 @@ impl<T: Clone + Send + Sync + 'static> RequestCacheMap<T> {
         match self.map.get(&key) {
             Some(cached) => cached.clone(),
             None => {
-                let (send, recv) = broadcast(1);
+                let (send, recv) = bounded(1);
                 recvs.insert(key.clone(), recv);
 
                 // HACK: Spawn a timeout task that will clear out any
@@ -128,7 +128,7 @@ impl<T: Clone + Send + Sync + 'static> RequestCacheMap<T> {
                 recvs
                     .remove(&key)
                     .expect("Cache receiver was removed unexpectedly");
-                send.try_broadcast(result.clone()).ok();
+                send.try_send(result.clone()).ok();
 
                 result
             }

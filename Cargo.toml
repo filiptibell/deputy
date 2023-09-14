@@ -19,7 +19,7 @@ strip = true
 lto = true
 
 [dependencies]
-async-broadcast = "0.5"
+async-channel = "1.9"
 bytes = "1.0"
 dashmap = "5.5"
 futures = "0.3"

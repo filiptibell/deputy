@@ -6,7 +6,7 @@ use std::{
     time::Duration,
 };
 
-use async_broadcast::{broadcast, Sender};
+use async_channel::{unbounded, Receiver, Sender};
 use smol::Timer;
 use surf::Client;
 use tracing::error;
@@ -26,16 +26,18 @@ pub struct CratesClient {
     surf: Client,
     cache: CratesCache,
     crawl_limit_tx: Sender<()>,
+    crawl_limit_rx: Receiver<()>,
     crawl_limited: Arc<AtomicBool>,
 }
 
 impl CratesClient {
     pub fn new(surf: Client) -> Self {
-        let (crawl_limit_tx, _) = broadcast(32);
+        let (crawl_limit_tx, crawl_limit_rx) = unbounded();
         Self {
             surf,
             cache: CratesCache::new(),
             crawl_limit_tx,
+            crawl_limit_rx,
             crawl_limited: Arc::new(AtomicBool::new(false)),
         }
     }
@@ -62,7 +64,7 @@ impl CratesClient {
             smol::spawn(async move {
                 Timer::after(Duration::from_secs(consts::CRAWL_MAX_INTERVAL_SECONDS)).await;
                 lim.store(false, Ordering::SeqCst);
-                tx.try_broadcast(()).ok();
+                tx.try_send(()).ok();
             })
             .detach();
         }
@@ -70,7 +72,7 @@ impl CratesClient {
 
     async fn wait_for_crawl_limit(&self) {
         if self.is_crawl_limited() {
-            let mut crawl_limit_rx = self.crawl_limit_tx.new_receiver();
+            let crawl_limit_rx = self.crawl_limit_rx.clone();
             crawl_limit_rx.recv().await.ok();
         }
     }
