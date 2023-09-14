@@ -22,7 +22,8 @@ build *ARGS:
 
 # Packs the language server into the VSCode extension build directory
 [no-exit-message]
-vscode-pack DEBUG="false":
+[private]
+vscode-pack TARGET_DIR DEBUG="false":
 	#!/usr/bin/env bash
 	set -euo pipefail
 	#
@@ -35,10 +36,10 @@ vscode-pack DEBUG="false":
 	#
 	if [[ "{{DEBUG}}" == "true" ]]; then
 		mkdir -p {{VSCODE}}/out/debug/
-		cp target/debug/{{BIN_NAME}}{{EXT}} {{VSCODE}}/out/debug/
+		cp {{TARGET_DIR}}/debug/{{BIN_NAME}}{{EXT}} {{VSCODE}}/out/debug/
 	else
 		mkdir -p {{VSCODE}}/out/release/
-		cp target/release/{{BIN_NAME}}{{EXT}} {{VSCODE}}/out/release/
+		cp {{TARGET_DIR}}/release/{{BIN_NAME}}{{EXT}} {{VSCODE}}/out/release/
 	fi
 	#
 	cp CHANGELOG.md {{VSCODE}}/CHANGELOG.md
@@ -67,7 +68,7 @@ vscode-install DEBUG="false":
 		just build --release
 	fi
 	echo "📦 [2/4] Packing language server..."
-	just vscode-pack {{DEBUG}} > /dev/null
+	just vscode-pack "target" {{DEBUG}} > /dev/null
 	echo "🧰 [3/4] Building extension..."
 	just vscode-build > /dev/null
 	echo "🚀 [4/4] Installing extension..."
@@ -86,7 +87,7 @@ vscode-publish TARGET_TRIPLE VSCODE_TARGET:
 	echo "🚧 [1/4] Building language server..."
 	just build --release --target {{TARGET_TRIPLE}}
 	echo "📦 [2/4] Packing language server..."
-	just vscode-pack
+	just vscode-pack "target/{{TARGET_TRIPLE}}"
 	echo "🧰 [3/4] Building extension..."
 	just vscode-build
 	echo "🚀 [4/4] Publishing extension..."
