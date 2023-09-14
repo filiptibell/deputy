@@ -15,8 +15,7 @@ async fn complete_package_author(
     replace_range: StdRange<usize>,
     author: &str,
 ) -> Result<Vec<CompletionItem>> {
-    let authors = clients.wally.get_index_scopes(index_url).await;
-    let authors = match authors {
+    let authors = match clients.wally.get_index_scopes(index_url).await {
         Err(_) => return Ok(Vec::new()),
         Ok(a) => a,
     };
@@ -58,8 +57,7 @@ async fn complete_package_name(
     author: &str,
     name: &str,
 ) -> Result<Vec<CompletionItem>> {
-    let names = clients.wally.get_index_packages(index_url, author).await;
-    let names = match names {
+    let names = match clients.wally.get_index_packages(index_url, author).await {
         Err(_) => return Ok(Vec::new()),
         Ok(n) => n,
     };
@@ -101,11 +99,11 @@ async fn complete_package_version(
     name: &str,
     version: &str,
 ) -> Result<Vec<CompletionItem>> {
-    let metadatas = clients
+    let metadatas = match clients
         .wally
         .get_index_metadatas(index_url, author, name)
-        .await;
-    let metadatas = match metadatas {
+        .await
+    {
         Err(_) => return Ok(Vec::new()),
         Ok(m) => m,
     };

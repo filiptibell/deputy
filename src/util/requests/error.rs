@@ -5,7 +5,7 @@ use thiserror::Error;
 
 pub type RequestResult<T, E = RequestError> = Result<T, E>;
 
-#[derive(Debug, Clone, Error)]
+#[derive(Clone, Error)]
 pub struct ResponseError {
     pub(super) status: StatusCode,
     pub(super) bytes: Vec<u8>,
@@ -16,6 +16,22 @@ impl ResponseError {
         Self {
             status,
             bytes: string.as_ref().as_bytes().to_vec(),
+        }
+    }
+}
+
+impl fmt::Debug for ResponseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Ok(s) = String::from_utf8(self.bytes.to_vec()) {
+            f.debug_struct("ResponseError")
+                .field("status", &self.status)
+                .field("bytes", &s)
+                .finish()
+        } else {
+            f.debug_struct("ResponseError")
+                .field("status", &self.status)
+                .field("bytes", &"Vec<u8>")
+                .finish()
         }
     }
 }

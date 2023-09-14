@@ -102,25 +102,13 @@ impl WallyClient {
                 .get_repository_tree(&owner, &repo, DEFAULT_INDEX_BRANCH)
                 .await;
 
-            match res {
-                Err(_) => {}
-                Ok(root) => {
-                    // NOTE: We found the scope, if the scope does not
-                    // have any matching package we can return early
-                    let scope_node = root.find_node_by_path(&scope_low).ok_or_else(|| {
-                        RequestError::Response(ResponseError::from_status_and_string(
-                            StatusCode::NotFound,
-                            format!("No packages were found for scope `{scope_low}`"),
-                        ))
-                    })?;
+            if let Ok(Some(scope_node)) = res.map(|root| root.find_node_by_path(&scope_low)) {
+                let root_for_scope = self
+                    .github
+                    .get_repository_tree(&owner, &repo, &scope_node.sha)
+                    .await?;
 
-                    let root_for_scope = self
-                        .github
-                        .get_repository_tree(&owner, &repo, &scope_node.sha)
-                        .await?;
-
-                    return Ok(root_for_scope.get_file_paths_excluding_json());
-                }
+                return Ok(root_for_scope.get_file_paths_excluding_json());
             }
         }
 
