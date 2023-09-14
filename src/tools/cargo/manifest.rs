@@ -60,6 +60,10 @@ impl ManifestDependency {
         self.spec.key_span()
     }
 
+    pub fn name_text(&self) -> &str {
+        self.spec.key_text()
+    }
+
     pub fn version_span(&self) -> Range<usize> {
         self.spec.value_span()
     }

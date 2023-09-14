@@ -57,11 +57,12 @@ Features that are currently supported:
 - Diagnostics for:
   - A newer dependency version is available
   - Invalid dependency name / version
+- Autocomplete for dependencies - versions
 - Quick action to update to a new dependency version
 
 Features that will be supported:
 
-- Autocomplete for dependencies - versions, features
+- Autocomplete for dependencies - features
 
 </details>
 
