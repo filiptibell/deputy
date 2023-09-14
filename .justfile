@@ -1,54 +1,55 @@
-ext := if os() == "windows" { ".exe" } else { "" }
+EXT := if os() == "windows" { ".exe" } else { "" }
+CWD := justfile_directory()
+VSCODE := justfile_directory() / "editors/vscode"
+BIN_NAME := "tooling-language-server"
+
+# Default hidden recipe for listing other recipes + cwd
+[no-cd]
+[no-exit-message]
+[private]
+default:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	printf "Current directory:\n    {{CWD}}\n"
+	just --list
 
 # Builds the language server
 [no-exit-message]
-build DEBUG="false":
+build *ARGS:
 	#!/usr/bin/env bash
 	set -euo pipefail
-	if [[ "{{DEBUG}}" == "true" ]]; then
-		cargo build --bin tooling-language-server
-	else
-		cargo build --bin tooling-language-server --release > /dev/null
-	fi
+	cargo build --bin {{BIN_NAME}} {{ARGS}}
 
-# Bundles the language server into the VSCode extension build directory
+# Packs the language server into the VSCode extension build directory
 [no-exit-message]
-vscode-bundle DEBUG="false":
+vscode-pack DEBUG="false":
 	#!/usr/bin/env bash
 	set -euo pipefail
+	#
+	rm -rf "{{VSCODE}}/out"
+	rm -rf "{{VSCODE}}/bin"
+	rm -rf "{{VSCODE}}/CHANGELOG.md"
+	rm -rf "{{VSCODE}}/LICENSE.txt"
+	mkdir -p "{{VSCODE}}/bin"
+	#
 	if [[ "{{DEBUG}}" == "true" ]]; then
-		mkdir -p ./editors/vscode/out/debug/
-		cp target/debug/tooling-language-server{{ext}} ./editors/vscode/out/debug/
+		mkdir -p {{VSCODE}}/out/debug/
+		cp target/debug/{{BIN_NAME}}{{EXT}} {{VSCODE}}/out/debug/
 	else
-		mkdir -p ./editors/vscode/out/release/
-		cp target/release/tooling-language-server{{ext}} ./editors/vscode/out/release/
+		mkdir -p {{VSCODE}}/out/release/
+		cp target/release/{{BIN_NAME}}{{EXT}} {{VSCODE}}/out/release/
 	fi
-	cp CHANGELOG.md ./editors/vscode/CHANGELOG.md
-	cp LICENSE.txt ./editors/vscode/LICENSE.txt
-
-# Cleans up artifacts from building the VSCode extension
-[no-exit-message]
-vscode-cleanup:
-	#!/usr/bin/env bash
-	set -euo pipefail
-	cd "./editors/vscode/"
-	WORKDIR="$PWD"
-	rm -rf "$WORKDIR/out"
-	rm -rf "$WORKDIR/bin"
-	rm -rf "$WORKDIR/CHANGELOG.md"
-	rm -rf "$WORKDIR/LICENSE.txt"
-	mkdir -p "$WORKDIR/bin"
-	cd "../../"
+	#
+	cp CHANGELOG.md {{VSCODE}}/CHANGELOG.md
+	cp LICENSE.txt {{VSCODE}}/LICENSE.txt
 
 # Builds the VSCode extension
 [no-exit-message]
 vscode-build:
 	#!/usr/bin/env bash
 	set -euo pipefail
-	cd "./editors/vscode/"
-	WORKDIR="$PWD"
-	vsce package --out "$WORKDIR/bin/" > /dev/null
-	cd "../../"
+	cd "{{VSCODE}}/"
+	vsce package --out "{{VSCODE}}/bin/" > /dev/null
 
 # Builds and installs the VSCode extension locally
 [no-exit-message]
@@ -57,39 +58,97 @@ vscode-install DEBUG="false":
 	set -euo pipefail
 	#
 	echo "🚧 [1/4] Building language server..."
-	just build {{DEBUG}}
+	if [[ "{{DEBUG}}" == "true" ]]; then
+		just build
+	else
+		just build --release
+	fi
 	echo "📦 [2/4] Packing language server..."
-	just vscode-cleanup
-	just vscode-bundle {{DEBUG}}
+	just vscode-pack {{DEBUG}}
 	echo "🧰 [3/4] Building extension..."
 	just vscode-build
 	echo "🚀 [4/4] Installing extension..."
 	#
-	cd "./editors/vscode/"
-	WORKDIR="$PWD"
-	EXTENSION=$(find "$WORKDIR/bin/" -name "*.vsix")
-	code --install-extension "$EXTENSION" > /dev/null
-	cd "../../"
+	EXTENSION=$(find "{{VSCODE}}/bin/" -name "*.vsix")
+	code --install-extension "$EXTENSION" &> /dev/null
 	#
 	echo "✅ Installed extension successfully!"
 
 # Builds and publishes the VSCode extension to the marketplace
 [no-exit-message]
-vscode-publish: vscode-build
+vscode-publish:
 	#!/usr/bin/env bash
 	set -euo pipefail
 	#
 	echo "🚧 [1/4] Building language server..."
-	just build
+	just build --release
 	echo "📦 [2/4] Packing language server..."
-	just vscode-cleanup
-	just vscode-bundle
+	just vscode-pack
 	echo "🧰 [3/4] Building extension..."
 	just vscode-build
 	echo "🚀 [4/4] Publishing extension..."
 	#
-	cd "./editors/vscode/"
-	vsce publish > /dev/null
-	cd "../../"
+	cd "{{VSCODE}}/"
+	vsce publish
 	#
 	echo "✅ Published extension successfully!"
+
+# Zips up language server and built extensions into single zip file
+[no-exit-message]
+zip-release TARGET_TRIPLE:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	rm -rf staging
+	rm -rf release.zip
+	mkdir -p staging
+	cp "target/{{TARGET_TRIPLE}}/release/{{BIN_NAME}}{{EXT}}" staging/
+	cp "$(find "{{VSCODE}}/bin/" -name "*.vsix")" staging/
+	cd staging
+	if [ "{{os_family()}}" = "windows-latest" ]; then
+		7z a ../release.zip *
+	else
+		chmod +x {{BIN_NAME}}
+		zip ../release.zip *
+	fi
+	cd "{{CWD}}"
+	rm -rf staging
+
+# Used in GitHub workflow to move per-matrix release zips
+[no-exit-message]
+[private]
+unpack-releases:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	#
+	if [ ! -d "releases" ]; then
+		echo "Releases directory is missing"
+		exit 1
+	fi
+	#
+	cd releases
+	echo ""
+	echo "Releases dir:"
+	ls -lhrt
+	echo ""
+	echo "Searching for zipped releases..."
+	#
+	for DIR in * ; do
+		if [ -d "$DIR" ]; then
+			cd "$DIR"
+			for FILE in * ; do
+				if [ ! -d "$FILE" ]; then
+					if [ "$FILE" = "release.zip" ]; then
+						echo "Found zipped release '$DIR'"
+						mv "$FILE" "../$DIR.zip"
+						rm -rf "../$DIR/"
+					fi
+				fi
+			done
+			cd ..
+		fi
+	done
+	#
+	echo ""
+	echo "Releases dir:"
+	ls -lhrt
+	cd ..
