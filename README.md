@@ -28,6 +28,12 @@ Provides autocomplete for tools & dependencies, diagnostics for out-of-date vers
 [Foreman]: https://github.com/roblox/foreman
 [Wally]: https://github.com/UpliftGames/wally
 
+## Installation
+
+The language server can be installed as an extension from:
+
+- The [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=filiptibell.tooling-language-server) (VSCode)
+
 ## Features
 
 <details>
