@@ -2478,6 +2478,7 @@ name = "tooling-language-server"
 version = "0.0.3"
 dependencies = [
  "async-channel",
+ "async-lock",
  "bytes",
  "clap",
  "dashmap",
