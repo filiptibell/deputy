@@ -2475,7 +2475,7 @@ dependencies = [
 
 [[package]]
 name = "tooling-language-server"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "async-channel",
  "async-lock",
