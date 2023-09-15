@@ -71,6 +71,13 @@ impl<T: Clone + Send + Sync + 'static> RequestCacheMap<T> {
         let cached_cloned = cache_map.with_caching(key, fut).await // Same result
         let cached_cloned2 = cache_map.with_caching(key, fut).await // Same result
 
+        // The `fut` future will only run once (!!!)
+        let cached_result = select! {
+            v = cache_map.with_caching(key, fut) => v,
+            v = cache_map.with_caching(key, fut) => v,
+            v = cache_map.with_caching(key, fut) => v,
+        }
+
         cache_map.invalidate()
 
         let cached_fresh = cache_map.with_caching(key, fut).await // New result
