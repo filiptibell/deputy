@@ -1,6 +1,6 @@
 EXT := if os() == "windows" { ".exe" } else { "" }
-CWD := justfile_directory()
-VSCODE := justfile_directory() / "editors/vscode"
+CWD := invocation_directory()
+VSCODE := invocation_directory() / "editors" / "vscode"
 BIN_NAME := "tooling-language-server"
 
 # Default hidden recipe for listing other recipes + cwd

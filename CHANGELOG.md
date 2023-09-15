@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed language server executable not being bundled correctly on Windows
 - Fixed `node_modules` being included in the packaged extension, size should be much smaller now
 
 ## `0.0.2` - September 14th, 2023
