@@ -107,6 +107,15 @@ impl Spec {
         }
     }
 
+    pub fn full_span(&self) -> Range<usize> {
+        let start = self.key.span();
+        let end = self.value.span();
+        Range {
+            start: start.start,
+            end: end.end,
+        }
+    }
+
     pub fn key_span(&self) -> Range<usize> {
         self.key.span()
     }

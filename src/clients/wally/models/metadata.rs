@@ -42,9 +42,9 @@ pub struct MetadataDependencies {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum MetadataRealm {
+    Dev,
     Server,
     Shared,
-    Dev,
 }
 
 impl Metadata {
@@ -57,5 +57,31 @@ impl Metadata {
             }
         }
         Ok(packages)
+    }
+}
+
+impl MetadataRealm {
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::Dev => "dev",
+            Self::Server => "server",
+            Self::Shared => "shared",
+        }
+    }
+
+    pub fn section_name(&self) -> &'static str {
+        match self {
+            Self::Dev => "dev-dependencies",
+            Self::Server => "server-dependencies",
+            Self::Shared => "dependencies",
+        }
+    }
+
+    pub fn get_suggested_realm(&self, current_realm: Self) -> Option<Self> {
+        if matches!(self, Self::Server) && !matches!(current_realm, Self::Server) {
+            Some(Self::Server)
+        } else {
+            None
+        }
     }
 }

@@ -89,14 +89,10 @@ Features that are currently supported:
 - Diagnostics for:
   - A newer dependency version is available
   - Invalid author / name / version
+  - Invalid dependency realm (server dep in shared)
 - Hover for information about a dependency (description, links)
 - Autocomplete for dependencies - authors + names + versions
 - Quick action to update to a new dependency version
-
-Features that will be supported:
-
-- Diagnostics for:
-  - Invalid dependency realm
 
 </details>
 

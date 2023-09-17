@@ -57,18 +57,38 @@ pub async fn diagnose_dependency(
         .get_index_metadatas(index_url, &spec.author, &spec.name)
         .await
         .ok()?;
-    if !metadatas.iter().any(|m| {
+    let first_matching_metadata = metadatas.iter().find(|m| {
         Version::parse(&m.package.version)
             .map(|version| spec.version_req.matches(&version))
             .ok()
             .unwrap_or_default()
-    }) {
+    });
+    if first_matching_metadata.is_none() {
         return Some(Diagnostic {
             source: Some(String::from("Wally")),
             range: *range,
             message: format!(
-                "No package was found matching the version '{}'",
+                "No package was found matching the version `{}`",
                 spec.version_req
+            ),
+            severity: Some(DiagnosticSeverity::ERROR),
+            ..Default::default()
+        });
+    }
+
+    let first_matching_metadata = first_matching_metadata?;
+    if let Some(suggested_realm) = dep
+        .realm()
+        .get_suggested_realm(first_matching_metadata.package.realm)
+    {
+        return Some(Diagnostic {
+            source: Some(String::from("Wally")),
+            range: *range,
+            message: format!(
+                "Package is a {} dependency but is listed under `{}`.\nDid you mean to list it under `{}`?",
+                suggested_realm.name(),
+                dep.realm().section_name(),
+                suggested_realm.section_name()
             ),
             severity: Some(DiagnosticSeverity::ERROR),
             ..Default::default()

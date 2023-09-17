@@ -33,6 +33,10 @@ impl ManifestDependency {
     pub fn source(&self) -> &str {
         self.spec.value_source()
     }
+
+    pub fn realm(&self) -> MetadataRealm {
+        self.realm
+    }
 }
 
 #[derive(Debug, Clone, Default)]
