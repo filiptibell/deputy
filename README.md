@@ -44,13 +44,10 @@ Features that are currently supported:
 - Diagnostics for:
   - A newer tool version is available
   - Invalid author / name / version
+  - Unsupported platform / architecture
 - Hover for information about a tool (description, links)
 - Autocomplete for commonly used tool authors & names, versions
 - Quick action to update to new tool version
-
-Features that will be supported:
-
-- Diagnostic for unsupported platform/arch
 
 </details>
 

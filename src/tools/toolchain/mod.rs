@@ -9,6 +9,7 @@ use crate::server::*;
 
 use super::*;
 
+mod compat;
 mod completion;
 mod constants;
 mod diagnostics;

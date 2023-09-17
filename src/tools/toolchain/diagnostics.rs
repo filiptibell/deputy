@@ -1,9 +1,12 @@
 use semver::Version;
 use tower_lsp::lsp_types::*;
 
+use crate::clients::github::models::RepositoryRelease;
+use crate::clients::github::models::RepositoryReleaseAsset;
 use crate::clients::*;
 
 use super::super::util::*;
+use super::compat::*;
 use super::manifest::*;
 
 pub fn diagnose_tool_spec(tool: &ManifestTool, range: &Range) -> Option<Diagnostic> {
@@ -54,14 +57,27 @@ pub async fn diagnose_tool_version(
 
     let spec_ver_name = spec.tag.to_string();
     let spec_tag_name = format!("v{}", spec.tag);
-    if !releases
+    let matching_release = releases
         .iter()
-        .any(|r| r.tag_name == spec_ver_name || r.tag_name == spec_tag_name)
-    {
+        .find(|r| r.tag_name == spec_ver_name || r.tag_name == spec_tag_name);
+    if matching_release.is_none() {
         return Some(Diagnostic {
             source: Some(String::from("Tools")),
             range: *range,
             message: format!("No release was found matching the tag '{}'", spec.tag),
+            severity: Some(DiagnosticSeverity::ERROR),
+            ..Default::default()
+        });
+    }
+
+    let has_compatible_asset = matching_release
+        .map(is_release_compatible)
+        .unwrap_or_default();
+    if !has_compatible_asset {
+        return Some(Diagnostic {
+            source: Some(String::from("Tools")),
+            range: *range,
+            message: format!("No compatible asset was found for release '{}'", spec.tag),
             severity: Some(DiagnosticSeverity::ERROR),
             ..Default::default()
         });
@@ -98,4 +114,17 @@ pub async fn diagnose_tool_version(
     }
 
     None
+}
+
+fn is_release_compatible(release: &RepositoryRelease) -> bool {
+    release.assets.iter().any(is_release_asset_compatible)
+}
+
+fn is_release_asset_compatible(release_asset: &RepositoryReleaseAsset) -> bool {
+    release_asset
+        .name
+        .parse::<ArtifactCompat>()
+        .ok()
+        .map(|c| c.is_compatible())
+        .unwrap_or_default()
 }
