@@ -38,7 +38,7 @@ pub async fn diagnose_tool_version(
         return Some(Diagnostic {
             source: Some(String::from("Tools")),
             range: *range,
-            message: format!("No tool was found for '{}/{}'", spec.author, spec.name),
+            message: format!("No tool was found for `{}/{}`", spec.author, spec.name),
             severity: Some(DiagnosticSeverity::ERROR),
             ..Default::default()
         });
@@ -49,7 +49,7 @@ pub async fn diagnose_tool_version(
         return Some(Diagnostic {
             source: Some(String::from("Tools")),
             range: *range,
-            message: format!("No releases were found for '{}/{}'", spec.author, spec.name),
+            message: format!("No releases were found for `{}/{}`", spec.author, spec.name),
             severity: Some(DiagnosticSeverity::ERROR),
             ..Default::default()
         });
@@ -64,7 +64,7 @@ pub async fn diagnose_tool_version(
         return Some(Diagnostic {
             source: Some(String::from("Tools")),
             range: *range,
-            message: format!("No release was found matching the tag '{}'", spec.tag),
+            message: format!("No release was found with the tag `{}`", spec.tag),
             severity: Some(DiagnosticSeverity::ERROR),
             ..Default::default()
         });
@@ -77,7 +77,10 @@ pub async fn diagnose_tool_version(
         return Some(Diagnostic {
             source: Some(String::from("Tools")),
             range: *range,
-            message: format!("No compatible asset was found for release '{}'", spec.tag),
+            message: format!(
+                "No compatible release asset was found for the tag `{}`",
+                spec.tag
+            ),
             severity: Some(DiagnosticSeverity::ERROR),
             ..Default::default()
         });

@@ -40,7 +40,7 @@ pub async fn diagnose_dependency(
         return Some(Diagnostic {
             source: Some(String::from("Cargo")),
             range: *range_name,
-            message: format!("No package was found for '{}'", spec.name),
+            message: format!("No package exists with the name `{}`", spec.name),
             severity: Some(DiagnosticSeverity::ERROR),
             ..Default::default()
         });
@@ -57,7 +57,7 @@ pub async fn diagnose_dependency(
             source: Some(String::from("Cargo")),
             range: *range_version,
             message: format!(
-                "No package was found matching the version '{}'",
+                "No version exists that matches requirement `{}`",
                 spec.version_req
             ),
             severity: Some(DiagnosticSeverity::ERROR),
