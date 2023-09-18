@@ -3,7 +3,6 @@ use std::sync::{
     Arc, Mutex,
 };
 
-use surf::Client;
 use tracing::error;
 
 use crate::util::*;
@@ -18,30 +17,27 @@ pub mod models;
 
 #[derive(Debug, Clone)]
 pub struct GithubClient {
-    surf: Arc<Mutex<Client>>,
-    surf_auth: Arc<Mutex<Option<String>>>,
+    auth_token: Arc<Mutex<Option<String>>>,
     cache: GithubCache,
     rate_limited: Arc<AtomicBool>,
 }
 
 impl GithubClient {
-    pub fn new(surf: Client) -> Self {
+    pub fn new() -> Self {
         Self {
-            surf: Arc::new(Mutex::new(surf)),
-            surf_auth: Arc::new(Mutex::new(None)),
+            auth_token: Arc::new(Mutex::new(None)),
             cache: GithubCache::new(),
             rate_limited: Arc::new(AtomicBool::new(false)),
         }
     }
 
     async fn request_get(&self, url: impl Into<String>) -> RequestResult<Vec<u8>> {
-        let agent = self.surf.lock().unwrap().clone();
-        let agent_auth = self.surf_auth.lock().unwrap().clone();
+        let auth_token = self.auth_token.lock().unwrap().clone();
 
         Request::get(url)
             .with_header("Content-Type", consts::GITHUB_API_CONTENT_TYPE)
-            .with_header_opt("Authorization", agent_auth)
-            .send(&agent)
+            .with_header_opt("Authorization", auth_token)
+            .send()
             .await
     }
 
@@ -60,11 +56,11 @@ impl GithubClient {
     }
 
     pub fn set_auth_token(&self, token: impl AsRef<str>) {
-        let mut client_auth = self
-            .surf_auth
+        let mut auth_token = self
+            .auth_token
             .try_lock()
             .expect("Failed to lock GitHub client");
-        *client_auth = Some(format!("Bearer {}", token.as_ref()));
+        *auth_token = Some(format!("Bearer {}", token.as_ref()));
 
         self.cache.invalidate();
 

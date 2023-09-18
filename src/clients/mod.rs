@@ -1,7 +1,3 @@
-use std::time::Duration;
-
-use surf::{http::headers::USER_AGENT, Client, Config};
-
 pub mod crates;
 pub mod github;
 pub mod wally;
@@ -19,20 +15,9 @@ pub struct Clients {
 
 impl Clients {
     pub fn new() -> Self {
-        let base: Client = Config::new()
-            .set_max_connections_per_host(8)
-            .set_timeout(Some(Duration::from_secs(15)))
-            .add_header(
-                USER_AGENT,
-                concat!(env!("CARGO_PKG_NAME"), "@", env!("CARGO_PKG_VERSION")),
-            )
-            .expect("Failed to add user agent header")
-            .try_into()
-            .expect("Failed to create surf client");
-
-        let crates = CratesClient::new(base.clone());
-        let github = GithubClient::new(base.clone());
-        let wally = WallyClient::new(base.clone(), github.clone());
+        let crates = CratesClient::new();
+        let github = GithubClient::new();
+        let wally = WallyClient::new(github.clone());
 
         Self {
             crates,

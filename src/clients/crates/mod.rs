@@ -8,7 +8,6 @@ use std::{
 
 use async_channel::{unbounded, Receiver, Sender};
 use smol::Timer;
-use surf::Client;
 use tracing::error;
 
 use crate::util::*;
@@ -23,7 +22,6 @@ pub mod models;
 
 #[derive(Debug, Clone)]
 pub struct CratesClient {
-    surf: Client,
     cache: CratesCache,
     crawl_limit_tx: Sender<()>,
     crawl_limit_rx: Receiver<()>,
@@ -31,10 +29,9 @@ pub struct CratesClient {
 }
 
 impl CratesClient {
-    pub fn new(surf: Client) -> Self {
+    pub fn new() -> Self {
         let (crawl_limit_tx, crawl_limit_rx) = unbounded();
         Self {
-            surf,
             cache: CratesCache::new(),
             crawl_limit_tx,
             crawl_limit_rx,
@@ -43,7 +40,7 @@ impl CratesClient {
     }
 
     async fn request_get(&self, url: impl Into<String>) -> RequestResult<Vec<u8>> {
-        Request::get(url).send(&self.surf).await
+        Request::get(url).send().await
     }
 
     fn emit_result<T>(&self, result: &RequestResult<T>) {

@@ -118,15 +118,14 @@ impl GithubClient {
         let git_file_url =
             format!("{GITHUB_API_BASE_URL}/repos/{owner_low}/{repository_low}/contents/{path}");
 
-        let agent = self.surf.lock().unwrap().clone();
-        let agent_auth = self.surf_auth.lock().unwrap().clone();
+        let agent_auth = self.auth_token.lock().unwrap().clone();
         let fut = async move {
             debug!("Fetching GitHub file for {owner}/{repository} at {path}");
 
             let result = Request::get(git_file_url)
                 .with_header("Accept", consts::GITHUB_API_CONTENT_TYPE_RAW)
                 .with_header_opt("Authorization", agent_auth)
-                .send(&agent)
+                .send()
                 .await;
 
             self.emit_result(&result);

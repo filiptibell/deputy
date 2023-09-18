@@ -1,38 +1,32 @@
 #![allow(dead_code)]
 
-use std::{collections::HashMap, fmt};
+use std::{collections::HashMap, time::Duration};
 
-use surf::{http::headers::HeaderName, Client};
+use once_cell::sync::Lazy;
+use surf::{
+    http::{
+        headers::{HeaderName, USER_AGENT},
+        Method,
+    },
+    Client, Config,
+};
 
 use super::{RequestResult, ResponseError};
 
-#[derive(Clone, Copy, Debug, Default)]
-#[allow(clippy::upper_case_acronyms)]
-pub enum Method {
-    #[default]
-    GET,
-    POST,
-    PATCH,
-    PUT,
-    DELETE,
-    HEAD,
-}
+static CLIENT: Lazy<Client> = Lazy::new(|| {
+    Config::new()
+        .set_max_connections_per_host(8)
+        .set_timeout(Some(Duration::from_secs(15)))
+        .add_header(
+            USER_AGENT,
+            concat!(env!("CARGO_PKG_NAME"), "@", env!("CARGO_PKG_VERSION")),
+        )
+        .expect("Failed to add user agent header")
+        .try_into()
+        .expect("Failed to create surf client")
+});
 
-impl fmt::Display for Method {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match self {
-            Self::GET => "GET",
-            Self::POST => "POST",
-            Self::PATCH => "PATCH",
-            Self::PUT => "PUT",
-            Self::DELETE => "DELETE",
-            Self::HEAD => "HEAD",
-        };
-        s.fmt(f)
-    }
-}
-
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct Request {
     method: Method,
     url: String,
@@ -45,12 +39,13 @@ impl Request {
         Self {
             method,
             url: url.into(),
-            ..Default::default()
+            body: Vec::new(),
+            headers: HashMap::new(),
         }
     }
 
     pub fn get(url: impl Into<String>) -> Self {
-        Self::new(Method::GET, url)
+        Self::new(Method::Get, url)
     }
 
     pub fn with_body(mut self, body: impl Into<Vec<u8>>) -> Self {
@@ -81,14 +76,15 @@ impl Request {
         self
     }
 
-    pub async fn send(self, surf: &Client) -> RequestResult<Vec<u8>> {
+    pub async fn send(self) -> RequestResult<Vec<u8>> {
         let mut request = match self.method {
-            Method::GET => surf.get(&self.url),
-            Method::POST => surf.post(&self.url),
-            Method::PATCH => surf.patch(&self.url),
-            Method::PUT => surf.put(&self.url),
-            Method::DELETE => surf.delete(&self.url),
-            Method::HEAD => surf.head(&self.url),
+            Method::Get => CLIENT.get(&self.url),
+            Method::Post => CLIENT.post(&self.url),
+            Method::Patch => CLIENT.patch(&self.url),
+            Method::Put => CLIENT.put(&self.url),
+            Method::Delete => CLIENT.delete(&self.url),
+            Method::Head => CLIENT.head(&self.url),
+            _ => panic!("Unsupported method"),
         };
 
         for (key, value) in self.headers {
