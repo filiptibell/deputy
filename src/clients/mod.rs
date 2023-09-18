@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use surf::{http::headers::USER_AGENT, Client, Config};
 
 pub mod crates;
@@ -19,6 +21,7 @@ impl Clients {
     pub fn new() -> Self {
         let base: Client = Config::new()
             .set_max_connections_per_host(8)
+            .set_timeout(Some(Duration::from_secs(15)))
             .add_header(
                 USER_AGENT,
                 concat!(env!("CARGO_PKG_NAME"), "@", env!("CARGO_PKG_VERSION")),

@@ -82,18 +82,13 @@ impl Request {
     }
 
     pub async fn send(self, surf: &Client) -> RequestResult<Vec<u8>> {
-        // TODO: We should probably switch to using something like surf
-        // instead of ureq and spawning blocking threads, we can depend
-        // on surf with default-features = false + h1-client-rustls
-        let agent = surf.clone();
-
         let mut request = match self.method {
-            Method::GET => agent.get(&self.url),
-            Method::POST => agent.post(&self.url),
-            Method::PATCH => agent.patch(&self.url),
-            Method::PUT => agent.put(&self.url),
-            Method::DELETE => agent.delete(&self.url),
-            Method::HEAD => agent.head(&self.url),
+            Method::GET => surf.get(&self.url),
+            Method::POST => surf.post(&self.url),
+            Method::PATCH => surf.patch(&self.url),
+            Method::PUT => surf.put(&self.url),
+            Method::DELETE => surf.delete(&self.url),
+            Method::HEAD => surf.head(&self.url),
         };
 
         for (key, value) in self.headers {
