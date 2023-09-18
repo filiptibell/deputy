@@ -1,4 +1,5 @@
 mod cache_map;
+mod client;
 mod error;
 mod request;
 

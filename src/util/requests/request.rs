@@ -2,29 +2,19 @@
 
 use std::{collections::HashMap, time::Duration};
 
-use once_cell::sync::Lazy;
-use surf::{
-    http::{
-        headers::{HeaderName, USER_AGENT},
-        Method,
-    },
-    Client, Config,
+use http_types::{
+    headers::{HeaderName, HeaderValue, USER_AGENT},
+    Method,
 };
 
-use super::{RequestResult, ResponseError};
+use futures_lite::future::race;
+use smol::Timer;
+use tracing::warn;
+use url::Url;
 
-static CLIENT: Lazy<Client> = Lazy::new(|| {
-    Config::new()
-        .set_max_connections_per_host(8)
-        .set_timeout(Some(Duration::from_secs(15)))
-        .add_header(
-            USER_AGENT,
-            concat!(env!("CARGO_PKG_NAME"), "@", env!("CARGO_PKG_VERSION")),
-        )
-        .expect("Failed to add user agent header")
-        .try_into()
-        .expect("Failed to create surf client")
-});
+use super::{client::fetch, RequestError, RequestResult, ResponseError};
+
+const USER_AGENT_VALUE: &str = concat!(env!("CARGO_PKG_NAME"), "@", env!("CARGO_PKG_VERSION"));
 
 #[derive(Clone, Debug)]
 pub struct Request {
@@ -77,26 +67,36 @@ impl Request {
     }
 
     pub async fn send(self) -> RequestResult<Vec<u8>> {
-        let mut request = match self.method {
-            Method::Get => CLIENT.get(&self.url),
-            Method::Post => CLIENT.post(&self.url),
-            Method::Patch => CLIENT.patch(&self.url),
-            Method::Put => CLIENT.put(&self.url),
-            Method::Delete => CLIENT.delete(&self.url),
-            Method::Head => CLIENT.head(&self.url),
-            _ => panic!("Unsupported method"),
-        };
+        let url = Url::parse(&self.url)?;
+        let mut request = http_types::Request::new(self.method, url);
 
         for (key, value) in self.headers {
-            request = request.header(
+            request.append_header(
                 HeaderName::from_string(key).expect("Passed invalid header name"),
                 &value,
             )
         }
 
-        let mut response = request.body_bytes(&self.body).send().await?;
+        // Force user agent
+        request.append_header(
+            USER_AGENT,
+            HeaderValue::from_bytes(USER_AGENT_VALUE.as_bytes().to_vec())
+                .expect("User agent header is invalid"),
+        );
+
+        // Send request with manual timeout mechanism
+        let mut response = race(async { Ok(fetch(request).await?) }, async {
+            Timer::after(Duration::from_secs(10)).await;
+            warn!("Request timed out");
+            Err(RequestError::TimedOut)
+        })
+        .await?;
+
         let status = response.status();
-        let body = response.body_bytes().await?;
+        let body = response
+            .body_bytes()
+            .await
+            .map_err(|e| RequestError::Client(e.to_string()))?;
 
         if status.is_client_error() || status.is_server_error() {
             let e = ResponseError {

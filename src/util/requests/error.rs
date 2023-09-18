@@ -1,7 +1,9 @@
 use std::{fmt, string::FromUtf8Error};
 
-use surf::StatusCode;
+use http_types::StatusCode;
 use thiserror::Error;
+
+use super::client;
 
 pub type RequestResult<T, E = RequestError> = Result<T, E>;
 
@@ -56,6 +58,8 @@ pub enum RequestError {
     UrlParse(#[from] url::ParseError),
     #[error("client error - {0}")]
     Client(String), // Request builder error, before sending
+    #[error("request timed out")]
+    TimedOut,
     #[error("json error - {0}")]
     Json(String),
     #[error("unknown error")]
@@ -88,8 +92,8 @@ impl RequestError {
     }
 }
 
-impl From<surf::Error> for RequestError {
-    fn from(value: surf::Error) -> Self {
+impl From<client::ClientError> for RequestError {
+    fn from(value: client::ClientError) -> Self {
         Self::Client(value.to_string())
     }
 }

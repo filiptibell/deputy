@@ -1,6 +1,6 @@
 use std::collections::{HashSet, VecDeque};
 
-use surf::StatusCode;
+use http_types::StatusCode;
 use tower_lsp::lsp_types::Url;
 use tracing::info;
 

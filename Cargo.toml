@@ -33,14 +33,15 @@ async-channel = "1.9"
 async-lock = "2.8"
 futures-lite = "1.13"
 
+http-types = "2.12"
+async-h1 = "2.3"
+async-native-tls = "0.5"
+
 serde = "1.0"
 serde_json = "1.0"
 toml = "0.8"
 
 moka = { version = "0.11", features = ["future"] }
-surf = { version = "2.3", default-features = false, features = [
-    "h1-client-rustls",
-] }
 
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
