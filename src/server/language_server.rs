@@ -1,14 +1,15 @@
 use std::io;
 use std::sync::Arc;
 
-use futures::future::join_all;
 use smol::fs;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::LanguageServer;
 use tracing::{trace, warn};
 
-use super::*;
+use crate::server::{DocumentBuilder, Server};
+use crate::tools::{Tool, Tools};
+use crate::util::join_all;
 
 #[tower_lsp::async_trait]
 impl LanguageServer for Server {

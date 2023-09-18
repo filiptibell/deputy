@@ -2482,7 +2482,7 @@ dependencies = [
  "bytes",
  "clap",
  "dashmap",
- "futures",
+ "futures-lite",
  "logos 0.13.0",
  "lsp-document",
  "moka",

@@ -2,7 +2,7 @@ use std::{sync::Arc, time::Duration};
 
 use async_lock::Semaphore;
 use dashmap::DashMap;
-use futures::Future;
+use futures_lite::Future;
 use moka::future::Cache;
 use tracing::trace;
 

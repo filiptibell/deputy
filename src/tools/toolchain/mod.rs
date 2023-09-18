@@ -1,4 +1,3 @@
-use futures::future::join_all;
 use tracing::trace;
 
 use tower_lsp::jsonrpc::Result;
@@ -6,6 +5,7 @@ use tower_lsp::lsp_types::*;
 use tower_lsp::Client;
 
 use crate::server::*;
+use crate::util::join_all;
 
 use super::*;
 
