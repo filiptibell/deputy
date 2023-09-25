@@ -22,8 +22,6 @@ enum Arch {
 pub enum ArtifactCompatParseError {
     #[error("could not parse operating system from artifact name")]
     Os,
-    #[error("could not parse architecture from artifact name")]
-    Arch,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -74,16 +72,17 @@ impl FromStr for ArtifactCompat {
             || name_low.contains("amd64")
             || name_low.contains("win64")
         {
-            Some(Arch::X86_64)
+            Arch::X86_64
         } else if name_low.contains("aarch64") || name_low.contains("arm64") {
-            Some(Arch::Aarch64)
+            Arch::Aarch64
         } else {
-            None
+            // Default to x86 if no arch was found in the artifact name
+            Arch::X86_64
         };
 
         Ok(Self {
             os: os.ok_or(ArtifactCompatParseError::Os)?,
-            arch: arch.ok_or(ArtifactCompatParseError::Arch)?,
+            arch,
         })
     }
 }

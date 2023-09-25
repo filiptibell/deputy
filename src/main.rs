@@ -22,8 +22,7 @@ fn main() {
         .from_env_lossy()
         .add_directive("rustls=warn".parse().unwrap())
         .add_directive("tower_lsp=warn".parse().unwrap())
-        .add_directive("tower=info".parse().unwrap())
-        .add_directive("ureq=info".parse().unwrap());
+        .add_directive("tower=info".parse().unwrap());
     tracing_subscriber::fmt()
         .compact()
         .with_env_filter(tracing_filter)
