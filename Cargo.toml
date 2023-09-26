@@ -38,7 +38,6 @@ toml = "0.8"
 
 moka = { version = "0.12", features = ["future"] }
 
-reqwest = "0.11"
 tokio = { version = "1.25", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
@@ -51,6 +50,11 @@ features = ["runtime-tokio", "proposed"]
 [dependencies.lsp-document]
 git = "https://github.com/artempyanykh/rust-lsp-document"
 rev = "d08ce4d2e36b073611d0db17e5a2b41a70d8daa4"
+
+[dependencies.reqwest]
+version = "0.11"
+default-features = false
+features = ["rustls-tls", "gzip"]
 
 [dependencies.clap]
 version = "4.4"
