@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved consistency of diagnostic messages
 - Documentation link to [docs.rs](https://docs.rs/) is now always included, even if crates don't have a documentation link in their metadata
 
+### Fixed
+
+- Fixed potential deadlock / hang for Wally diagnostics with many dependencies
+
 ## `0.0.4` - September 15th, 2023
 
 ### Fixed

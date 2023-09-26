@@ -1,7 +1,8 @@
 use std::io;
 use std::sync::Arc;
 
-use smol::fs;
+use futures::future::join_all;
+use tokio::fs;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::LanguageServer;
@@ -9,7 +10,6 @@ use tracing::{trace, warn};
 
 use crate::server::{DocumentBuilder, Server};
 use crate::tools::{Tool, Tools};
-use crate::util::join_all;
 
 #[tower_lsp::async_trait]
 impl LanguageServer for Server {

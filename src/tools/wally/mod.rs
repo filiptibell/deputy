@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
+use futures::future::join_all;
 use semver::Version;
 use tower_lsp::Client;
 use tracing::trace;
 
-use crate::{server::*, util::join_all};
+use crate::server::*;
 
 use super::*;
 

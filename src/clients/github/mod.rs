@@ -10,6 +10,8 @@ use crate::util::*;
 mod cache;
 use cache::*;
 
+use self::consts::*;
+
 mod consts;
 mod requests;
 
@@ -36,6 +38,7 @@ impl GithubClient {
 
         Request::get(url)
             .with_header("Content-Type", consts::GITHUB_API_CONTENT_TYPE)
+            .with_header(GITHUB_API_VERSION_NAME, GITHUB_API_VERSION_VALUE)
             .with_header_opt("Authorization", auth_token)
             .send()
             .await

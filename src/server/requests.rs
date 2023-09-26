@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
-use smol::Timer;
+use tokio::time::sleep;
 use tracing::{debug, trace};
 
 use tower_lsp::lsp_types::request::Request;
@@ -55,9 +55,9 @@ impl Server {
     pub fn watch_rate_limit(&self) {
         let client = self.client.clone();
         let github = self.clients.github.clone();
-        smol::spawn(async move {
+        tokio::spawn(async move {
             loop {
-                Timer::after(Duration::from_secs(2)).await;
+                sleep(Duration::from_secs(2)).await;
                 trace!("Checking rate limits");
                 if github.is_rate_limited() {
                     let notif = RateLimitRequest::github();
@@ -74,10 +74,9 @@ impl Server {
                             debug!("GitHub rate limit response received - no token");
                         }
                     }
-                    Timer::after(Duration::from_secs(240)).await;
+                    sleep(Duration::from_secs(240)).await;
                 }
             }
-        })
-        .detach();
+        });
     }
 }

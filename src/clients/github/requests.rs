@@ -124,6 +124,7 @@ impl GithubClient {
 
             let result = Request::get(git_file_url)
                 .with_header("Accept", consts::GITHUB_API_CONTENT_TYPE_RAW)
+                .with_header(GITHUB_API_VERSION_NAME, GITHUB_API_VERSION_VALUE)
                 .with_header_opt("Authorization", agent_auth)
                 .send()
                 .await;

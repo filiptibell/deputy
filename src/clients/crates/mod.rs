@@ -7,7 +7,7 @@ use std::{
 };
 
 use async_channel::{unbounded, Receiver, Sender};
-use smol::Timer;
+use tokio::time::sleep;
 use tracing::error;
 
 use crate::util::*;
@@ -58,12 +58,11 @@ impl CratesClient {
             let lim = self.crawl_limited.clone();
             let tx = self.crawl_limit_tx.clone();
             lim.store(true, Ordering::SeqCst);
-            smol::spawn(async move {
-                Timer::after(Duration::from_secs(consts::CRAWL_MAX_INTERVAL_SECONDS)).await;
+            tokio::spawn(async move {
+                sleep(Duration::from_secs(consts::CRAWL_MAX_INTERVAL_SECONDS)).await;
                 lim.store(false, Ordering::SeqCst);
                 tx.try_send(()).ok();
-            })
-            .detach();
+            });
         }
     }
 

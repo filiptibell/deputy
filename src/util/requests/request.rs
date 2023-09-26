@@ -1,25 +1,27 @@
 #![allow(dead_code)]
 
-use std::{
-    collections::HashMap,
-    sync::atomic::{AtomicUsize, Ordering},
-    time::Duration,
-};
+use std::{collections::HashMap, str::FromStr};
 
-use http_types::{
-    headers::{HeaderName, HeaderValue, USER_AGENT},
-    Method,
+use once_cell::sync::Lazy;
+use reqwest::{
+    header::{HeaderName, HeaderValue, USER_AGENT},
+    Client, Method,
 };
-
-use futures_lite::future::race;
-use smol::Timer;
-use tracing::{trace, warn};
+use tracing::trace;
 use url::Url;
 
-use super::{client::fetch, RequestError, RequestResult, ResponseError};
+use super::{RequestError, RequestResult, ResponseError};
 
-const USER_AGENT_VALUE: &str = concat!(env!("CARGO_PKG_NAME"), "@", env!("CARGO_PKG_VERSION"));
-static REQUEST_ID_COUNTER: AtomicUsize = AtomicUsize::new(0);
+const USER_AGENT_VALUE: &str = concat!(
+    env!("CARGO_PKG_NAME"),
+    "@",
+    env!("CARGO_PKG_VERSION"),
+    " ( ",
+    env!("CARGO_PKG_REPOSITORY"),
+    " )"
+);
+
+static CLIENT: Lazy<Client> = Lazy::new(Client::new);
 
 #[derive(Clone, Debug)]
 pub struct Request {
@@ -40,7 +42,7 @@ impl Request {
     }
 
     pub fn get(url: impl Into<String>) -> Self {
-        Self::new(Method::Get, url)
+        Self::new(Method::GET, url)
     }
 
     pub fn with_body(mut self, body: impl Into<Vec<u8>>) -> Self {
@@ -75,42 +77,36 @@ impl Request {
     }
 
     pub async fn send(self) -> RequestResult<Vec<u8>> {
-        let id = REQUEST_ID_COUNTER.fetch_add(1, Ordering::SeqCst);
-        trace!("Sending request #{id}: {self:#?}");
+        let mut request = reqwest::Request::new(self.method, Url::parse(&self.url)?);
 
-        let url = Url::parse(&self.url)?;
-        let mut request = http_types::Request::new(self.method, url);
-
+        // Set headers
+        let headers = request.headers_mut();
         for (key, value) in self.headers {
-            request.append_header(
-                HeaderName::from_string(key).expect("Passed invalid header name"),
-                &value,
-            )
+            headers.insert(
+                HeaderName::from_str(&key).expect("Passed invalid header name"),
+                HeaderValue::from_str(&value).expect("Passed invalid header value"),
+            );
         }
 
         // Force user agent
-        request.append_header(
+        headers.insert(
             USER_AGENT,
-            HeaderValue::from_bytes(USER_AGENT_VALUE.as_bytes().to_vec())
+            HeaderValue::from_bytes(USER_AGENT_VALUE.as_bytes())
                 .expect("User agent header is invalid"),
         );
 
-        // Send request with manual timeout mechanism
-        let mut response = race(async { Ok(fetch(request).await?) }, async {
-            Timer::after(Duration::from_secs(10)).await;
-            warn!("Request timed out");
-            Err(RequestError::TimedOut)
-        })
-        .await?;
-
-        trace!("Got response #{id}: {response:#?}");
-
+        // Send request
+        trace!("Sending request:\n{request:#?}");
+        let response = CLIENT.execute(request).await?;
+        trace!("Got response:\n{response:#?}");
         let status = response.status();
         let body = response
-            .body_bytes()
+            .bytes()
             .await
+            .map(|b| b.to_vec())
             .map_err(|e| RequestError::Client(e.to_string()))?;
 
+        // Return Err enum if the request has a non-200 status code
         if status.is_client_error() || status.is_server_error() {
             let e = ResponseError {
                 status,

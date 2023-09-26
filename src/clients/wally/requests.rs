@@ -1,6 +1,6 @@
 use std::collections::{HashSet, VecDeque};
 
-use http_types::StatusCode;
+use reqwest::StatusCode;
 use tower_lsp::lsp_types::Url;
 use tracing::info;
 
@@ -114,7 +114,7 @@ impl WallyClient {
 
         Err(RequestError::Response(
             ResponseError::from_status_and_string(
-                StatusCode::NotFound,
+                StatusCode::NOT_FOUND,
                 format!("No packages were found for scope `{scope_low}`"),
             ),
         ))
@@ -152,7 +152,7 @@ impl WallyClient {
 
         Err(RequestError::Response(
             ResponseError::from_status_and_string(
-                StatusCode::NotFound,
+                StatusCode::NOT_FOUND,
                 format!("No metadatas were found for package `{scope_low}`{scope_low}'"),
             ),
         ))

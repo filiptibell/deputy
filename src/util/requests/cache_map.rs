@@ -1,13 +1,13 @@
 use std::{sync::Arc, time::Duration};
 
-use async_lock::Semaphore;
+use async_semaphore::Semaphore;
 use dashmap::DashMap;
-use futures_lite::Future;
+use futures::Future;
 use moka::future::Cache;
 use tracing::trace;
 
 type CacheMap<T> = Cache<String, T>;
-type Semaphores = Arc<DashMap<String, Semaphore>>;
+type Semaphores = Arc<DashMap<String, Arc<Semaphore>>>;
 
 /**
     Generic cache map for web requests.
@@ -90,23 +90,22 @@ impl<T: Clone + Send + Sync + 'static> RequestCacheMap<T> {
         let key = key.into();
 
         // Return cached value right away if possible
-        if let Some(cached) = self.map.get(&key) {
+        if let Some(cached) = self.map.get(&key).await {
             trace!("Cache hit (1): {key}");
             return cached.clone();
         }
 
         // Wait for permission to try to perform the request -
         // guarantees at most one requester at a time per key
-        let sem = self
-            .sems
-            .entry(key.clone())
-            .or_insert_with(|| Semaphore::new(1));
-        trace!("Cache waiting: {key}");
-        let _guard = sem.acquire().await;
-        trace!("Cache acquired: {key}");
+        let sem = self.sems.get(&key).map(|s| s.clone()).unwrap_or_else(|| {
+            let sem = Arc::new(Semaphore::new(1));
+            self.sems.insert(key.clone(), sem.clone());
+            sem
+        });
+        let _guard = sem.acquire_arc().await;
 
         // We have permission, but the cache may have been updated, check again
-        if let Some(cached) = self.map.get(&key) {
+        if let Some(cached) = self.map.get(&key).await {
             trace!("Cache hit (2): {key}");
             return cached.clone();
         }

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use futures::future::join_all;
 use tracing::trace;
 
 use tower_lsp::jsonrpc::Result;

@@ -1,6 +1,9 @@
 use std::{fmt, net::SocketAddr};
 
-use smol::{io::split, net::TcpStream, prelude::*, Unblock};
+use tokio::{
+    io::{AsyncRead, AsyncWrite},
+    net::TcpStream,
+};
 
 /**
     Creates a socket listener.
@@ -12,15 +15,15 @@ pub async fn create_socket(port: u16) -> (impl AsyncRead, impl AsyncWrite) {
         .await
         .expect("Failed to connect to socket");
 
-    split(stream)
+    stream.into_split()
 }
 
 /**
     Get handles to standard input and output streams.
 */
 pub fn create_stdio() -> (impl AsyncRead, impl AsyncWrite) {
-    let stdin = Unblock::new(std::io::stdin());
-    let stdout = Unblock::new(std::io::stdout());
+    let stdin = tokio::io::stdin();
+    let stdout = tokio::io::stdout();
     (stdin, stdout)
 }
 

@@ -1,9 +1,7 @@
 use std::{fmt, string::FromUtf8Error};
 
-use http_types::StatusCode;
+use reqwest::StatusCode;
 use thiserror::Error;
-
-use super::client;
 
 pub type RequestResult<T, E = RequestError> = Result<T, E>;
 
@@ -57,9 +55,7 @@ pub enum RequestError {
     #[error("failed to parse url - {0}")]
     UrlParse(#[from] url::ParseError),
     #[error("client error - {0}")]
-    Client(String), // Request builder error, before sending
-    #[error("request timed out")]
-    TimedOut,
+    Client(String),
     #[error("json error - {0}")]
     Json(String),
     #[error("unknown error")]
@@ -70,7 +66,7 @@ pub enum RequestError {
 impl RequestError {
     pub fn is_not_found_error(&self) -> bool {
         if let RequestError::Response(e) = self {
-            e.status == StatusCode::NotFound
+            e.status == StatusCode::NOT_FOUND
         } else {
             false
         }
@@ -78,7 +74,7 @@ impl RequestError {
 
     pub fn is_rate_limit_error(&self) -> bool {
         if let RequestError::Response(e) = self {
-            if e.status == StatusCode::TooManyRequests {
+            if e.status == StatusCode::TOO_MANY_REQUESTS {
                 true
             } else {
                 let message = String::from_utf8_lossy(&e.bytes).to_ascii_lowercase();
@@ -92,8 +88,8 @@ impl RequestError {
     }
 }
 
-impl From<client::ClientError> for RequestError {
-    fn from(value: client::ClientError) -> Self {
+impl From<reqwest::Error> for RequestError {
+    fn from(value: reqwest::Error) -> Self {
         Self::Client(value.to_string())
     }
 }

@@ -13,14 +13,17 @@ const IS_DEBUG: bool = true;
 #[cfg(not(debug))]
 const IS_DEBUG: bool = false;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     // Set up logging / tracing
     let tracing_filter = EnvFilter::builder()
         .with_default_directive(LevelFilter::INFO.into())
         .from_env_lossy()
         .add_directive("rustls=warn".parse().unwrap())
         .add_directive("tower_lsp=warn".parse().unwrap())
-        .add_directive("tower=info".parse().unwrap());
+        .add_directive("tower=info".parse().unwrap())
+        .add_directive("hyper=info".parse().unwrap())
+        .add_directive("reqwest=info".parse().unwrap());
     tracing_subscriber::fmt()
         .compact()
         .with_env_filter(tracing_filter)
@@ -35,6 +38,5 @@ fn main() {
     let args = Arguments::new();
 
     // Create and run our language server
-    let exec = smol::Executor::new();
-    smol::block_on(exec.run(Server::serve(&args)));
+    Server::serve(&args).await;
 }
