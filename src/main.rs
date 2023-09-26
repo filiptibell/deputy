@@ -14,8 +14,6 @@ const IS_DEBUG: bool = true;
 const IS_DEBUG: bool = false;
 
 fn main() {
-    let args = Arguments::new();
-
     // Set up logging / tracing
     let tracing_filter = EnvFilter::builder()
         .with_default_directive(LevelFilter::INFO.into())
@@ -32,6 +30,9 @@ fn main() {
         .with_ansi(false) // Editor output does not support ANSI ... yet?
         .with_writer(std::io::stderr) // Stdio transport takes up stdout, so emit output to stderr
         .init();
+
+    // Parse startup arguments
+    let args = Arguments::new();
 
     // Create and run our language server
     let exec = smol::Executor::new();

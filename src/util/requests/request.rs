@@ -1,6 +1,10 @@
 #![allow(dead_code)]
 
-use std::{collections::HashMap, time::Duration};
+use std::{
+    collections::HashMap,
+    sync::atomic::{AtomicUsize, Ordering},
+    time::Duration,
+};
 
 use http_types::{
     headers::{HeaderName, HeaderValue, USER_AGENT},
@@ -9,12 +13,13 @@ use http_types::{
 
 use futures_lite::future::race;
 use smol::Timer;
-use tracing::warn;
+use tracing::{trace, warn};
 use url::Url;
 
 use super::{client::fetch, RequestError, RequestResult, ResponseError};
 
 const USER_AGENT_VALUE: &str = concat!(env!("CARGO_PKG_NAME"), "@", env!("CARGO_PKG_VERSION"));
+static REQUEST_ID_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 #[derive(Clone, Debug)]
 pub struct Request {
@@ -44,19 +49,22 @@ impl Request {
     }
 
     pub fn with_header(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
-        self.headers.insert(name.into(), value.into());
+        let mut name: String = name.into();
+        name.make_ascii_lowercase();
+        self.headers.insert(name, value.into());
         self
     }
 
     pub fn with_header_opt(
-        mut self,
+        self,
         name: impl Into<String>,
         value: Option<impl Into<String>>,
     ) -> Self {
         if let Some(value) = value {
-            self.headers.insert(name.into(), value.into());
+            self.with_header(name, value)
+        } else {
+            self
         }
-        self
     }
 
     pub fn with_headers(mut self, pairs: &[(&str, &str)]) -> Self {
@@ -67,6 +75,9 @@ impl Request {
     }
 
     pub async fn send(self) -> RequestResult<Vec<u8>> {
+        let id = REQUEST_ID_COUNTER.fetch_add(1, Ordering::SeqCst);
+        trace!("Sending request #{id}: {self:#?}");
+
         let url = Url::parse(&self.url)?;
         let mut request = http_types::Request::new(self.method, url);
 
@@ -91,6 +102,8 @@ impl Request {
             Err(RequestError::TimedOut)
         })
         .await?;
+
+        trace!("Got response #{id}: {response:#?}");
 
         let status = response.status();
         let body = response

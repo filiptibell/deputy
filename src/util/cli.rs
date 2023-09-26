@@ -42,7 +42,11 @@ impl Arguments {
         debug!(
             "Parsed arguments\n\ttransport: {}\n\tgithub_token: {}",
             this.transport,
-            this.github_token.is_some(),
+            if this.github_token.is_some() {
+                "Some(_)"
+            } else {
+                "None"
+            },
         );
 
         this

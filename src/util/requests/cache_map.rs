@@ -101,7 +101,9 @@ impl<T: Clone + Send + Sync + 'static> RequestCacheMap<T> {
             .sems
             .entry(key.clone())
             .or_insert_with(|| Semaphore::new(1));
+        trace!("Cache waiting: {key}");
         let _guard = sem.acquire().await;
+        trace!("Cache acquired: {key}");
 
         // We have permission, but the cache may have been updated, check again
         if let Some(cached) = self.map.get(&key) {
