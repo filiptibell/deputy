@@ -81,8 +81,8 @@ impl MetadataRealm {
         use MetadataRealm::*;
 
         match (found_realm, self) {
-            // Suggest server when placed in others
-            (Server, Dev | Shared) => Some(Server),
+            // Suggest server when placed in shared
+            (Server, Shared) => Some(Server),
             // Suggest dev when placed in others
             (Dev, Server | Shared) => Some(Dev),
             // Anything else is fine
