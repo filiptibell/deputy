@@ -2,7 +2,7 @@
     "name": "tooling-language-server",
     "displayName": "Tooling Language Server",
     "description": "A language server for tooling",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "license": "MPL-2.0",
     "publisher": "filiptibell",
     "author": {
