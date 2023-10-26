@@ -13,7 +13,7 @@ impl TomlArray {
     pub(super) fn from_node(node: Node, source: impl AsRef<str>) -> Option<Self> {
         match node.as_array() {
             None => None,
-            Some(table) => {
+            Some(array) => {
                 let mut range_first = None;
                 let mut range_last = None;
                 for range in node.text_ranges() {
@@ -32,7 +32,7 @@ impl TomlArray {
                 let source = source.as_ref();
                 let text = source[span.clone()].to_string();
 
-                let entries = table
+                let entries = array
                     .items()
                     .read()
                     .iter()

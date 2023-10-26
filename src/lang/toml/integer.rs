@@ -13,14 +13,14 @@ impl TomlInteger {
     pub(super) fn from_node(node: Node, source: impl AsRef<str>) -> Option<Self> {
         match node.as_integer() {
             None => None,
-            Some(string) => {
+            Some(number) => {
                 let range = node.text_ranges().next().unwrap();
                 let span = range_to_span(range);
 
                 let source = source.as_ref();
                 let text = source[span.clone()].to_string();
 
-                let value = match (string.value().as_positive(), string.value().as_negative()) {
+                let value = match (number.value().as_positive(), number.value().as_negative()) {
                     (Some(pos), _) => pos as i64,
                     (_, Some(neg)) => neg,
                     _ => unreachable!(),

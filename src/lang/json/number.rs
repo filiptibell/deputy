@@ -3,26 +3,27 @@ use std::ops::Range;
 use super::*;
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct TomlFloat {
+pub struct JsonNumber {
     pub(super) span: Range<usize>,
     pub(super) source: String,
     pub(super) value: f64,
 }
 
-impl TomlFloat {
-    pub(super) fn from_node(node: Node, source: impl AsRef<str>) -> Option<Self> {
-        match node.as_float() {
+impl JsonNumber {
+    pub(super) fn from_node(
+        node: Value<Span>,
+        range: Range<usize>,
+        source: impl AsRef<str>,
+    ) -> Option<Self> {
+        match node.as_number() {
             None => None,
             Some(number) => {
-                let range = node.text_ranges().next().unwrap();
-                let span = range_to_span(range);
-
                 let source = source.as_ref();
-                let text = source[span.clone()].to_string();
+                let text = source[range.clone()].to_string();
 
-                let value = number.value();
+                let value = number.as_f64_lossy();
                 Some(Self {
-                    span,
+                    span: range,
                     source: text,
                     value,
                 })
@@ -43,7 +44,7 @@ impl TomlFloat {
     }
 }
 
-impl AsRef<f64> for TomlFloat {
+impl AsRef<f64> for JsonNumber {
     fn as_ref(&self) -> &f64 {
         &self.value
     }

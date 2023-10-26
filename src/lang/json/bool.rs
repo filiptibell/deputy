@@ -3,28 +3,28 @@ use std::ops::Range;
 use super::*;
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct TomlBool {
+pub struct JsonBool {
     pub(super) span: Range<usize>,
     pub(super) source: String,
     pub(super) value: bool,
 }
 
-impl TomlBool {
-    pub(super) fn from_node(node: Node, source: impl AsRef<str>) -> Option<Self> {
-        match node.as_bool() {
+impl JsonBool {
+    pub(super) fn from_node(
+        node: Value<Span>,
+        range: Range<usize>,
+        source: impl AsRef<str>,
+    ) -> Option<Self> {
+        match node.as_boolean() {
             None => None,
             Some(bool) => {
-                let range = node.text_ranges().next().unwrap();
-                let span = range_to_span(range);
-
                 let source = source.as_ref();
-                let text = source[span.clone()].to_string();
+                let text = source[range.clone()].to_string();
 
-                let value = bool.value();
                 Some(Self {
-                    span,
+                    span: range,
                     source: text,
-                    value,
+                    value: bool,
                 })
             }
         }
@@ -43,7 +43,7 @@ impl TomlBool {
     }
 }
 
-impl AsRef<bool> for TomlBool {
+impl AsRef<bool> for JsonBool {
     fn as_ref(&self) -> &bool {
         &self.value
     }

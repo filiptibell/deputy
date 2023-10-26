@@ -24,7 +24,6 @@ dashmap = "5.5"
 logos = "0.13"
 once_cell = "1.18"
 semver = "1.0"
-taplo = "0.12"
 thiserror = "1.0"
 url = "2.4"
 
@@ -35,6 +34,10 @@ futures = "0.3"
 serde = "1.0"
 serde_json = "1.0"
 toml = "0.8"
+
+taplo = "0.12"
+json-syntax = "0.10"
+locspan = "0.8"
 
 moka = { version = "0.12", features = ["future"] }
 
