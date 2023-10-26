@@ -6,7 +6,7 @@ use semver::VersionReq;
 use thiserror::Error;
 use tower_lsp::lsp_types::DiagnosticSeverity;
 
-use crate::util::{TomlString, TomlValue};
+use crate::lang::toml::*;
 
 #[derive(Debug, Error)]
 pub enum SpecError {

@@ -5,7 +5,7 @@ use std::str::FromStr;
 use tracing::error;
 
 use super::util::*;
-use crate::util::*;
+use crate::lang::toml::*;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ManifestTool {

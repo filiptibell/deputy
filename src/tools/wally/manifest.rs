@@ -6,7 +6,7 @@ use tracing::error;
 
 use super::util::*;
 use crate::clients::wally::models::*;
-use crate::util::*;
+use crate::lang::toml::*;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ManifestDependency {

@@ -1,6 +1,7 @@
 use tracing_subscriber::filter::{EnvFilter, LevelFilter};
 
 mod clients;
+mod lang;
 mod server;
 mod tools;
 mod util;

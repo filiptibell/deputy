@@ -3,7 +3,7 @@ use std::{collections::HashMap, ops::Range, str::FromStr};
 use tracing::error;
 
 use super::util::*;
-use crate::util::*;
+use crate::lang::toml::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ManifestDependencyKind {
