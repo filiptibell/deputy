@@ -9,6 +9,7 @@ pub enum ToolName {
     Aftman,
     Cargo,
     Foreman,
+    JavaScript,
     Wally,
 }
 
@@ -21,7 +22,13 @@ impl ToolName {
     }
 
     pub fn all() -> Vec<Self> {
-        vec![Self::Aftman, Self::Cargo, Self::Foreman, Self::Wally]
+        vec![
+            Self::Aftman,
+            Self::Cargo,
+            Self::Foreman,
+            Self::JavaScript,
+            Self::Wally,
+        ]
     }
 
     pub fn file_glob(&self) -> &'static str {
@@ -29,6 +36,7 @@ impl ToolName {
             Self::Aftman => "**/aftman.toml",
             Self::Cargo => "**/Cargo.{toml,lock}",
             Self::Foreman => "**/foreman.toml",
+            Self::JavaScript => "**/package.json",
             Self::Wally => "**/wally.toml",
         }
     }
@@ -43,6 +51,18 @@ impl ToolName {
                 Some("cargo.lock") => uri.with_file_name("cargo.toml").unwrap(),
                 _ => return Vec::new(),
             }],
+            Self::JavaScript => match uri.file_name().as_deref() {
+                Some("package-lock.json" | "yarn.lock" | "pnpm-lock.yaml" | "bun.lockb") => {
+                    vec![uri.with_file_name("package.json").unwrap()]
+                }
+                Some("package.json") => vec![
+                    uri.with_file_name("package-lock.json").unwrap(),
+                    uri.with_file_name("yarn.lock").unwrap(),
+                    uri.with_file_name("pnpm-lock.yaml").unwrap(),
+                    uri.with_file_name("bun.lockb").unwrap(),
+                ],
+                _ => Vec::new(),
+            },
             Self::Foreman => Vec::new(),
             Self::Wally => Vec::new(),
         }
@@ -56,6 +76,7 @@ impl FromStr for ToolName {
             "aftman" | "aftman.toml" => Ok(Self::Aftman),
             "cargo" | "cargo.toml" | "cargo.lock" => Ok(Self::Cargo),
             "foreman" | "foreman.toml" => Ok(Self::Foreman),
+            "package.json" => Ok(Self::JavaScript),
             "wally" | "wally.toml" => Ok(Self::Wally),
             _ => Err("Unknown tool"),
         }

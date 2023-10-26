@@ -3,13 +3,14 @@ use std::{collections::HashMap, ops::Range, str::FromStr};
 use tracing::error;
 
 use super::util::*;
-use crate::lang::toml::*;
+use crate::lang::json::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ManifestDependencyKind {
     Default,
     Dev,
     Build,
+    Optional,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -19,37 +20,12 @@ pub struct ManifestDependency {
 }
 
 impl ManifestDependency {
-    fn from_toml_values(key: &TomlString, value: &TomlValue) -> Option<Self> {
-        let version = value.as_string().or_else(|| {
-            let (_, version) = value.as_table().and_then(|t| t.find("version"))?;
-            if version.kind().is_string() {
-                Some(version.as_string().unwrap())
-            } else {
-                None
-            }
-        })?;
-
-        let features = value
-            .as_table()
-            .and_then(|t| t.find("features"))
-            .map(|f| f.1)
-            .and_then(|t| t.as_table());
-
-        if let Some(features) = features {
-            Some(Self {
-                kind: ManifestDependencyKind::Default,
-                spec: Spec::from_key_value_pair_with_extras(
-                    key,
-                    version,
-                    &TomlValue::Table(Box::new(features.clone())),
-                ),
-            })
-        } else {
-            Some(Self {
-                kind: ManifestDependencyKind::Default,
-                spec: Spec::from_key_value_pair(key, version),
-            })
-        }
+    fn from_json_values(key: &JsonString, value: &JsonValue) -> Option<Self> {
+        let version = value.as_string()?;
+        Some(Self {
+            kind: ManifestDependencyKind::Default,
+            spec: Spec::from_key_value_pair(key, version),
+        })
     }
 
     pub fn spec(&self) -> Result<SpecCargo, SpecError> {
@@ -82,11 +58,12 @@ pub struct Manifest {
     pub dependencies: HashMap<String, ManifestDependency>,
     pub dev_dependencies: HashMap<String, ManifestDependency>,
     pub build_dependencies: HashMap<String, ManifestDependency>,
+    pub optional_dependencies: HashMap<String, ManifestDependency>,
 }
 
 impl Manifest {
-    fn from_toml_value(value: &TomlValue) -> Option<Self> {
-        let root = match value.as_table() {
+    fn from_json_value(value: &JsonValue) -> Option<Self> {
+        let root = match value.as_map() {
             None => return None,
             Some(t) => t,
         };
@@ -97,9 +74,9 @@ impl Manifest {
                     map: &mut HashMap<String, ManifestDependency>,
                     kind: ManifestDependencyKind| {
             if let Some((_, deps)) = root.find(map_key) {
-                if let Some(deps_table) = deps.as_table() {
+                if let Some(deps_table) = deps.as_map() {
                     for (k, v) in deps_table.as_ref().iter() {
-                        if let Some(mut tool) = ManifestDependency::from_toml_values(k, v) {
+                        if let Some(mut tool) = ManifestDependency::from_json_values(k, v) {
                             tool.kind = kind;
                             map.insert(k.value().to_string(), tool);
                         }
@@ -114,34 +91,29 @@ impl Manifest {
             ManifestDependencyKind::Default,
         );
         fill(
-            "dev-dependencies",
+            "devDependencies",
             &mut manifest.dev_dependencies,
             ManifestDependencyKind::Dev,
         );
         fill(
-            "dev_dependencies",
-            &mut manifest.dev_dependencies,
-            ManifestDependencyKind::Dev,
-        );
-        fill(
-            "build-dependencies",
+            "buildDependencies",
             &mut manifest.build_dependencies,
             ManifestDependencyKind::Build,
         );
         fill(
-            "build_dependencies",
-            &mut manifest.build_dependencies,
-            ManifestDependencyKind::Build,
+            "optionalDependencies",
+            &mut manifest.optional_dependencies,
+            ManifestDependencyKind::Optional,
         );
 
         Some(manifest)
     }
 
-    pub fn parse(source: impl AsRef<str>) -> Result<Self, TomlError> {
-        match TomlValue::new(source.as_ref()) {
-            Ok(value) => Ok(Self::from_toml_value(&value).expect("Toml root should be a table")),
+    pub fn parse(source: impl AsRef<str>) -> Result<Self, JsonError> {
+        match JsonValue::new(source.as_ref()) {
+            Ok(value) => Ok(Self::from_json_value(&value).expect("Json root should be a map")),
             Err(e) => {
-                error!("failed to deserialize cargo manifest - {e}");
+                error!("failed to deserialize tools manifest - {e}");
                 Err(e)
             }
         }
@@ -149,7 +121,7 @@ impl Manifest {
 }
 
 impl FromStr for Manifest {
-    type Err = TomlError;
+    type Err = JsonError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Self::parse(s)
     }

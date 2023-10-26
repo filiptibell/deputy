@@ -19,10 +19,12 @@ use util::*;
 // Individual tools
 
 mod cargo;
+mod javascript;
 mod toolchain;
 mod wally;
 
 use cargo::*;
+use javascript::*;
 use toolchain::*;
 use wally::*;
 
@@ -31,6 +33,7 @@ use wally::*;
 #[derive(Debug, Clone)]
 pub struct Tools {
     cargo: Cargo,
+    javascript: JavaScript,
     toolchain: Toolchain,
     wally: Wally,
 }
@@ -39,6 +42,7 @@ impl Tools {
     pub fn new(client: Client, clients: Clients, documents: Documents) -> Self {
         Self {
             cargo: Cargo::new(client.clone(), clients.clone(), documents.clone()),
+            javascript: JavaScript::new(client.clone(), clients.clone(), documents.clone()),
             toolchain: Toolchain::new(client.clone(), clients.clone(), documents.clone()),
             wally: Wally::new(client.clone(), clients.clone(), documents.clone()),
         }
@@ -60,6 +64,7 @@ impl Tools {
             Ok(ToolName::Aftman) => Some(&self.toolchain),
             Ok(ToolName::Cargo) => Some(&self.cargo),
             Ok(ToolName::Foreman) => Some(&self.toolchain),
+            Ok(ToolName::JavaScript) => Some(&self.javascript),
             Ok(ToolName::Wally) => Some(&self.wally),
             Err(e) => {
                 warn!("Failed to parse tool name from uri '{e}'");

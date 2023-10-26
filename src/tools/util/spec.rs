@@ -72,6 +72,13 @@ pub struct SpecForeman {
 }
 
 #[derive(Debug, Clone)]
+pub struct SpecJavaScript {
+    pub name: String,
+    pub version: String,
+    pub version_req: VersionReq,
+}
+
+#[derive(Debug, Clone)]
 pub struct SpecWally {
     pub author: String,
     pub name: String,
@@ -222,6 +229,24 @@ impl Spec {
             name: validate_name(&v[idx_slash + 1..])?,
             version_req: validate_version(e)?,
             version: e.to_string(),
+        })
+    }
+
+    pub fn as_javascript(&self) -> Result<SpecJavaScript, SpecError> {
+        let k = self.key_text();
+        if k.is_empty() {
+            return Err(SpecError::MissingAuthor);
+        }
+
+        let v = self.value_text();
+        if v.is_empty() {
+            return Err(SpecError::MissingVersion);
+        }
+
+        Ok(SpecJavaScript {
+            name: validate_name(k)?,
+            version_req: validate_version(v)?,
+            version: v.to_string(),
         })
     }
 
