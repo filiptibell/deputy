@@ -1,5 +1,7 @@
 use std::ops::Range;
 
+use crate::lang::{LangString, LangValue};
+
 use super::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -42,16 +44,20 @@ impl JsonString {
             }
         }
     }
+}
 
-    pub fn span(&self) -> Range<usize> {
+impl LangValue for JsonString {
+    fn span(&self) -> Range<usize> {
         self.span.clone()
     }
 
-    pub fn source(&self) -> &str {
+    fn source(&self) -> &str {
         self.source.as_str()
     }
+}
 
-    pub fn value(&self) -> &str {
+impl LangString for JsonString {
+    fn value(&self) -> &str {
         self.value.as_str()
     }
 }

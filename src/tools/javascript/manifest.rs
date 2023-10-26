@@ -4,6 +4,7 @@ use tracing::error;
 
 use super::util::*;
 use crate::lang::json::*;
+use crate::lang::LangString;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ManifestDependencyKind {
@@ -16,7 +17,7 @@ pub enum ManifestDependencyKind {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ManifestDependency {
     kind: ManifestDependencyKind,
-    spec: Spec,
+    spec: Spec<JsonString, JsonString, JsonValue>,
 }
 
 impl ManifestDependency {
@@ -28,27 +29,27 @@ impl ManifestDependency {
         })
     }
 
-    pub fn spec(&self) -> Result<SpecCargo, SpecError> {
-        self.spec.as_cargo()
+    pub fn _spec(&self) -> Result<SpecJavaScript, SpecError> {
+        self.spec.as_javascript()
     }
 
-    pub fn name_span(&self) -> Range<usize> {
+    pub fn _name_span(&self) -> Range<usize> {
         self.spec.key_span()
     }
 
-    pub fn name_text(&self) -> &str {
+    pub fn _name_text(&self) -> &str {
         self.spec.key_text()
     }
 
-    pub fn version_span(&self) -> Range<usize> {
+    pub fn _version_span(&self) -> Range<usize> {
         self.spec.value_span()
     }
 
-    pub fn version_source(&self) -> &str {
+    pub fn _version_source(&self) -> &str {
         self.spec.value_source()
     }
 
-    pub fn version_text(&self) -> &str {
+    pub fn _version_text(&self) -> &str {
         self.spec.value_text()
     }
 }

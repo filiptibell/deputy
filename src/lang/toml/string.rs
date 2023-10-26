@@ -2,6 +2,8 @@ use std::ops::Range;
 
 use taplo::dom::node::Key;
 
+use crate::lang::{LangString, LangValue};
+
 use super::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -46,16 +48,20 @@ impl TomlString {
             }
         }
     }
+}
 
-    pub fn span(&self) -> Range<usize> {
+impl LangValue for TomlString {
+    fn span(&self) -> Range<usize> {
         self.span.clone()
     }
 
-    pub fn source(&self) -> &str {
+    fn source(&self) -> &str {
         self.source.as_str()
     }
+}
 
-    pub fn value(&self) -> &str {
+impl LangString for TomlString {
+    fn value(&self) -> &str {
         self.value.as_str()
     }
 }

@@ -13,21 +13,21 @@ use manifest::*;
 #[derive(Debug, Clone)]
 pub struct JavaScript {
     _client: Client,
-    clients: Clients,
-    documents: Documents,
+    _clients: Clients,
+    _documents: Documents,
 }
 
 impl JavaScript {
     pub(super) fn new(client: Client, clients: Clients, documents: Documents) -> Self {
         Self {
             _client: client,
-            clients,
-            documents,
+            _clients: clients,
+            _documents: documents,
         }
     }
 
-    fn get_document(&self, uri: &Url) -> Option<(Document, Manifest)> {
-        let document = self.documents.get(uri).map(|r| r.clone())?;
+    fn _get_document(&self, uri: &Url) -> Option<(Document, Manifest)> {
+        let document = self._documents.get(uri).map(|r| r.clone())?;
         let manifest = Manifest::parse(document.as_str()).ok()?;
         Some((document, manifest))
     }
@@ -35,22 +35,22 @@ impl JavaScript {
 
 #[tower_lsp::async_trait]
 impl Tool for JavaScript {
-    async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
+    async fn hover(&self, _params: HoverParams) -> Result<Option<Hover>> {
         // TODO: Implement this
         Ok(None)
     }
 
-    async fn completion(&self, params: CompletionParams) -> Result<CompletionResponse> {
+    async fn completion(&self, _params: CompletionParams) -> Result<CompletionResponse> {
         // TODO: Implement this
         Ok(CompletionResponse::Array(Vec::new()))
     }
 
-    async fn diagnostics(&self, params: DocumentDiagnosticParams) -> Result<Vec<Diagnostic>> {
+    async fn diagnostics(&self, _params: DocumentDiagnosticParams) -> Result<Vec<Diagnostic>> {
         // TODO: Implement this
         Ok(Vec::new())
     }
 
-    async fn code_action(&self, params: CodeActionParams) -> Result<Vec<CodeActionOrCommand>> {
+    async fn code_action(&self, _params: CodeActionParams) -> Result<Vec<CodeActionOrCommand>> {
         // TODO: Implement this
         Ok(Vec::new())
     }

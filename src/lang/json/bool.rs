@@ -1,5 +1,7 @@
 use std::ops::Range;
 
+use crate::lang::{LangBool, LangValue};
+
 use super::*;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -29,16 +31,20 @@ impl JsonBool {
             }
         }
     }
+}
 
-    pub fn span(&self) -> Range<usize> {
+impl LangValue for JsonBool {
+    fn span(&self) -> Range<usize> {
         self.span.clone()
     }
 
-    pub fn source(&self) -> &str {
+    fn source(&self) -> &str {
         self.source.as_str()
     }
+}
 
-    pub fn value(&self) -> bool {
+impl LangBool for JsonBool {
+    fn value(&self) -> bool {
         self.value
     }
 }

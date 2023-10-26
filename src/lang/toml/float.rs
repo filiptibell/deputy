@@ -1,5 +1,7 @@
 use std::ops::Range;
 
+use crate::lang::{LangFloat, LangValue};
+
 use super::*;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -39,6 +41,22 @@ impl TomlFloat {
     }
 
     pub fn value(&self) -> f64 {
+        self.value
+    }
+}
+
+impl LangValue for TomlFloat {
+    fn span(&self) -> Range<usize> {
+        self.span.clone()
+    }
+
+    fn source(&self) -> &str {
+        self.source.as_str()
+    }
+}
+
+impl LangFloat for TomlFloat {
+    fn value(&self) -> f64 {
         self.value
     }
 }

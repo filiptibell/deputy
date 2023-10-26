@@ -6,12 +6,12 @@ use tracing::error;
 
 use super::util::*;
 use crate::clients::wally::models::*;
-use crate::lang::toml::*;
+use crate::lang::{toml::*, LangString};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ManifestDependency {
     realm: MetadataRealm,
-    spec: Spec,
+    spec: Spec<TomlString, TomlString, TomlValue>,
 }
 
 impl ManifestDependency {

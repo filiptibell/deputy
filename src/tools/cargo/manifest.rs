@@ -4,6 +4,7 @@ use tracing::error;
 
 use super::util::*;
 use crate::lang::toml::*;
+use crate::lang::LangString;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ManifestDependencyKind {
@@ -15,7 +16,7 @@ pub enum ManifestDependencyKind {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ManifestDependency {
     kind: ManifestDependencyKind,
-    spec: Spec,
+    spec: Spec<TomlString, TomlString, TomlValue>,
 }
 
 impl ManifestDependency {

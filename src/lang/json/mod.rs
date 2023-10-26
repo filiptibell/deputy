@@ -21,6 +21,8 @@ pub use null::*;
 pub use number::*;
 pub use string::*;
 
+use super::LangValue;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum JsonValueKind {
     Array,
@@ -124,28 +126,6 @@ impl JsonValue {
         }
     }
 
-    pub fn span(&self) -> Range<usize> {
-        match self {
-            Self::Array(v) => v.span(),
-            Self::Bool(v) => v.span(),
-            Self::Map(v) => v.span(),
-            Self::Null(v) => v.span(),
-            Self::Number(v) => v.span(),
-            Self::String(v) => v.span(),
-        }
-    }
-
-    pub fn source(&self) -> &str {
-        match self {
-            Self::Array(v) => v.source(),
-            Self::Bool(v) => v.source(),
-            Self::Map(v) => v.source(),
-            Self::Null(v) => v.source(),
-            Self::Number(v) => v.source(),
-            Self::String(v) => v.source(),
-        }
-    }
-
     #[inline]
     pub fn as_array(&self) -> Option<&JsonArray> {
         match self {
@@ -191,6 +171,30 @@ impl JsonValue {
         match self {
             Self::String(v) => Some(v.as_ref()),
             _ => None,
+        }
+    }
+}
+
+impl LangValue for JsonValue {
+    fn span(&self) -> Range<usize> {
+        match self {
+            Self::Array(v) => v.span(),
+            Self::Bool(v) => v.span(),
+            Self::Map(v) => v.span(),
+            Self::Null(v) => v.span(),
+            Self::Number(v) => v.span(),
+            Self::String(v) => v.span(),
+        }
+    }
+
+    fn source(&self) -> &str {
+        match self {
+            Self::Array(v) => v.source(),
+            Self::Bool(v) => v.source(),
+            Self::Map(v) => v.source(),
+            Self::Null(v) => v.source(),
+            Self::Number(v) => v.source(),
+            Self::String(v) => v.source(),
         }
     }
 }

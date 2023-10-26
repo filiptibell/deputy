@@ -20,6 +20,8 @@ pub use integer::*;
 pub use string::*;
 pub use table::*;
 
+use super::LangValue;
+
 fn range_to_span(range: TextRange) -> Range<usize> {
     Range {
         start: u32::from(range.start()) as usize,
@@ -134,28 +136,6 @@ impl TomlValue {
         }
     }
 
-    pub fn span(&self) -> Range<usize> {
-        match self {
-            Self::Array(v) => v.span(),
-            Self::Bool(v) => v.span(),
-            Self::Float(v) => v.span(),
-            Self::Integer(v) => v.span(),
-            Self::String(v) => v.span(),
-            Self::Table(v) => v.span(),
-        }
-    }
-
-    pub fn source(&self) -> &str {
-        match self {
-            Self::Array(v) => v.source(),
-            Self::Bool(v) => v.source(),
-            Self::Float(v) => v.source(),
-            Self::Integer(v) => v.source(),
-            Self::String(v) => v.source(),
-            Self::Table(v) => v.source(),
-        }
-    }
-
     #[inline]
     pub fn as_array(&self) -> Option<&TomlArray> {
         match self {
@@ -201,6 +181,30 @@ impl TomlValue {
         match self {
             Self::Table(v) => Some(v.as_ref()),
             _ => None,
+        }
+    }
+}
+
+impl LangValue for TomlValue {
+    fn span(&self) -> Range<usize> {
+        match self {
+            Self::Array(v) => v.span(),
+            Self::Bool(v) => v.span(),
+            Self::Float(v) => v.span(),
+            Self::Integer(v) => v.span(),
+            Self::String(v) => v.span(),
+            Self::Table(v) => v.span(),
+        }
+    }
+
+    fn source(&self) -> &str {
+        match self {
+            Self::Array(v) => v.source(),
+            Self::Bool(v) => v.source(),
+            Self::Float(v) => v.source(),
+            Self::Integer(v) => v.source(),
+            Self::String(v) => v.source(),
+            Self::Table(v) => v.source(),
         }
     }
 }

@@ -6,7 +6,9 @@ use semver::VersionReq;
 use thiserror::Error;
 use tower_lsp::lsp_types::DiagnosticSeverity;
 
+use crate::lang::json::*;
 use crate::lang::toml::*;
+use crate::lang::*;
 
 #[derive(Debug, Error)]
 pub enum SpecError {
@@ -87,14 +89,14 @@ pub struct SpecWally {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Spec {
-    key: TomlString,
-    value: TomlString,
-    extras: Option<TomlValue>,
+pub struct Spec<K: LangString, V: LangString, E: LangValue> {
+    key: K,
+    value: V,
+    extras: Option<E>,
 }
 
-impl Spec {
-    pub fn from_key_value_pair(key: &TomlString, value: &TomlString) -> Self {
+impl<K: LangString, V: LangString, E: LangValue> Spec<K, V, E> {
+    pub fn from_key_value_pair(key: &K, value: &V) -> Self {
         Self {
             key: key.clone(),
             value: value.clone(),
@@ -102,11 +104,7 @@ impl Spec {
         }
     }
 
-    pub fn from_key_value_pair_with_extras(
-        key: &TomlString,
-        value: &TomlString,
-        extras: &TomlValue,
-    ) -> Self {
+    pub fn from_key_value_pair_with_extras(key: &K, value: &V, extras: &E) -> Self {
         Self {
             key: key.clone(),
             value: value.clone(),
@@ -151,14 +149,16 @@ impl Spec {
         self.extras.as_ref().map(|e| e.span())
     }
 
-    pub fn extras_value(&self) -> Option<&TomlValue> {
+    pub fn extras_value(&self) -> Option<&E> {
         self.extras.as_ref()
     }
 
     pub fn extras_source(&self) -> Option<&str> {
         self.extras.as_ref().map(|e| e.source())
     }
+}
 
+impl Spec<TomlString, TomlString, TomlValue> {
     pub fn as_aftman(&self) -> Result<SpecAftman, SpecError> {
         let v = self.value_text();
         if v.is_empty() {
@@ -232,24 +232,6 @@ impl Spec {
         })
     }
 
-    pub fn as_javascript(&self) -> Result<SpecJavaScript, SpecError> {
-        let k = self.key_text();
-        if k.is_empty() {
-            return Err(SpecError::MissingAuthor);
-        }
-
-        let v = self.value_text();
-        if v.is_empty() {
-            return Err(SpecError::MissingVersion);
-        }
-
-        Ok(SpecJavaScript {
-            name: validate_name(k)?,
-            version_req: validate_version(v)?,
-            version: v.to_string(),
-        })
-    }
-
     pub fn as_wally(&self) -> Result<SpecWally, SpecError> {
         let v = self.value_text();
         if v.is_empty() {
@@ -273,6 +255,26 @@ impl Spec {
             name: validate_name(&v[idx_slash + 1..idx_at])?,
             version_req: validate_version(version)?,
             version: version.to_string(),
+        })
+    }
+}
+
+impl Spec<JsonString, JsonString, JsonValue> {
+    pub fn as_javascript(&self) -> Result<SpecJavaScript, SpecError> {
+        let k = self.key_text();
+        if k.is_empty() {
+            return Err(SpecError::MissingAuthor);
+        }
+
+        let v = self.value_text();
+        if v.is_empty() {
+            return Err(SpecError::MissingVersion);
+        }
+
+        Ok(SpecJavaScript {
+            name: validate_name(k)?,
+            version_req: validate_version(v)?,
+            version: v.to_string(),
         })
     }
 }
