@@ -19,14 +19,15 @@
 
 <br/>
 
-A language server for several tools - [Aftman], [Cargo], [Foreman] and [Wally].
+A language server supporting several tools and package managers:
 
-Provides autocomplete for tools & dependencies, diagnostics for out-of-date versions, and more.
+- [Aftman](https://github.com/LPGhatguy/aftman) / [Foreman](https://github.com/roblox/foreman)
+- [Cargo](https://crates.io)
+- [NPM](https://www.npmjs.com)
+- [Wally](https://github.com/UpliftGames/wally)
 
-[Aftman]: https://github.com/LPGhatguy/aftman
-[Cargo]: https://crates.io
-[Foreman]: https://github.com/roblox/foreman
-[Wally]: https://github.com/UpliftGames/wally
+Provides autocomplete, diagnostics for out-of-date versions, and more. <br/>
+Check out the [features](#features) section for a full list of features.
 
 ## Installation
 
@@ -36,60 +37,42 @@ The language server can be installed as an extension from:
 
 ## Features
 
-<details>
-<summary>Aftman</summary>
+- Autocomplete for names and versions
+- Hover for information - includes description, links to documentation & more
+- Diagnostics:
+  - A newer version is available
+  - The specified tool / package does not exist
+  - Unsupported platform / architecture / name
+- Quick actions on diagnostics - update to newest version
 
-Features that are currently supported:
-
-- Diagnostics for:
-  - A newer tool version is available
-  - Invalid author / name / version
-  - Unsupported platform / architecture
-- Hover for information about a tool (description, links)
-- Autocomplete for commonly used tool authors & names, versions
-- Quick action to update to new tool version
-
-</details>
+## TODO
 
 <details>
 <summary>Cargo</summary>
 
-Features that are currently supported:
-
-- Hover for information about a dependency (description, links)
-- Diagnostics for:
-  - A newer dependency version is available
-  - Invalid dependency name / version
-- Autocomplete for dependencies - versions
-- Quick action to update to a new dependency version
-
-Features that will be supported:
+Not yet implemented:
 
 - Autocomplete for dependencies - features
 
 </details>
 
 <details>
-<summary>Foreman</summary>
+<summary>NPM</summary>
 
-See the Aftman section.
+Not yet implemented:
 
-All features supported by Aftman will also be supported for Foreman.
+- Autocomplete for dependency versions
+- Diagnostics for dependency versions
+- Quick action for updating a dependency
 
 </details>
 
 <details>
-<summary>Wally</summary>
+<summary>Foreman</summary>
 
-Features that are currently supported:
+Not yet implemented:
 
-- Diagnostics for:
-  - A newer dependency version is available
-  - Invalid author / name / version
-  - Invalid dependency realm (server dep in shared)
-- Hover for information about a dependency (description, links)
-- Autocomplete for dependencies - authors + names + versions
-- Quick action to update to a new dependency version
+- Everything supported by Aftman
 
 </details>
 
