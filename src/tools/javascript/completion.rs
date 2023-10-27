@@ -10,25 +10,6 @@ use crate::server::*;
 
 use super::constants::*;
 
-async fn complete_package_name(
-    _clients: &Clients,
-    document: &Document,
-    replace_range: StdRange<usize>,
-    name: &str,
-) -> Result<Vec<CompletionItem>> {
-    Ok(find_matching_package_infos(name)
-        .iter()
-        .map(|p| CompletionItem {
-            label: p.name.to_string(),
-            kind: Some(CompletionItemKind::VALUE),
-            text_edit: Some(CompletionTextEdit::Edit(
-                document.create_edit(replace_range.clone(), p.name.to_string()),
-            )),
-            ..Default::default()
-        })
-        .collect::<Vec<_>>())
-}
-
 async fn complete_package_version(
     clients: &Clients,
     document: &Document,
@@ -77,7 +58,27 @@ async fn complete_package_version(
         .collect())
 }
 
-pub async fn get_package_completions(
+pub async fn get_package_name_completions(
+    _clients: &Clients,
+    document: &Document,
+    replace_range: StdRange<usize>,
+    name: &str,
+) -> Result<CompletionResponse> {
+    let items = find_matching_package_infos(name)
+        .iter()
+        .map(|p| CompletionItem {
+            label: p.name.to_string(),
+            kind: Some(CompletionItemKind::VALUE),
+            text_edit: Some(CompletionTextEdit::Edit(
+                document.create_edit(replace_range.clone(), p.name.to_string()),
+            )),
+            ..Default::default()
+        })
+        .collect::<Vec<_>>();
+    Ok(CompletionResponse::Array(items))
+}
+
+pub async fn get_package_version_completions(
     clients: &Clients,
     document: &Document,
     range: StdRange<usize>,

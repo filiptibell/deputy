@@ -169,23 +169,24 @@ impl Tool for JavaScript {
         let offset = document.lsp_position_to_offset(pos);
         let try_find = |deps: &HashMap<String, ManifestDependency>| {
             deps.iter().find_map(|(_, dep)| {
-                let span = dep.version_span();
-                if offset >= span.start && offset <= span.end {
-                    Some((span.clone(), dep.clone()))
+                let nspan = dep.name_span();
+                let vspan = dep.version_span();
+                if offset >= nspan.start && offset <= nspan.end {
+                    Some((true, nspan.clone(), dep.clone()))
+                } else if offset >= vspan.start && offset <= vspan.end {
+                    Some((false, vspan.clone(), dep.clone()))
                 } else {
                     None
                 }
             })
         };
 
-        // TODO: Completion for package names
-
         let found = try_find(&manifest.dependencies)
             .or_else(|| try_find(&manifest.dev_dependencies))
             .or_else(|| try_find(&manifest.build_dependencies))
             .or_else(|| try_find(&manifest.optional_dependencies));
-        let (found_range, found_dep) = match found {
-            Some((range, dep)) => (range, dep),
+        let (found_is_name, found_range, found_dep) = match found {
+            Some((is_name, range, dep)) => (is_name, range, dep),
             _ => return Ok(CompletionResponse::Array(Vec::new())),
         };
 
@@ -195,14 +196,19 @@ impl Tool for JavaScript {
         });
 
         let slice_before = &document.as_str()[range_before.clone()];
-        get_package_completions(
-            &self.clients,
-            &document,
-            range_before,
-            found_dep.name_text(),
-            slice_before,
-        )
-        .await
+
+        if found_is_name {
+            get_package_name_completions(&self.clients, &document, range_before, slice_before).await
+        } else {
+            get_package_version_completions(
+                &self.clients,
+                &document,
+                range_before,
+                found_dep.name_text(),
+                slice_before,
+            )
+            .await
+        }
     }
 
     async fn diagnostics(&self, _params: DocumentDiagnosticParams) -> Result<Vec<Diagnostic>> {
