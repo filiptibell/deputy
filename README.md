@@ -61,7 +61,6 @@ Not yet implemented:
 
 Not yet implemented:
 
-- Autocomplete for dependency versions
 - Diagnostics for dependency versions
 - Quick action for updating a dependency
 
