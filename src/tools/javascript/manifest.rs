@@ -29,27 +29,27 @@ impl ManifestDependency {
         })
     }
 
-    pub fn _spec(&self) -> Result<SpecJavaScript, SpecError> {
+    pub fn spec(&self) -> Result<SpecJavaScript, SpecError> {
         self.spec.as_javascript()
     }
 
-    pub fn _name_span(&self) -> Range<usize> {
+    pub fn name_span(&self) -> Range<usize> {
         self.spec.key_span()
     }
 
-    pub fn _name_text(&self) -> &str {
+    pub fn name_text(&self) -> &str {
         self.spec.key_text()
     }
 
-    pub fn _version_span(&self) -> Range<usize> {
+    pub fn version_span(&self) -> Range<usize> {
         self.spec.value_span()
     }
 
-    pub fn _version_source(&self) -> &str {
+    pub fn version_source(&self) -> &str {
         self.spec.value_source()
     }
 
-    pub fn _version_text(&self) -> &str {
+    pub fn version_text(&self) -> &str {
         self.spec.value_text()
     }
 }
