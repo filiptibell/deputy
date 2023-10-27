@@ -98,7 +98,10 @@ export const startServer = async () => {
 
 	const clientOptions: LanguageClientOptions = {
 		stdioEncoding: "utf8",
-		documentSelector: [{ scheme: "file", language: "toml" }],
+		documentSelector: [
+			{ scheme: "file", language: "toml" },
+			{ scheme: "file", language: "json" },
+		],
 		diagnosticCollectionName: "Tooling Language Server",
 		outputChannel,
 	};

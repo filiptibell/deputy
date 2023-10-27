@@ -74,15 +74,15 @@ impl RegistryMetadataRepositoryVariant {
                 let (base_url, user, repo, suffix) = match s.trim() {
                     s if s.starts_with("github:") => s
                         .trim_start_matches("github:")
-                        .split_once("/")
+                        .split_once('/')
                         .map(|(u, r)| ("https://github.com/", u, r, "")),
                     s if s.starts_with("gitlab:") => s
                         .trim_start_matches("gitlab:")
-                        .split_once("/")
+                        .split_once('/')
                         .map(|(u, r)| ("https://gitlab.com/", u, r, "")),
                     s if s.starts_with("bitbucket:") => s
                         .trim_start_matches("bitbucket:")
-                        .split_once("/")
+                        .split_once('/')
                         .map(|(u, r)| ("https://bitbucket.org/", u, r, "/overview")),
                     _ => None,
                 }?;

@@ -96,18 +96,21 @@ impl Tool for JavaScript {
 
         trace!("Hovering: {found_key} version {found_ver}");
 
-        let locked = match lockfile
-            .packages
-            .values()
-            .find(|package| package.name.eq_ignore_ascii_case(&found_key))
-        {
+        let (locked_name, locked_package) = match lockfile.packages.iter().find_map(|(key, val)| {
+            let name = key.trim_start_matches("node_modules/");
+            if name.eq_ignore_ascii_case(&found_key) {
+                Some((name, val))
+            } else {
+                None
+            }
+        }) {
             Some(package) => package,
             None => return Ok(None),
         };
 
         let mut lines = Vec::new();
-        lines.push(format!("## {}", locked.name));
-        lines.push(format!("Version **{}**", locked.version));
+        lines.push(format!("## {}", locked_name));
+        lines.push(format!("Version **{}**", locked_package.version));
 
         trace!("Fetching package data from npm");
         if let Ok(package_data) = self
@@ -117,21 +120,25 @@ impl Tool for JavaScript {
             .await
             .map(|c| c.current_version)
         {
-            lines.push(String::new());
-            lines.push(package_data.description.unwrap_or_default().to_string());
-
-            let page = package_data.homepage.as_deref();
-            let repo = package_data.repository.and_then(|r| r.url());
-
-            lines.push(String::new());
-            lines.push(String::from("### Links"));
-            if let Some(repo) = repo {
-                lines.push(format!("- [Repository]({repo})"));
+            if let Some(desc) = package_data.description {
+                lines.push(String::new());
+                lines.push(desc.to_string());
             }
-            if let Some(page) = page {
-                lines.push(format!("- [Homepage]({page})"));
+
+            if package_data.homepage.is_some() || package_data.repository.is_some() {
+                let page = package_data.homepage.as_deref();
+                let repo = package_data.repository.and_then(|r| r.url());
+
+                lines.push(String::new());
+                lines.push(String::from("### Links"));
+                if let Some(repo) = repo {
+                    lines.push(format!("- [Repository]({repo})"));
+                }
+                if let Some(page) = page {
+                    lines.push(format!("- [Homepage]({page})"));
+                }
+                lines.push(String::new());
             }
-            lines.push(String::new());
         }
 
         Ok(Some(Hover {

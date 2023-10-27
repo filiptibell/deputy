@@ -23,6 +23,7 @@
     ],
     "activationEvents": [
         "onLanguage:toml",
+        "onLanguage:json",
         "onStartupFinished"
     ],
     "main": "./out/extension.js",

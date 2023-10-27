@@ -52,15 +52,10 @@ impl ToolName {
                 _ => return Vec::new(),
             }],
             Self::JavaScript => match uri.file_name().as_deref() {
-                Some("package-lock.json" | "yarn.lock" | "pnpm-lock.yaml" | "bun.lockb") => {
+                Some("package.json") => vec![uri.with_file_name("package-lock.json").unwrap()],
+                Some("package-lock.json") => {
                     vec![uri.with_file_name("package.json").unwrap()]
                 }
-                Some("package.json") => vec![
-                    uri.with_file_name("package-lock.json").unwrap(),
-                    uri.with_file_name("yarn.lock").unwrap(),
-                    uri.with_file_name("pnpm-lock.yaml").unwrap(),
-                    uri.with_file_name("bun.lockb").unwrap(),
-                ],
                 _ => Vec::new(),
             },
             Self::Foreman => Vec::new(),
@@ -76,7 +71,7 @@ impl FromStr for ToolName {
             "aftman" | "aftman.toml" => Ok(Self::Aftman),
             "cargo" | "cargo.toml" | "cargo.lock" => Ok(Self::Cargo),
             "foreman" | "foreman.toml" => Ok(Self::Foreman),
-            "package.json" => Ok(Self::JavaScript),
+            "package.json" | "package-lock.json" => Ok(Self::JavaScript),
             "wally" | "wally.toml" => Ok(Self::Wally),
             _ => Err("Unknown tool"),
         }

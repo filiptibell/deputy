@@ -5,7 +5,6 @@ use tracing::error;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct LockfilePackage {
-    pub name: String,
     pub version: String,
 }
 
