@@ -14,7 +14,7 @@ pub struct RegistryMetadata {
 #[derive(Debug, Clone, Deserialize)]
 pub struct RegistryMetadataVersion {
     pub name: String,
-    pub version: String,
+    pub version: Option<String>,
     pub description: Option<String>,
     pub license: Option<String>,
     pub homepage: Option<String>,
@@ -22,8 +22,6 @@ pub struct RegistryMetadataVersion {
     pub author: Option<RegistryMetadataHuman>,
     #[serde(default)]
     pub maintainers: Vec<RegistryMetadataHuman>,
-    #[serde(default)]
-    pub dependencies: Vec<RegistryMetadataDependency>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -52,12 +50,6 @@ pub struct RegistryMetadataRepository {
 pub enum RegistryMetadataRepositoryVariant {
     String(String),
     Full(RegistryMetadataRepository),
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct RegistryMetadataDependency {
-    pub name: String,
-    pub version: String,
 }
 
 impl RegistryMetadata {

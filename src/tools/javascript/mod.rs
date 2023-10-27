@@ -10,9 +10,12 @@ use crate::util::*;
 
 use super::*;
 
+mod completion;
+mod constants;
 mod lockfile;
 mod manifest;
 
+use completion::*;
 use lockfile::*;
 use manifest::*;
 
@@ -127,7 +130,11 @@ impl Tool for JavaScript {
 
             if package_data.homepage.is_some() || package_data.repository.is_some() {
                 let page = package_data.homepage.as_deref();
-                let repo = package_data.repository.and_then(|r| r.url());
+                let repo = package_data.repository.and_then(|r| r.url()).map(|p| {
+                    p.trim_start_matches("git+")
+                        .trim_end_matches(".git")
+                        .to_string()
+                });
 
                 lines.push(String::new());
                 lines.push(String::from("### Links"));
@@ -150,9 +157,52 @@ impl Tool for JavaScript {
         }))
     }
 
-    async fn completion(&self, _params: CompletionParams) -> Result<CompletionResponse> {
-        // TODO: Implement this
-        Ok(CompletionResponse::Array(Vec::new()))
+    async fn completion(&self, params: CompletionParams) -> Result<CompletionResponse> {
+        let uri = params.text_document_position.text_document.uri;
+        let pos = params.text_document_position.position;
+
+        let (document, _, manifest, _) = match self.get_documents(&uri) {
+            None => return Ok(CompletionResponse::Array(Vec::new())),
+            Some(d) => d,
+        };
+
+        let offset = document.lsp_position_to_offset(pos);
+        let try_find = |deps: &HashMap<String, ManifestDependency>| {
+            deps.iter().find_map(|(_, dep)| {
+                let span = dep.version_span();
+                if offset >= span.start && offset <= span.end {
+                    Some((span.clone(), dep.clone()))
+                } else {
+                    None
+                }
+            })
+        };
+
+        // TODO: Completion for package names
+
+        let found = try_find(&manifest.dependencies)
+            .or_else(|| try_find(&manifest.dev_dependencies))
+            .or_else(|| try_find(&manifest.build_dependencies))
+            .or_else(|| try_find(&manifest.optional_dependencies));
+        let (found_range, found_dep) = match found {
+            Some((range, dep)) => (range, dep),
+            _ => return Ok(CompletionResponse::Array(Vec::new())),
+        };
+
+        let range_before = document.lsp_range_to_span(Range {
+            start: document.lsp_position_from_offset(found_range.start + 1),
+            end: pos,
+        });
+
+        let slice_before = &document.as_str()[range_before.clone()];
+        get_package_completions(
+            &self.clients,
+            &document,
+            range_before,
+            found_dep.name_text(),
+            slice_before,
+        )
+        .await
     }
 
     async fn diagnostics(&self, _params: DocumentDiagnosticParams) -> Result<Vec<Diagnostic>> {
