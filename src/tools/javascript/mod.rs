@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use futures::future::join_all;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::Client;
@@ -12,10 +13,12 @@ use super::*;
 
 mod completion;
 mod constants;
+mod diagnostics;
 mod lockfile;
 mod manifest;
 
 use completion::*;
+use diagnostics::*;
 use lockfile::*;
 use manifest::*;
 
@@ -211,13 +214,54 @@ impl Tool for JavaScript {
         }
     }
 
-    async fn diagnostics(&self, _params: DocumentDiagnosticParams) -> Result<Vec<Diagnostic>> {
-        // TODO: Implement this
-        Ok(Vec::new())
+    async fn diagnostics(&self, params: DocumentDiagnosticParams) -> Result<Vec<Diagnostic>> {
+        let uri = params.text_document.uri;
+
+        let (document, _, manifest, _) = match self.get_documents(&uri) {
+            None => return Ok(Vec::new()),
+            Some(d) => d,
+        };
+
+        let deps = (manifest.dependencies.values())
+            .chain(manifest.dev_dependencies.values())
+            .chain(manifest.build_dependencies.values())
+            .map(|dep| {
+                let range_name = document.lsp_range_from_span(dep.name_span().clone());
+                let range_version = document.lsp_range_from_span(dep.version_span().clone());
+                (dep.clone(), range_name, range_version)
+            })
+            .collect::<Vec<_>>();
+
+        let mut all_diagnostics = Vec::new();
+        let mut fut_diagnostics = Vec::new();
+        for (tool, range_name, range_version) in &deps {
+            fut_diagnostics.push(diagnose_dependency(
+                &self.clients,
+                &uri,
+                tool,
+                range_name,
+                range_version,
+            ));
+        }
+
+        for diag in join_all(fut_diagnostics).await.into_iter().flatten() {
+            all_diagnostics.push(diag);
+        }
+
+        Ok(all_diagnostics)
     }
 
-    async fn code_action(&self, _params: CodeActionParams) -> Result<Vec<CodeActionOrCommand>> {
-        // TODO: Implement this
-        Ok(Vec::new())
+    async fn code_action(&self, params: CodeActionParams) -> Result<Vec<CodeActionOrCommand>> {
+        let mut actions = Vec::new();
+        for diag in params.context.diagnostics {
+            if let Some(Ok(action)) = diag
+                .data
+                .as_ref()
+                .map(ResolveContext::<CodeActionMetadata>::try_from)
+            {
+                actions.push(action.into_inner().into_code_action(diag.clone()))
+            }
+        }
+        Ok(actions)
     }
 }

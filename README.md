@@ -57,16 +57,6 @@ Not yet implemented:
 </details>
 
 <details>
-<summary>NPM</summary>
-
-Not yet implemented:
-
-- Diagnostics for dependency versions
-- Quick action for updating a dependency
-
-</details>
-
-<details>
 <summary>Foreman</summary>
 
 Not yet implemented:

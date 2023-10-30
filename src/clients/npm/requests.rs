@@ -17,7 +17,13 @@ impl NpmClient {
             let inner = async {
                 let bytes = self.request_get(&registry_url).await?;
                 let text = String::from_utf8(bytes.to_vec())?;
-                Ok(RegistryMetadata::try_from_json(&text)?)
+
+                let mut meta = RegistryMetadata::try_from_json(&text)?;
+                for (key, value) in meta.versions.iter_mut() {
+                    value.version = key.clone();
+                }
+
+                Ok(meta)
             }
             .await;
 

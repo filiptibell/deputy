@@ -14,7 +14,8 @@ pub struct RegistryMetadata {
 #[derive(Debug, Clone, Deserialize)]
 pub struct RegistryMetadataVersion {
     pub name: String,
-    pub version: Option<String>,
+    #[serde(default)]
+    pub version: String,
     pub description: Option<String>,
     pub license: Option<String>,
     pub homepage: Option<String>,
