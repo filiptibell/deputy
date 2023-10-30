@@ -272,7 +272,7 @@ impl Spec<JsonString, JsonString, JsonValue> {
         }
 
         Ok(SpecJavaScript {
-            name: validate_name(k)?,
+            name: validate_name_javascript(k)?,
             version_req: validate_version(v)?,
             version: v.to_string(),
         })
@@ -291,6 +291,10 @@ fn find_at_sign(s: &str, after: usize) -> Option<usize> {
 
 fn is_valid_naming_char(char: char) -> bool {
     char == '-' || char == '_' || char.is_ascii_alphanumeric()
+}
+
+fn is_valid_naming_char_javascript(char: char) -> bool {
+    char == '-' || char == '_' || char == '@' || char == '/' || char.is_ascii_alphanumeric()
 }
 
 fn is_valid_version_char(char: char) -> bool {
@@ -313,6 +317,15 @@ fn validate_author(author: impl AsRef<str>) -> Result<String, SpecError> {
 fn validate_name(name: impl AsRef<str>) -> Result<String, SpecError> {
     let name = name.as_ref();
     if let Some(invalid_char) = name.chars().find(|c| !is_valid_naming_char(*c)) {
+        Err(SpecError::InvalidName(invalid_char))
+    } else {
+        Ok(name.to_string())
+    }
+}
+
+fn validate_name_javascript(name: impl AsRef<str>) -> Result<String, SpecError> {
+    let name = name.as_ref();
+    if let Some(invalid_char) = name.chars().find(|c| !is_valid_naming_char_javascript(*c)) {
         Err(SpecError::InvalidName(invalid_char))
     } else {
         Ok(name.to_string())

@@ -9,9 +9,9 @@ mod util;
 use server::Server;
 use util::Arguments;
 
-#[cfg(debug)]
+#[cfg(debug_assertions)]
 const IS_DEBUG: bool = true;
-#[cfg(not(debug))]
+#[cfg(not(debug_assertions))]
 const IS_DEBUG: bool = false;
 
 #[tokio::main]
@@ -23,7 +23,9 @@ async fn main() {
         .add_directive("rustls=warn".parse().unwrap())
         .add_directive("tower_lsp=warn".parse().unwrap())
         .add_directive("tower=info".parse().unwrap())
+        .add_directive("h2=info".parse().unwrap())
         .add_directive("hyper=info".parse().unwrap())
+        .add_directive("rustls=info".parse().unwrap())
         .add_directive("reqwest=info".parse().unwrap());
     tracing_subscriber::fmt()
         .compact()

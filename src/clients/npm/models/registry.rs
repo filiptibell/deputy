@@ -17,18 +17,48 @@ pub struct RegistryMetadataVersion {
     #[serde(default)]
     pub version: String,
     pub description: Option<String>,
-    pub license: Option<String>,
+    pub license: Option<RegistryMetadataLicenseVariant>,
     pub homepage: Option<String>,
     pub repository: Option<RegistryMetadataRepositoryVariant>,
-    pub author: Option<RegistryMetadataHuman>,
+    pub author: Option<RegistryMetadataHumanVariant>,
     #[serde(default)]
-    pub maintainers: Vec<RegistryMetadataHuman>,
+    pub maintainers: Vec<RegistryMetadataHumanVariant>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RegistryMetadataLicense {
+    #[serde(rename = "type")]
+    pub kind: String,
+    pub url: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(untagged)]
+pub enum RegistryMetadataLicenseVariant {
+    String(String),
+    Full(RegistryMetadataLicense),
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RegistryMetadataHuman {
     pub name: String,
     pub email: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(untagged)]
+pub enum RegistryMetadataHumanVariant {
+    String(String),
+    Full(RegistryMetadataHuman),
+}
+
+impl RegistryMetadataHumanVariant {
+    pub fn _name(&self) -> &str {
+        match self {
+            Self::String(s) => s.as_ref(),
+            Self::Full(f) => f.name.as_ref(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
