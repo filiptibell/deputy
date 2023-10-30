@@ -6,15 +6,15 @@
 <h1 align="center">Tooling Language Server</h1>
 
 <div align="center">
-	<a href="https://github.com/filiptibell/tooling-language-server/actions">
-		<img src="https://shields.io/endpoint?url=https://badges.readysetplay.io/workflow/filiptibell/tooling-language-server/ci.yaml" alt="CI status" />
-	</a>
-	<a href="https://github.com/filiptibell/tooling-language-server/actions">
-		<img src="https://shields.io/endpoint?url=https://badges.readysetplay.io/workflow/filiptibell/tooling-language-server/release.yaml" alt="Release status" />
-	</a>
-	<a href="https://github.com/filiptibell/tooling-language-server/blob/main/LICENSE.txt">
-		<img src="https://img.shields.io/github/license/filiptibell/tooling-language-server.svg?label=License&color=informational" alt="Language server license" />
-	</a>
+  <a href="https://github.com/filiptibell/tooling-language-server/actions">
+    <img src="https://shields.io/endpoint?url=https://badges.readysetplay.io/workflow/filiptibell/tooling-language-server/ci.yaml" alt="CI status" />
+  </a>
+  <a href="https://github.com/filiptibell/tooling-language-server/actions">
+    <img src="https://shields.io/endpoint?url=https://badges.readysetplay.io/workflow/filiptibell/tooling-language-server/release.yaml" alt="Release status" />
+  </a>
+  <a href="https://github.com/filiptibell/tooling-language-server/blob/main/LICENSE.txt">
+    <img src="https://img.shields.io/github/license/filiptibell/tooling-language-server.svg?label=License&color=informational" alt="Language server license" />
+  </a>
 </div>
 
 <br/>
