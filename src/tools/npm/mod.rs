@@ -23,13 +23,13 @@ use lockfile::*;
 use manifest::*;
 
 #[derive(Debug, Clone)]
-pub struct JavaScript {
+pub struct Npm {
     _client: Client,
     clients: Clients,
     documents: Documents,
 }
 
-impl JavaScript {
+impl Npm {
     pub(super) fn new(client: Client, clients: Clients, documents: Documents) -> Self {
         Self {
             _client: client,
@@ -57,7 +57,7 @@ impl JavaScript {
 }
 
 #[tower_lsp::async_trait]
-impl Tool for JavaScript {
+impl Tool for Npm {
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
         let uri = params.text_document_position_params.text_document.uri;
         let pos = params.text_document_position_params.position;

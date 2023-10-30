@@ -9,7 +9,7 @@ pub enum ToolName {
     Aftman,
     Cargo,
     Foreman,
-    JavaScript,
+    Npm,
     Wally,
 }
 
@@ -26,7 +26,7 @@ impl ToolName {
             Self::Aftman,
             Self::Cargo,
             Self::Foreman,
-            Self::JavaScript,
+            Self::Npm,
             Self::Wally,
         ]
     }
@@ -36,7 +36,7 @@ impl ToolName {
             Self::Aftman => "**/aftman.toml",
             Self::Cargo => "**/Cargo.{toml,lock}",
             Self::Foreman => "**/foreman.toml",
-            Self::JavaScript => "**/package.json",
+            Self::Npm => "**/package.json",
             Self::Wally => "**/wally.toml",
         }
     }
@@ -51,7 +51,7 @@ impl ToolName {
                 Some("cargo.lock") => uri.with_file_name("cargo.toml").unwrap(),
                 _ => return Vec::new(),
             }],
-            Self::JavaScript => match uri.file_name().as_deref() {
+            Self::Npm => match uri.file_name().as_deref() {
                 Some("package.json") => vec![uri.with_file_name("package-lock.json").unwrap()],
                 Some("package-lock.json") => {
                     vec![uri.with_file_name("package.json").unwrap()]
@@ -71,7 +71,7 @@ impl FromStr for ToolName {
             "aftman" | "aftman.toml" => Ok(Self::Aftman),
             "cargo" | "cargo.toml" | "cargo.lock" => Ok(Self::Cargo),
             "foreman" | "foreman.toml" => Ok(Self::Foreman),
-            "package.json" | "package-lock.json" => Ok(Self::JavaScript),
+            "package.json" | "package-lock.json" => Ok(Self::Npm),
             "wally" | "wally.toml" => Ok(Self::Wally),
             _ => Err("Unknown tool"),
         }

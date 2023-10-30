@@ -74,7 +74,7 @@ pub struct SpecForeman {
 }
 
 #[derive(Debug, Clone)]
-pub struct SpecJavaScript {
+pub struct SpecNpm {
     pub name: String,
     pub version: String,
     pub version_req: VersionReq,
@@ -260,7 +260,7 @@ impl Spec<TomlString, TomlString, TomlValue> {
 }
 
 impl Spec<JsonString, JsonString, JsonValue> {
-    pub fn as_javascript(&self) -> Result<SpecJavaScript, SpecError> {
+    pub fn as_npm(&self) -> Result<SpecNpm, SpecError> {
         let k = self.key_text();
         if k.is_empty() {
             return Err(SpecError::MissingAuthor);
@@ -271,8 +271,8 @@ impl Spec<JsonString, JsonString, JsonValue> {
             return Err(SpecError::MissingVersion);
         }
 
-        Ok(SpecJavaScript {
-            name: validate_name_javascript(k)?,
+        Ok(SpecNpm {
+            name: validate_name_npm(k)?,
             version_req: validate_version(v)?,
             version: v.to_string(),
         })
@@ -293,7 +293,7 @@ fn is_valid_naming_char(char: char) -> bool {
     char == '-' || char == '_' || char.is_ascii_alphanumeric()
 }
 
-fn is_valid_naming_char_javascript(char: char) -> bool {
+fn is_valid_naming_char_npm(char: char) -> bool {
     char == '-' || char == '_' || char == '@' || char == '/' || char.is_ascii_alphanumeric()
 }
 
@@ -323,9 +323,9 @@ fn validate_name(name: impl AsRef<str>) -> Result<String, SpecError> {
     }
 }
 
-fn validate_name_javascript(name: impl AsRef<str>) -> Result<String, SpecError> {
+fn validate_name_npm(name: impl AsRef<str>) -> Result<String, SpecError> {
     let name = name.as_ref();
-    if let Some(invalid_char) = name.chars().find(|c| !is_valid_naming_char_javascript(*c)) {
+    if let Some(invalid_char) = name.chars().find(|c| !is_valid_naming_char_npm(*c)) {
         Err(SpecError::InvalidName(invalid_char))
     } else {
         Ok(name.to_string())

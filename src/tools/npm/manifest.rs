@@ -29,8 +29,8 @@ impl ManifestDependency {
         })
     }
 
-    pub fn spec(&self) -> Result<SpecJavaScript, SpecError> {
-        self.spec.as_javascript()
+    pub fn spec(&self) -> Result<SpecNpm, SpecError> {
+        self.spec.as_npm()
     }
 
     pub fn name_span(&self) -> Range<usize> {

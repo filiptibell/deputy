@@ -18,7 +18,7 @@ impl FromStr for Lockfile {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let result = serde_json::from_str::<Lockfile>(s);
         if let Err(e) = &result {
-            error!("failed to deserialize javascript lockfile - {e}")
+            error!("failed to deserialize npm lockfile - {e}")
         }
         result
     }
