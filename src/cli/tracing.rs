@@ -1,3 +1,5 @@
+use std::io::{stderr, IsTerminal};
+
 use tracing_subscriber::filter::{EnvFilter, LevelFilter};
 
 #[cfg(debug_assertions)]
@@ -23,7 +25,7 @@ pub fn setup_tracing() {
         .without_time()
         .with_target(IS_DEBUG)
         .with_level(true)
-        .with_ansi(false) // Editor output does not support ANSI ... yet?
-        .with_writer(std::io::stderr) // Stdio transport takes up stdout, so emit output to stderr
+        .with_ansi(stderr().is_terminal())
+        .with_writer(stderr) // Stdio transport takes up stdout, so emit output to stderr
         .init();
 }
