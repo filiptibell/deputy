@@ -15,6 +15,11 @@ mod requests;
 
 pub use document::*;
 
+pub struct ServerArguments {
+    pub transport: Transport,
+    pub github_token: Option<String>,
+}
+
 pub struct Server {
     pub client: Client,
     pub clients: Clients,
@@ -23,7 +28,7 @@ pub struct Server {
 }
 
 impl Server {
-    fn new(client: Client, args: &Arguments) -> Self {
+    fn new(client: Client, args: &ServerArguments) -> Self {
         let clients = Clients::new();
         let documents = Arc::new(DashMap::new());
 
@@ -42,7 +47,7 @@ impl Server {
         this
     }
 
-    pub async fn serve(args: &Arguments) {
+    pub async fn serve(args: &ServerArguments) {
         let (service, socket) = LspService::build(|client| Self::new(client, args))
             // FUTURE: Add custom notifications here
             .finish();

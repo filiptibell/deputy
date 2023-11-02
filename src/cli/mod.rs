@@ -1,7 +1,10 @@
+use ::tracing::debug;
 use clap::Parser;
-use tracing::debug;
 
+use crate::server::{Server, ServerArguments};
 use crate::util::Transport;
+
+mod tracing;
 
 #[derive(Parser)]
 struct Inner {
@@ -25,12 +28,12 @@ impl Inner {
     }
 }
 
-pub struct Arguments {
+pub struct Cli {
     pub transport: Transport,
     pub github_token: Option<String>,
 }
 
-impl Arguments {
+impl Cli {
     pub fn new() -> Self {
         let arguments = Inner::parse();
 
@@ -50,5 +53,17 @@ impl Arguments {
         );
 
         this
+    }
+
+    pub async fn run(self) {
+        // Set up tracing
+        tracing::setup_tracing();
+
+        // Create and run our language server
+        Server::serve(&ServerArguments {
+            transport: self.transport,
+            github_token: self.github_token,
+        })
+        .await;
     }
 }
