@@ -13,6 +13,7 @@ use crate::util::*;
 use super::*;
 
 mod completion;
+mod constants;
 mod diagnostics;
 mod lockfile;
 mod manifest;
