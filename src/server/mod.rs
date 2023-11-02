@@ -6,14 +6,15 @@ use tower_lsp::{Client, LspService, Server as LspServer};
 
 use crate::clients::*;
 use crate::tools::*;
-use crate::util::*;
 
 mod document;
 mod initialize;
 mod language_server;
 mod requests;
+mod transport;
 
 pub use document::*;
+pub use transport::*;
 
 pub struct ServerArguments {
     pub transport: Transport,
@@ -54,11 +55,11 @@ impl Server {
 
         match args.transport {
             Transport::Socket(port) => {
-                let (read, write) = create_socket(port).await;
+                let (read, write) = Transport::create_socket(port).await;
                 LspServer::new(read, write, socket).serve(service).await;
             }
             Transport::Stdio => {
-                let (stdin, stdout) = create_stdio();
+                let (stdin, stdout) = Transport::create_stdio();
                 LspServer::new(stdin, stdout, socket).serve(service).await;
             }
         }

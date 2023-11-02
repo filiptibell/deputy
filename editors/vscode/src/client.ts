@@ -87,6 +87,7 @@ export const startServer = async () => {
 	const server: Executable = {
 		command,
 		options,
+		args: ["serve"],
 	};
 
 	// Create language server & client config
