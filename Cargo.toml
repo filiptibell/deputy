@@ -19,6 +19,7 @@ strip = true
 lto = true
 
 [dependencies]
+anyhow = "1.0"
 bytes = "1.0"
 dashmap = "5.5"
 logos = "0.13"

@@ -1,3 +1,4 @@
+use anyhow::Result;
 use clap::Parser;
 use tracing::debug;
 
@@ -14,19 +15,17 @@ pub struct ServeCommand {
 }
 
 impl ServeCommand {
-    fn transport(&self) -> Option<Transport> {
-        if let Some(port) = self.socket {
+    pub async fn run(self) -> Result<()> {
+        let transport = if let Some(port) = self.socket {
             Some(Transport::Socket(port))
         } else if self.stdio {
             Some(Transport::Stdio)
         } else {
             None
-        }
-    }
+        };
 
-    pub async fn run(self) {
         let args = ServerArguments {
-            transport: self.transport().unwrap_or_default(),
+            transport: transport.unwrap_or_default(),
             github_token: self.github_token,
         };
 
@@ -40,6 +39,6 @@ impl ServeCommand {
             },
         );
 
-        Server::serve(&args).await;
+        Server::new(args).serve().await
     }
 }

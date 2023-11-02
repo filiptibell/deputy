@@ -6,6 +6,6 @@ mod tools;
 mod util;
 
 #[tokio::main]
-async fn main() {
-    cli::Cli::new().run().await;
+async fn main() -> anyhow::Result<()> {
+    cli::Cli::new().run().await
 }

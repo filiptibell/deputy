@@ -1,3 +1,4 @@
+use anyhow::Result;
 use clap::{Parser, Subcommand};
 
 mod serve;
@@ -23,7 +24,7 @@ impl Cli {
         Self::parse()
     }
 
-    pub async fn run(self) {
+    pub async fn run(self) -> Result<()> {
         setup_tracing();
 
         match self.subcommand {
