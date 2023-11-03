@@ -55,7 +55,7 @@ impl Server {
         Self { args, inner: None }
     }
 
-    fn attach_to(&mut self, client: Client) {
+    fn with_client(mut self, client: Client) -> Self {
         let clients = Clients::new();
         let documents = Arc::new(DashMap::new());
 
@@ -71,15 +71,12 @@ impl Server {
         });
 
         self.watch_rate_limit();
+        self
     }
 
-    pub async fn serve(mut self) -> Result<()> {
-        // FUTURE: Add custom notifications here by using
-        // LspService::build and calling custom_method
-        let (service, socket) = LspService::new(|client| {
-            self.attach_to(client);
-            self
-        });
+    pub async fn serve(self) -> Result<()> {
+        // FUTURE: Add custom notifications here by calling custom_method
+        let (service, socket) = LspService::build(|client| self.with_client(client)).finish();
 
         match service.inner().args.transport {
             Transport::Socket(port) => {
