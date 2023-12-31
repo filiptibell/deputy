@@ -34,38 +34,43 @@ const validate = async (token: string): Promise<boolean> => {
 
 	Any token returned from this function is guaranteed to currently be valid.
 */
-export const prompt = async (): Promise<string | null> => {
+export const prompt = async (
+	skipNotification?: true
+): Promise<string | null> => {
 	const context = getExtensionContext();
 
-	const result = await vscode.window.showInformationMessage(
-		"The GitHub API rate limit has been reached." +
-			"\nSome functionality will be disabled until authenticated.",
-		"Set Personal Access Token"
-	);
+	if (skipNotification !== true) {
+		const result = await vscode.window.showInformationMessage(
+			"The GitHub API rate limit has been reached." +
+				"\nSome functionality will be disabled until authenticated.",
+			"Set Personal Access Token"
+		);
+		if (result !== "Set Personal Access Token") {
+			return null;
+		}
+	}
 
-	if (result === "Set Personal Access Token") {
-		let prompt = "Enter a token";
-		while (true) {
-			const token = await vscode.window.showInputBox({
-				prompt,
-				title: "GitHub Personal Access Token",
-				password: true,
-				ignoreFocusOut: true,
-			});
-			if (token !== undefined) {
-				if (token !== "" && (await validate(token))) {
-					await context.globalState.update(
-						GITHUB_AUTH_TOKEN_STORAGE_KEY,
-						token
-					);
-					return token;
-				} else {
-					prompt = "Token is not valid. Enter a new token";
-					continue;
-				}
+	let prompt = "Enter a token";
+	while (true) {
+		const token = await vscode.window.showInputBox({
+			prompt,
+			title: "GitHub Personal Access Token",
+			password: true,
+			ignoreFocusOut: true,
+		});
+		if (token !== undefined) {
+			if (token !== "" && (await validate(token))) {
+				await context.globalState.update(
+					GITHUB_AUTH_TOKEN_STORAGE_KEY,
+					token
+				);
+				return token;
 			} else {
-				break;
+				prompt = "Token is not valid. Enter a new token";
+				continue;
 			}
+		} else {
+			break;
 		}
 	}
 

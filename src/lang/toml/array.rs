@@ -14,19 +14,15 @@ impl TomlArray {
         match node.as_array() {
             None => None,
             Some(array) => {
-                let mut range_first = None;
-                let mut range_last = None;
+                // NOTE: Node is guaranteed to have at least one text range
+                let mut text_range = node.text_ranges().next().unwrap();
                 for range in node.text_ranges() {
-                    if range_first.is_none() {
-                        range_first = Some(range)
-                    } else {
-                        range_last = Some(range)
-                    }
+                    text_range = text_range.cover(range);
                 }
 
                 let span = Range {
-                    start: u32::from(range_first.unwrap().start()) as usize,
-                    end: u32::from(range_last.unwrap().end()) as usize,
+                    start: u32::from(text_range.start()) as usize,
+                    end: u32::from(text_range.end()) as usize,
                 };
 
                 let source = source.as_ref();

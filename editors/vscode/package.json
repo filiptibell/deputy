@@ -2,7 +2,7 @@
     "name": "tooling-language-server",
     "displayName": "Tooling Language Server",
     "description": "A language server for tooling",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "license": "MPL-2.0",
     "publisher": "filiptibell",
     "author": {
@@ -38,6 +38,10 @@
             }
         ],
         "commands": [
+            {
+                "command": "tooling-language-server.promptAuthForGitHub",
+                "title": "Tooling Language Server - Add GitHub Personal Access Token"
+            },
             {
                 "command": "tooling-language-server.resetAuthForGitHub",
                 "title": "Tooling Language Server - Reset GitHub Personal Access Token"

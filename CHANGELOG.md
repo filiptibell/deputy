@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## `0.2.1` - December 31st, 2023
+
+### Added
+
+- Added a VSCode extension command to manually set a GitHub Personal Access Token.
+  If you are using a private Wally registry and the index repository is not public, you will need to set this for the extension to work.
+
+### Fixed
+
+- Fixed crash when encountering empty TOML sections
+
 ## `0.2.0` - October 30th, 2023
 
 ### Added
@@ -19,14 +30,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fixed invalid diagnostics for wally dev dependencies
+- Fixed invalid diagnostics for Wally dev dependencies
 
 ## `0.1.0` - September 26th, 2023
 
 ### Added
 
-- Added diagnostics for unsupported operating system and/or architecture (aftman)
-- Added diagnostics for invalid dependency realms (wally)
+- Added diagnostics for unsupported operating system and/or architecture (Aftman)
+- Added diagnostics for invalid dependency realms (Wally)
 
 ### Changed
 
@@ -54,7 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fixed crash for wally manifests with empty dependency sections:
+- Fixed crash for Wally manifests with empty dependency sections:
 
   ```toml
   # No longer crashes
