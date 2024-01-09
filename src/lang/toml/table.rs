@@ -63,6 +63,30 @@ impl TomlTable {
 
     pub fn find(&self, key: impl AsRef<str>) -> Option<(&TomlString, &TomlValue)> {
         let key = key.as_ref();
+        if key.contains('.') {
+            let parts = key.split('.').collect::<Vec<_>>();
+            self.find_by_path(&parts)
+        } else {
+            self.find_one(key)
+        }
+    }
+
+    fn find_by_path(&self, parts: &[&str]) -> Option<(&TomlString, &TomlValue)> {
+        assert!(!parts.is_empty(), "parts must not be empty");
+        let mut parts = parts.to_vec();
+        let mut current = self.find_one(parts.remove(0))?;
+        while !parts.is_empty() {
+            let part = parts.remove(0);
+            if let Some(table) = current.1.as_table() {
+                current = table.find_one(part)?;
+            } else {
+                return None;
+            }
+        }
+        Some(current)
+    }
+
+    fn find_one(&self, key: &str) -> Option<(&TomlString, &TomlValue)> {
         for (k, v) in &self.entries {
             if k.value.as_str() == key {
                 return Some((k, v));

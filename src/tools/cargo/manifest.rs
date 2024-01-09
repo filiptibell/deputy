@@ -6,6 +6,27 @@ use super::util::*;
 use crate::lang::toml::*;
 use crate::lang::LangString;
 
+const MANIFEST_DEPENDENCY_SECTIONS: &[(&str, ManifestDependencyKind)] = &[
+    // Single-package manifest
+    ("dependencies", ManifestDependencyKind::Default),
+    ("dev-dependencies", ManifestDependencyKind::Dev),
+    ("dev_dependencies", ManifestDependencyKind::Dev),
+    ("build-dependencies", ManifestDependencyKind::Build),
+    ("build_dependencies", ManifestDependencyKind::Build),
+    // Workspace manifest
+    ("workspace.dependencies", ManifestDependencyKind::Default),
+    ("workspace.dev-dependencies", ManifestDependencyKind::Dev),
+    ("workspace.dev_dependencies", ManifestDependencyKind::Dev),
+    (
+        "workspace.build-dependencies",
+        ManifestDependencyKind::Build,
+    ),
+    (
+        "workspace.build_dependencies",
+        ManifestDependencyKind::Build,
+    ),
+];
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ManifestDependencyKind {
     Default,
@@ -109,31 +130,14 @@ impl Manifest {
             }
         };
 
-        fill(
-            "dependencies",
-            &mut manifest.dependencies,
-            ManifestDependencyKind::Default,
-        );
-        fill(
-            "dev-dependencies",
-            &mut manifest.dev_dependencies,
-            ManifestDependencyKind::Dev,
-        );
-        fill(
-            "dev_dependencies",
-            &mut manifest.dev_dependencies,
-            ManifestDependencyKind::Dev,
-        );
-        fill(
-            "build-dependencies",
-            &mut manifest.build_dependencies,
-            ManifestDependencyKind::Build,
-        );
-        fill(
-            "build_dependencies",
-            &mut manifest.build_dependencies,
-            ManifestDependencyKind::Build,
-        );
+        for (key, kind) in MANIFEST_DEPENDENCY_SECTIONS {
+            let map = match kind {
+                ManifestDependencyKind::Default => &mut manifest.dependencies,
+                ManifestDependencyKind::Dev => &mut manifest.dev_dependencies,
+                ManifestDependencyKind::Build => &mut manifest.build_dependencies,
+            };
+            fill(key, map, *kind);
+        }
 
         Some(manifest)
     }
