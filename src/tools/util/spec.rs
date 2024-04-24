@@ -195,7 +195,7 @@ impl Spec<TomlString, TomlString, TomlValue> {
 
         Ok(SpecCargo {
             name: validate_name(k)?,
-            version_req: validate_version(v)?,
+            version_req: validate_version_req(v)?,
             version: v.to_string(),
         })
     }
@@ -227,7 +227,7 @@ impl Spec<TomlString, TomlString, TomlValue> {
         Ok(SpecForeman {
             author: validate_author(&v[..idx_slash])?,
             name: validate_name(&v[idx_slash + 1..])?,
-            version_req: validate_version(e)?,
+            version_req: validate_version_req(e)?,
             version: e.to_string(),
         })
     }
@@ -253,7 +253,7 @@ impl Spec<TomlString, TomlString, TomlValue> {
         Ok(SpecWally {
             author: validate_author(&v[..idx_slash])?,
             name: validate_name(&v[idx_slash + 1..idx_at])?,
-            version_req: validate_version(version)?,
+            version_req: validate_version_req(version)?,
             version: version.to_string(),
         })
     }
@@ -273,7 +273,7 @@ impl Spec<JsonString, JsonString, JsonValue> {
 
         Ok(SpecNpm {
             name: validate_name_npm(k)?,
-            version_req: validate_version(v)?,
+            version_req: validate_version_req(v)?,
             version: v.to_string(),
         })
     }
@@ -297,8 +297,15 @@ fn is_valid_naming_char_npm(char: char) -> bool {
     char == '-' || char == '_' || char == '@' || char == '/' || char.is_ascii_alphanumeric()
 }
 
-fn is_valid_version_char(char: char) -> bool {
-    char == '.' || char == '-' || char == '_' || char.is_ascii_alphanumeric()
+fn is_valid_version_req_char(char: char) -> bool {
+    char == '.'
+        || char == '-'
+        || char == '_'
+        || char.is_ascii_alphanumeric()
+        // NOTE: Version requirements can contain commas and spaces if they specify multiple versions
+        // Example: ">= 1.0.0, < 2.0.0"
+        || char == ','
+        || char.is_ascii_whitespace()
 }
 
 fn is_valid_version_prefix_char(char: char) -> bool {
@@ -337,18 +344,18 @@ fn validate_tag(version: impl AsRef<str>) -> Result<String, SpecError> {
     if version.starts_with('v') {
         version = &version[1..]
     }
-    if let Some(invalid_char) = version.chars().find(|c| !is_valid_version_char(*c)) {
+    if let Some(invalid_char) = version.chars().find(|c| !is_valid_version_req_char(*c)) {
         Err(SpecError::InvalidTag(invalid_char))
     } else {
         Ok(version.to_string())
     }
 }
 
-fn validate_version(version: impl AsRef<str>) -> Result<VersionReq, SpecError> {
+fn validate_version_req(version: impl AsRef<str>) -> Result<VersionReq, SpecError> {
     let version = version.as_ref();
     if let Some(invalid_char) = version
         .chars()
-        .find(|c| !is_valid_version_char(*c) && !is_valid_version_prefix_char(*c))
+        .find(|c| !is_valid_version_req_char(*c) && !is_valid_version_prefix_char(*c))
     {
         Err(SpecError::InvalidVersion(invalid_char))
     } else {
