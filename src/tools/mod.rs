@@ -65,6 +65,7 @@ impl Tools {
             Ok(ToolName::Cargo) => Some(&self.cargo),
             Ok(ToolName::Foreman) => Some(&self.toolchain),
             Ok(ToolName::Npm) => Some(&self.npm),
+            Ok(ToolName::Rokit) => Some(&self.toolchain),
             Ok(ToolName::Wally) => Some(&self.wally),
             Err(e) => {
                 warn!("Failed to parse tool name from uri '{e}'");

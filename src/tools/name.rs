@@ -10,6 +10,7 @@ pub enum ToolName {
     Cargo,
     Foreman,
     Npm,
+    Rokit,
     Wally,
 }
 
@@ -27,6 +28,7 @@ impl ToolName {
             Self::Cargo,
             Self::Foreman,
             Self::Npm,
+            Self::Rokit,
             Self::Wally,
         ]
     }
@@ -37,6 +39,7 @@ impl ToolName {
             Self::Cargo => "**/Cargo.{toml,lock}",
             Self::Foreman => "**/foreman.toml",
             Self::Npm => "**/package.json",
+            Self::Rokit => "**/rokit.toml",
             Self::Wally => "**/wally.toml",
         }
     }
@@ -51,6 +54,7 @@ impl ToolName {
                 Some("cargo.lock") => uri.with_file_name("cargo.toml").unwrap(),
                 _ => return Vec::new(),
             }],
+            Self::Foreman => Vec::new(),
             Self::Npm => match uri.file_name().as_deref() {
                 Some("package.json") => vec![uri.with_file_name("package-lock.json").unwrap()],
                 Some("package-lock.json") => {
@@ -58,7 +62,7 @@ impl ToolName {
                 }
                 _ => Vec::new(),
             },
-            Self::Foreman => Vec::new(),
+            Self::Rokit => Vec::new(),
             Self::Wally => Vec::new(),
         }
     }
@@ -72,6 +76,7 @@ impl FromStr for ToolName {
             "cargo" | "cargo.toml" | "cargo.lock" => Ok(Self::Cargo),
             "foreman" | "foreman.toml" => Ok(Self::Foreman),
             "package.json" | "package-lock.json" => Ok(Self::Npm),
+            "rokit" | "rokit.toml" => Ok(Self::Rokit),
             "wally" | "wally.toml" => Ok(Self::Wally),
             _ => Err("Unknown tool"),
         }
