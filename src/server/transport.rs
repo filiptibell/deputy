@@ -21,7 +21,7 @@ impl Transport {
         Creates a socket listener.
     */
     pub async fn create_socket(port: u16) -> (impl AsyncRead, impl AsyncWrite) {
-        let addr = SocketAddr::try_from(([127, 0, 0, 1], port)).unwrap();
+        let addr = SocketAddr::from(([127, 0, 0, 1], port));
 
         let stream = TcpStream::connect(addr)
             .await
