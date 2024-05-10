@@ -4,6 +4,8 @@ use tower_lsp::lsp_types::*;
 
 use crate::util::LspUriExt;
 
+use super::NPM_LOCKFILE_FILE_NAMES;
+
 #[derive(Debug, Clone, Copy)]
 pub enum ToolName {
     Aftman,
@@ -68,8 +70,11 @@ impl ToolName {
             },
             Self::Foreman => Vec::new(),
             Self::Npm => match uri.file_name().as_deref() {
-                Some("package.json") => vec![uri.with_file_name("package-lock.json").unwrap()],
-                Some("package-lock.json") => {
+                Some("package.json") => NPM_LOCKFILE_FILE_NAMES
+                    .iter()
+                    .map(|name| uri.with_file_name(name).unwrap())
+                    .collect(),
+                Some(f) if NPM_LOCKFILE_FILE_NAMES.contains(&f) => {
                     vec![uri.with_file_name("package.json").unwrap()]
                 }
                 _ => Vec::new(),

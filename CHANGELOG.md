@@ -9,7 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added support for cargo workspaces
+- Added support for more js package managers (pnpm, yarn, bun)
+
+### Changed
+
+- Improved support for cargo workspaces
 
 ## `0.2.3` - April 24th, 2024
 

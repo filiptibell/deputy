@@ -79,8 +79,14 @@ export const startServer = async () => {
 
 	const isDebug = command === exeDebug.fsPath;
 	const options: ExecutableOptions = isDebug
-		? { env: { RUST_LOG: "debug", RUST_BACKTRACE: "1" } }
-		: { env: {} };
+		? {
+				env: {
+					PATH: process.env.PATH,
+					RUST_LOG: "debug",
+					RUST_BACKTRACE: "1",
+				},
+		  }
+		: { env: { PATH: process.env.PATH } };
 
 	options.env["GITHUB_TOKEN"] = githubAuthToken;
 

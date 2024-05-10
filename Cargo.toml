@@ -27,6 +27,7 @@ once_cell = "1.18"
 semver = "1.0"
 thiserror = "1.0"
 url = "2.4"
+which = "6.0"
 
 async-channel = "2.2"
 async-semaphore = "1.2"

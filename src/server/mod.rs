@@ -10,6 +10,7 @@ use tower_lsp::{Client, LspService, Server as LspServer};
 use crate::clients::*;
 use crate::tools::*;
 
+mod conversion;
 mod document;
 mod initialize;
 mod language_server;

@@ -8,6 +8,7 @@ use tower_lsp::lsp_types::*;
 use tower_lsp::LanguageServer;
 use tracing::{trace, warn};
 
+use crate::server::conversion::convert_to_utf8;
 use crate::server::{DocumentBuilder, Server};
 use crate::tools::{Tool, Tools};
 
@@ -43,11 +44,13 @@ impl LanguageServer for Server {
 
             let mut futs = Vec::new();
             for relevant_uri in &relevant_uris {
-                futs.push(fs::read_to_string(
-                    relevant_uri
-                        .to_file_path()
-                        .expect("relevant_file_uris should only return file paths"),
-                ));
+                let file_path = relevant_uri
+                    .to_file_path()
+                    .expect("relevant_file_uris should only return file paths");
+                futs.push(async move {
+                    let bytes = fs::read(&file_path).await?;
+                    convert_to_utf8(&file_path, &bytes).await
+                });
             }
 
             for (index, result) in join_all(futs).await.into_iter().enumerate() {

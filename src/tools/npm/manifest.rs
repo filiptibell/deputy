@@ -110,6 +110,14 @@ impl Manifest {
         Some(manifest)
     }
 
+    pub fn all_dependencies(&self) -> impl Iterator<Item = (&String, &ManifestDependency)> {
+        self.dependencies
+            .iter()
+            .chain(self.dev_dependencies.iter())
+            .chain(self.build_dependencies.iter())
+            .chain(self.optional_dependencies.iter())
+    }
+
     pub fn parse(source: impl AsRef<str>) -> Result<Self, JsonError> {
         match JsonValue::new(source.as_ref()) {
             Ok(value) => Ok(Self::from_json_value(&value).expect("Json root should be a map")),

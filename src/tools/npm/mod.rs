@@ -22,6 +22,13 @@ use diagnostics::*;
 use lockfile::*;
 use manifest::*;
 
+pub const NPM_LOCKFILE_FILE_NAMES: [&str; 4] = [
+    "package-lock.json",
+    "pnpm-lock.yaml",
+    "yarn.lock",
+    "bun.lockb",
+];
+
 #[derive(Debug, Clone)]
 pub struct Npm {
     _client: Client,
@@ -44,13 +51,17 @@ impl Npm {
         }
 
         let doc_manifest = self.documents.get(uri).map(|r| r.clone())?;
-        let doc_lockfile = self
-            .documents
-            .get(&uri.with_file_name("package-lock.json").unwrap())
-            .map(|r| r.clone())?;
+        let doc_lockfile = NPM_LOCKFILE_FILE_NAMES.into_iter().find_map(|name| {
+            let uri = uri.with_file_name(name)?;
+            self.documents.get(&uri).map(|r| r.clone())
+        })?;
 
         let manifest = doc_manifest.as_str().parse::<Manifest>().ok()?;
-        let lockfile = doc_lockfile.as_str().parse::<Lockfile>().ok()?;
+        let lockfile = doc_lockfile
+            .as_str()
+            .parse::<Lockfile>()
+            .ok()
+            .or_else(|| Some(Lockfile::from_manifest_as_fallback(&manifest)))?;
 
         Some((doc_manifest, doc_lockfile, manifest, lockfile))
     }
