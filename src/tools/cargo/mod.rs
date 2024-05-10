@@ -42,18 +42,43 @@ impl Cargo {
     }
 
     fn get_documents(&self, uri: &Url) -> Option<(Document, Document, Manifest, Lockfile)> {
-        if !matches!(
-            uri.file_name().as_deref(),
-            Some("Cargo.toml" | "cargo.toml")
-        ) {
+        if !matches!(uri.file_name().as_deref(), Some("Cargo.toml")) {
             return None;
         }
 
         let doc_manifest = self.documents.get(uri).map(|r| r.clone())?;
-        let doc_lockfile = self
+        let mut doc_lockfile = self
             .documents
             .get(&uri.with_file_name("Cargo.lock").unwrap())
-            .map(|r| r.clone())?;
+            .map(|r| r.clone());
+
+        // If we dont find a direct lockfile, we search
+        // parent directories to support cargo workspaces
+        if doc_lockfile.is_none() {
+            let mut current_dir = match uri.to_file_path() {
+                Ok(path) => path.parent().unwrap().to_path_buf(),
+                Err(_) => return None,
+            };
+            while current_dir.is_dir() {
+                let lockfile_path = current_dir.join("Cargo.lock");
+                let lockfile_uri = Url::from_file_path(lockfile_path).ok()?;
+                if let Some(doc) = self.documents.get(&lockfile_uri) {
+                    doc_lockfile = Some(doc.clone());
+                    break;
+                }
+                current_dir = match current_dir.parent() {
+                    Some(dir) => dir.to_path_buf(),
+                    None => break,
+                };
+            }
+        }
+
+        // FUTURE: Ensure that the found Cargo.toml lockfile is actually part
+        // of the same exact cargo workspace as the found Cargo.toml manifest
+        if doc_lockfile.is_none() {
+            warn!("Failed to find Cargo.lock for Cargo.toml!\nat uri: {uri}");
+        }
+        let doc_lockfile = doc_lockfile?;
 
         let manifest = doc_manifest.as_str().parse::<Manifest>().ok()?;
         let lockfile = doc_lockfile.as_str().parse::<Lockfile>().ok()?;

@@ -47,13 +47,25 @@ impl ToolName {
     pub fn relevant_file_uris(&self, uri: &Url) -> Vec<Url> {
         match self {
             Self::Aftman => Vec::new(),
-            Self::Cargo => vec![match uri.file_name().as_deref() {
-                Some("Cargo.toml") => uri.with_file_name("Cargo.lock").unwrap(),
-                Some("cargo.toml") => uri.with_file_name("cargo.lock").unwrap(),
-                Some("Cargo.lock") => uri.with_file_name("Cargo.toml").unwrap(),
-                Some("cargo.lock") => uri.with_file_name("cargo.toml").unwrap(),
-                _ => return Vec::new(),
-            }],
+            Self::Cargo => match uri.file_name().as_deref() {
+                Some("Cargo.lock") => vec![uri.with_file_name("Cargo.toml").unwrap()],
+                Some("Cargo.toml") => {
+                    let mut lockfiles = Vec::new();
+                    let mut current_dir = uri.to_file_path().unwrap();
+                    loop {
+                        current_dir.pop();
+                        let lockfile = current_dir.join("Cargo.lock");
+                        if lockfile.exists() {
+                            lockfiles.push(Url::from_file_path(lockfile).unwrap());
+                        }
+                        if !current_dir.pop() {
+                            break;
+                        }
+                    }
+                    lockfiles
+                }
+                _ => Vec::new(),
+            },
             Self::Foreman => Vec::new(),
             Self::Npm => match uri.file_name().as_deref() {
                 Some("package.json") => vec![uri.with_file_name("package-lock.json").unwrap()],
