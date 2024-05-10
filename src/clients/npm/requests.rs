@@ -20,7 +20,7 @@ impl NpmClient {
 
                 let mut meta = RegistryMetadata::try_from_json(&text)?;
                 for (key, value) in meta.versions.iter_mut() {
-                    value.version = key.clone();
+                    value.version.clone_from(key);
                 }
 
                 Ok(meta)
