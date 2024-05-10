@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Improved support for cargo workspaces
+- Improved diagnostics responsiveness
+
+### Fixed
+
+- Fixed sometimes having to open a file twice to get diagnostics
+- Fixed inaccurate / partial diagnostics when first opening a file
 
 ## `0.2.3` - April 24th, 2024
 

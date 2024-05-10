@@ -4,6 +4,7 @@ use std::sync::Arc;
 use futures::future::join_all;
 use tokio::fs;
 use tower_lsp::jsonrpc::Result;
+use tower_lsp::lsp_types::notification::PublishDiagnostics;
 use tower_lsp::lsp_types::*;
 use tower_lsp::LanguageServer;
 use tracing::{trace, warn};
@@ -36,6 +37,9 @@ impl LanguageServer for Server {
             .build();
         let old_document = documents.insert(uri.clone(), new_document);
 
+        // If this is the first time we're opening this file, we should read
+        // and insert any other relevant files that are not already stored,
+        // and if any were found, re-run diagnostics right away
         if old_document.is_none() {
             let relevant_uris = Tools::relevant_file_uris(&uri)
                 .into_iter()
@@ -53,6 +57,7 @@ impl LanguageServer for Server {
                 });
             }
 
+            let mut needs_diagnostic_refresh = false;
             for (index, result) in join_all(futs).await.into_iter().enumerate() {
                 let relevant_uri = relevant_uris.get(index).expect("Missing or unordered uri");
                 match result {
@@ -67,8 +72,13 @@ impl LanguageServer for Server {
                             .with_text(s)
                             .build();
                         documents.insert(relevant_uri.clone(), relevant_document);
+                        needs_diagnostic_refresh = true;
                     }
                 }
+            }
+
+            if needs_diagnostic_refresh {
+                self.run_diagnostics_on(uri.clone()).await;
             }
         }
 
@@ -186,5 +196,29 @@ impl LanguageServer for Server {
 
     async fn code_action_resolve(&self, action: CodeAction) -> Result<CodeAction> {
         self.tools.code_action_resolve(action).await
+    }
+}
+
+impl Server {
+    async fn run_diagnostics_on(&self, uri: Url) {
+        let diagnostics_result = self
+            .tools
+            .diagnostics(DocumentDiagnosticParams {
+                text_document: TextDocumentIdentifier { uri: uri.clone() },
+                work_done_progress_params: WorkDoneProgressParams::default(),
+                partial_result_params: PartialResultParams::default(),
+                previous_result_id: None,
+                identifier: None,
+            })
+            .await;
+        if let Ok(diagnostics) = diagnostics_result {
+            self.client
+                .send_notification::<PublishDiagnostics>(PublishDiagnosticsParams {
+                    uri,
+                    diagnostics,
+                    version: None,
+                })
+                .await;
+        }
     }
 }
