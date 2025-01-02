@@ -6,19 +6,19 @@ use url::Url;
 use super::language::TreeSitterLanguage;
 
 /**
-    A file with an associated tree-sitter language and tree.
+    A document with an associated tree-sitter language and tree.
 
     Used to parse and query the contents of a persistent file.
 */
 #[derive(Debug, Clone)]
-pub struct TreeSitterFile {
+pub struct TreeSitterDocument {
     pub(super) uri: Arc<Url>,
     pub(super) contents: Arc<str>,
     pub(super) language: TreeSitterLanguage,
     pub(super) tree: Tree,
 }
 
-impl TreeSitterFile {
+impl TreeSitterDocument {
     pub fn new(file_uri: impl Into<Arc<Url>>, contents: impl Into<Arc<str>>) -> Option<Self> {
         let uri: Arc<Url> = file_uri.into();
         let contents: Arc<str> = contents.into();
@@ -76,7 +76,7 @@ mod tests {
             let contents = contents.to_string();
 
             let file_uri = Url::from_file_path(file_path).unwrap();
-            let file = TreeSitterFile::new(file_uri, contents);
+            let file = TreeSitterDocument::new(file_uri, contents);
 
             assert!(file.is_some() == language.is_some());
             assert!(file.is_none() || file.is_some_and(|f| f.language == language.unwrap()));

@@ -1,21 +1,21 @@
 use streaming_iterator::StreamingIterator;
 use tree_sitter::QueryCursor;
 
-use super::super::file::TreeSitterFile;
+use super::super::document::TreeSitterDocument;
 use super::super::query_strings::WALLY_MANIFEST_DEPENDENCIES_QUERY;
 use super::super::query_structs::{
     Dependency, DependencyKind, DependencySource, DependencySpec, Node,
 };
 
-pub fn query_wally_toml_dependencies(file: &TreeSitterFile) -> Vec<Dependency> {
-    let Some(query) = file.query(WALLY_MANIFEST_DEPENDENCIES_QUERY) else {
+pub fn query_wally_toml_dependencies(doc: &TreeSitterDocument) -> Vec<Dependency> {
+    let Some(query) = doc.query(WALLY_MANIFEST_DEPENDENCIES_QUERY) else {
         return Vec::new();
     };
 
     let mut cursor = QueryCursor::new();
     let mut dependencies = Vec::new();
 
-    let mut it = cursor.matches(&query, file.tree.root_node(), file.contents.as_bytes());
+    let mut it = cursor.matches(&query, doc.tree.root_node(), doc.contents.as_bytes());
     while let Some(m) = it.next() {
         let mut dep_kind = None;
         let mut dep_name_node = None;
@@ -24,7 +24,7 @@ pub fn query_wally_toml_dependencies(file: &TreeSitterFile) -> Vec<Dependency> {
 
         for capture in m.captures {
             let capture_name = query.capture_names()[capture.index as usize];
-            let Ok(node_text) = capture.node.utf8_text(file.contents.as_bytes()) else {
+            let Ok(node_text) = capture.node.utf8_text(doc.contents.as_bytes()) else {
                 continue;
             };
 
@@ -86,7 +86,7 @@ mod tests {
         expected: Vec<(DependencyKind, &'static str, &'static str)>,
     ) {
         let uri = Url::from_file_path(Path::new("wally.toml")).unwrap();
-        let file = TreeSitterFile::new(uri, contents.to_string()).unwrap();
+        let file = TreeSitterDocument::new(uri, contents.to_string()).unwrap();
         let deps = query_wally_toml_dependencies(&file);
 
         assert_eq!(

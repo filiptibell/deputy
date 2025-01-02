@@ -1,26 +1,26 @@
 use streaming_iterator::StreamingIterator;
 use tree_sitter::QueryCursor;
 
-use super::super::file::TreeSitterFile;
+use super::super::document::TreeSitterDocument;
 use super::super::query_strings::ROKIT_MANIFEST_TOOLS_QUERY;
 use super::super::query_structs::{Node, Tool};
 
-pub fn query_rokit_tools(file: &TreeSitterFile) -> Vec<Tool> {
-    let Some(query) = file.query(ROKIT_MANIFEST_TOOLS_QUERY) else {
+pub fn query_rokit_tools(doc: &TreeSitterDocument) -> Vec<Tool> {
+    let Some(query) = doc.query(ROKIT_MANIFEST_TOOLS_QUERY) else {
         return Vec::new();
     };
 
     let mut cursor = QueryCursor::new();
     let mut tools = Vec::new();
 
-    let mut it = cursor.matches(&query, file.tree.root_node(), file.contents.as_bytes());
+    let mut it = cursor.matches(&query, doc.tree.root_node(), doc.contents.as_bytes());
     while let Some(m) = it.next() {
         let mut tool_name_node = None;
         let mut tool_spec_node = None;
 
         for capture in m.captures {
             let capture_name = query.capture_names()[capture.index as usize];
-            let Ok(node_text) = capture.node.utf8_text(file.contents.as_bytes()) else {
+            let Ok(node_text) = capture.node.utf8_text(doc.contents.as_bytes()) else {
                 continue;
             };
 
@@ -55,7 +55,7 @@ mod tests {
 
     fn test_tools(contents: &str, expected: Vec<(&'static str, &'static str)>) {
         let uri = Url::from_file_path(Path::new("rokit.toml")).unwrap();
-        let file = TreeSitterFile::new(uri, contents.to_string()).unwrap();
+        let file = TreeSitterDocument::new(uri, contents.to_string()).unwrap();
         let tools = query_rokit_tools(&file);
 
         assert_eq!(tools.len(), expected.len(), "mismatched number of tools");
