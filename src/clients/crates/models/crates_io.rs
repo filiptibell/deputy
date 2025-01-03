@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use serde::Deserialize;
 
+use crate::util::Versioned;
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct CrateDataSingle {
     #[serde(rename = "crate")]
@@ -54,4 +56,10 @@ pub struct CrateDataVersion {
     pub updated_at: String,
     pub downloads: u64,
     pub features: HashMap<String, Vec<String>>,
+}
+
+impl Versioned for CrateDataVersion {
+    fn parse_version(&self) -> Result<semver::Version, semver::Error> {
+        self.version.parse()
+    }
 }

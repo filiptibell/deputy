@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use serde::Deserialize;
 
+use crate::util::Versioned;
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct RegistryMetadata {
     #[serde(flatten)]
@@ -23,6 +25,12 @@ pub struct RegistryMetadataVersion {
     pub author: Option<RegistryMetadataHumanVariant>,
     #[serde(default)]
     pub maintainers: Vec<RegistryMetadataHumanVariant>,
+}
+
+impl Versioned for RegistryMetadataVersion {
+    fn parse_version(&self) -> Result<semver::Version, semver::Error> {
+        self.version.parse()
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]

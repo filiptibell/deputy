@@ -2,11 +2,19 @@ use std::collections::HashMap;
 
 use serde::Deserialize;
 
+use crate::util::Versioned;
+
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct Metadata {
     pub package: MetadataPackage,
     #[serde(flatten)]
     pub dependencies: MetadataDependencies,
+}
+
+impl Versioned for Metadata {
+    fn parse_version(&self) -> Result<semver::Version, semver::Error> {
+        self.package.version.parse()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -27,6 +35,12 @@ pub struct MetadataPackage {
     pub exclude: Vec<String>,
     #[serde(default)]
     pub private: bool,
+}
+
+impl Versioned for MetadataPackage {
+    fn parse_version(&self) -> Result<semver::Version, semver::Error> {
+        self.version.parse()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]

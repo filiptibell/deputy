@@ -1,5 +1,7 @@
 use serde::Deserialize;
 
+use crate::util::Versioned;
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct RepositoryMetrics {
     pub description: Option<String>,
@@ -16,6 +18,12 @@ pub struct RepositoryRelease {
     pub created_at: Option<String>,
     pub published_at: Option<String>,
     pub assets: Vec<RepositoryReleaseAsset>,
+}
+
+impl Versioned for RepositoryRelease {
+    fn parse_version(&self) -> Result<semver::Version, semver::Error> {
+        self.tag_name.trim_start_matches('v').parse()
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]

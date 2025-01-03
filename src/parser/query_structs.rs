@@ -2,12 +2,14 @@ use std::{cmp::Ordering, str::FromStr};
 
 use tower_lsp::lsp_types::{Position, Range};
 
-use super::query_utils::{range_contains, range_for_substring, range_from_node};
+use crate::util::Versioned;
+
+use super::query_utils::{range_contains, range_extend, range_for_substring, range_from_node};
 
 /**
     A node in the tree-sitter parse tree.
 */
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Node<T> {
     pub contents: T,
     pub range: Range,
@@ -104,11 +106,17 @@ impl DependencySource {
     - The version of the dependency (may be `None` if the dependency is not versioned)
     - The features of the dependency (may also be `None` if the dependency has no features specified)
 */
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct DependencySpec {
     pub source: DependencySource,
     pub version: Option<Node<String>>,
     pub features: Option<Node<Vec<Node<String>>>>,
+}
+
+impl Versioned for DependencySpec {
+    fn parse_version(&self) -> Result<semver::Version, semver::Error> {
+        self.version.clone().unwrap_or_default().contents.parse()
+    }
 }
 
 /**
@@ -193,6 +201,16 @@ impl Dependency {
     }
 }
 
+impl Versioned for Dependency {
+    fn parse_version(&self) -> Result<semver::Version, semver::Error> {
+        self.spec()
+            .cloned()
+            .unwrap_or_default()
+            .contents
+            .parse_version()
+    }
+}
+
 /**
     A fully parsed tool, containing:
 
@@ -256,6 +274,12 @@ impl Tool {
     }
 }
 
+impl Versioned for Tool {
+    fn parse_version(&self) -> Result<semver::Version, semver::Error> {
+        self.parsed_spec().parse_version()
+    }
+}
+
 /**
     A parsed tool specification, in the format:
 
@@ -284,6 +308,12 @@ impl ToolSpecParsed {
     }
 }
 
+impl Versioned for ToolSpecParsed {
+    fn parse_version(&self) -> Result<semver::Version, semver::Error> {
+        self.version.clone().unwrap_or_default().parse()
+    }
+}
+
 /**
     A *fully* parsed tool specification, in the format:
 
@@ -298,4 +328,16 @@ pub struct ToolSpecParsedFull {
     pub owner: Node<String>,
     pub repository: Node<String>,
     pub version: Node<String>,
+}
+
+impl ToolSpecParsedFull {
+    pub fn range(&self) -> Range {
+        range_extend(self.owner.range, self.version.range)
+    }
+}
+
+impl Versioned for ToolSpecParsedFull {
+    fn parse_version(&self) -> Result<semver::Version, semver::Error> {
+        self.version.parse()
+    }
 }

@@ -8,6 +8,7 @@ use tower_lsp::lsp_types::*;
 #[serde(tag = "kind")]
 pub enum CodeActionMetadata {
     LatestVersion {
+        edit_range: Range,
         source_uri: Url,
         source_text: String,
         version_current: String,
@@ -19,6 +20,7 @@ impl CodeActionMetadata {
     pub fn into_code_action(self, diag: Diagnostic) -> CodeActionOrCommand {
         match self {
             Self::LatestVersion {
+                edit_range,
                 source_uri,
                 source_text,
                 version_current,
@@ -29,7 +31,7 @@ impl CodeActionMetadata {
                 change_map.insert(
                     source_uri,
                     vec![TextEdit {
-                        range: diag.range,
+                        range: edit_range,
                         new_text: source_text.replace(&version_current, &version_latest),
                     }],
                 );

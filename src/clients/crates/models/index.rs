@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use serde::Deserialize;
 
+use crate::util::Versioned;
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct IndexMetadata {
     pub name: String,
@@ -11,6 +13,12 @@ pub struct IndexMetadata {
     pub dependencies: Vec<IndexMetadataDependency>,
     #[serde(default, alias = "feats")]
     pub features: HashMap<String, Vec<String>>,
+}
+
+impl Versioned for IndexMetadata {
+    fn parse_version(&self) -> Result<semver::Version, semver::Error> {
+        self.version.parse()
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]

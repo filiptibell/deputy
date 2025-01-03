@@ -1,13 +1,15 @@
-use semver::{Version, VersionReq};
+use semver::VersionReq;
 
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
+use tracing::debug;
 
 use crate::parser::Dependency;
+use crate::util::{VersionReqExt, Versioned};
 
 use super::super::shared::*;
 use super::crates::models::IndexMetadata;
-use super::util::{did_you_mean, get_features};
+use super::util::get_features;
 use super::{Clients, Document};
 
 // TODO: Enable feature diagnostics when we have a way to
@@ -55,26 +57,27 @@ async fn get_cargo_diagnostics_version(
     dep: &Dependency,
     metas: &[IndexMetadata],
 ) -> Result<Vec<Diagnostic>> {
-    let Some(version) = dep.spec().and_then(|s| s.contents.version.as_ref()) else {
+    let Some(spec_version) = dep.spec().and_then(|s| s.contents.version.as_ref()) else {
         return Ok(Vec::new());
     };
-    let Ok(version_req) = VersionReq::parse(version.unquoted()) else {
+    let Ok(version_req) = VersionReq::parse(spec_version.unquoted()) else {
         return Ok(Vec::new());
     };
+    let version_min = version_req.minimum_version();
 
     // Check if the specified package version exists in the index
     if !metas.iter().any(|r| {
-        Version::parse(&r.version)
+        r.parse_version()
             .map(|version| version_req.matches(&version))
             .ok()
             .unwrap_or_default()
     }) {
         return Ok(vec![Diagnostic {
             source: Some(String::from("Cargo")),
-            range: version.range,
+            range: spec_version.range,
             message: format!(
                 "No version exists that matches requirement `{}`",
-                version.unquoted()
+                spec_version.unquoted()
             ),
             severity: Some(DiagnosticSeverity::ERROR),
             ..Default::default()
@@ -82,41 +85,29 @@ async fn get_cargo_diagnostics_version(
     }
 
     // Try to find the latest non-prerelease version
-    let Some(latest_non_prerelease) = metas.iter().find(|v| {
-        Version::parse(&v.version)
-            .map(|version| version.pre.is_empty())
-            .unwrap_or_default()
-    }) else {
-        return Ok(Vec::new());
-    };
-    let latest_name = latest_non_prerelease.name.as_str();
-    let Ok(latest_version) = Version::parse(&latest_non_prerelease.version) else {
+    let latest_name = dep.name().unquoted().to_string();
+    let Some(latest_version) = version_min.extract_latest_version(metas.iter().cloned()) else {
+        debug!("Failed to get latest crates.io version for '{latest_name}'");
         return Ok(Vec::new());
     };
 
-    if !version_req.matches(&latest_version) {
-        // NOTE: If we have an exact version specified,
-        // and it is more recent than the latest non-prerelease, we
-        // should not tell the user that a more recent version exists
-        if let Ok(exact_version) = Version::parse(version.unquoted()) {
-            if exact_version > latest_version {
-                return Ok(Vec::new());
-            }
-        }
+    if !latest_version.is_semver_compatible {
+        let latest_version_string = latest_version.item_version.to_string();
 
         let metadata = CodeActionMetadata::LatestVersion {
+            edit_range: spec_version.range,
             source_uri: doc.uri().clone(),
-            source_text: version.quoted().to_string(),
-            version_current: version.unquoted().to_string(),
-            version_latest: latest_version.to_string(),
+            source_text: spec_version.quoted().to_string(),
+            version_current: version_min.to_string(),
+            version_latest: latest_version_string.to_string(),
         };
 
         return Ok(vec![Diagnostic {
             source: Some(String::from("Cargo")),
-            range: version.range,
+            range: spec_version.range,
             message: format!(
                 "A newer version of `{latest_name}` is available.\
-                \nThe latest version is `{latest_version}`"
+                \nThe latest version is `{latest_version_string}`"
             ),
             severity: Some(DiagnosticSeverity::INFORMATION),
             data: Some(
