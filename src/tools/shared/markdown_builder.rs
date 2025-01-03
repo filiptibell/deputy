@@ -33,7 +33,7 @@ impl MarkdownBuilder {
         self.p(format!("- [{}]({})", text.into(), link.into()));
     }
 
-    pub fn ver(&mut self, version: impl Into<String>) {
+    pub fn version(&mut self, version: impl Into<String>) {
         self.p(format!("Version **{}**", version.into()));
     }
 

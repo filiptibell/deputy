@@ -26,6 +26,10 @@ pub struct MetadataPackage {
     #[serde(default)]
     pub description: Option<String>,
     #[serde(default)]
+    pub repository: Option<String>,
+    #[serde(default)]
+    pub homepage: Option<String>,
+    #[serde(default)]
     pub license: Option<String>,
     #[serde(default)]
     pub authors: Vec<String>,

@@ -27,7 +27,7 @@ pub async fn get_cargo_hover(
     trace!("Hovering: {dependency_name} version {dependency_version}");
     let mut md = MarkdownBuilder::new();
     md.h2(dependency_name);
-    md.ver(dependency_version);
+    md.version(dependency_version);
 
     // Try to fetch additional information from the index - description, links
     trace!("Fetching crate data from crates.io");

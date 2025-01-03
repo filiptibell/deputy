@@ -1,3 +1,4 @@
+use semver::VersionReq;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 
@@ -5,11 +6,12 @@ use crate::parser::SimpleDependency;
 use crate::util::Versioned;
 
 use super::super::shared::*;
-use super::{Clients, Document};
+use super::{Clients, Document, VersionReqExt};
 
-pub async fn get_rokit_diagnostics(
+pub async fn get_wally_diagnostics(
     clients: &Clients,
     doc: &Document,
+    index_url: &str,
     tool: &SimpleDependency,
 ) -> Result<Vec<Diagnostic>> {
     let parsed = tool.parsed_spec();
@@ -22,11 +24,11 @@ pub async fn get_rokit_diagnostics(
         .as_ref()
         .is_none_or(|v| v.unquoted().is_empty());
     let missing_diag = if missing_author {
-        Some("Missing tool author")
+        Some("Missing package author")
     } else if missing_name {
-        Some("Missing tool name")
+        Some("Missing package name")
     } else if missing_version {
-        Some("Missing tool version")
+        Some("Missing package version")
     } else {
         None
     };
@@ -44,10 +46,14 @@ pub async fn get_rokit_diagnostics(
 
     // Fetch releases and make sure there is at least one
     let parsed = parsed.into_full().expect("nothing was missing");
-    let parsed_version = parsed.version.unquoted().trim_start_matches('v');
-    let releases = match clients
-        .github
-        .get_repository_releases(parsed.author.unquoted(), parsed.name.unquoted())
+    let Ok(parsed_version_req) = VersionReq::parse(parsed.version.unquoted()) else {
+        return Ok(Vec::new());
+    };
+    let parsed_version = parsed_version_req.minimum_version();
+
+    let metadatas = match clients
+        .wally
+        .get_index_metadatas(index_url, parsed.author.unquoted(), parsed.name.unquoted())
         .await
     {
         Ok(v) => v,
@@ -57,7 +63,7 @@ pub async fn get_rokit_diagnostics(
                     source: Some(String::from("Cargo")),
                     range: parsed.range(),
                     message: format!(
-                        "No tool exists for `{}/{}`",
+                        "No package exists for `{}/{}`",
                         parsed.author.unquoted(),
                         parsed.name.unquoted(),
                     ),
@@ -69,12 +75,12 @@ pub async fn get_rokit_diagnostics(
             }
         }
     };
-    if releases.is_empty() {
+    if metadatas.is_empty() {
         return Ok(vec![Diagnostic {
             source: Some(String::from("Cargo")),
             range: parsed.range(),
             message: format!(
-                "No releases exist for the tool `{}/{}`",
+                "No versions exist for the package `{}/{}`",
                 parsed.author.unquoted(),
                 parsed.name.unquoted(),
             ),
@@ -83,18 +89,19 @@ pub async fn get_rokit_diagnostics(
         }]);
     }
 
-    // Check if the exact version specified exists as a release
-    if !releases.iter().any(|release| {
+    // Check if any version meeting the one specified exists
+    if !metadatas.iter().any(|release| {
         release
-            .tag_name
-            .trim_start_matches('v')
-            .eq_ignore_ascii_case(parsed_version)
+            .package
+            .version
+            .parse_version()
+            .is_ok_and(|v| parsed_version_req.matches(&v))
     }) {
         return Ok(vec![Diagnostic {
             source: Some(String::from("Cargo")),
             range: parsed.range(),
             message: format!(
-                "Version `{parsed_version}` does not exist for the tool `{}/{}`",
+                "Version `{parsed_version}` does not exist for the package `{}/{}`",
                 parsed.author.unquoted(),
                 parsed.name.unquoted(),
             ),
@@ -105,11 +112,11 @@ pub async fn get_rokit_diagnostics(
 
     // Everything is OK - but we may be able to suggest new versions...
     // ... try to find the latest non-prerelease version
-    let Some(latest_version) = parsed_version.extract_latest_version(releases) else {
+    let Some(latest_version) = parsed_version.extract_latest_version(metadatas) else {
         return Ok(Vec::new());
     };
 
-    if !latest_version.is_exactly_compatible {
+    if !latest_version.is_semver_compatible {
         let latest_version_string = latest_version.item_version.to_string();
 
         let metadata = CodeActionMetadata::LatestVersion {

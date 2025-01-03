@@ -8,6 +8,7 @@ use crate::util::LspUriExt;
 pub enum ToolName {
     Cargo,
     Rokit,
+    Wally,
 }
 
 impl ToolName {
@@ -19,13 +20,14 @@ impl ToolName {
     }
 
     pub fn all() -> Vec<Self> {
-        vec![Self::Cargo, Self::Rokit]
+        vec![Self::Cargo, Self::Rokit, Self::Wally]
     }
 
     pub fn file_glob(&self) -> &'static str {
         match self {
             Self::Cargo => "**/Cargo.{toml,lock}",
             Self::Rokit => "**/rokit.toml",
+            Self::Wally => "**/wally.{toml,lock}",
         }
     }
 
@@ -51,6 +53,11 @@ impl ToolName {
                 _ => Vec::new(),
             },
             Self::Rokit => Vec::new(),
+            Self::Wally => match uri.file_name().as_deref() {
+                Some("wally.toml") => vec![uri.with_file_name("wally.lock").unwrap()],
+                Some("wally.lock") => vec![uri.with_file_name("wally.toml").unwrap()],
+                _ => Vec::new(),
+            },
         }
     }
 }
@@ -61,6 +68,7 @@ impl FromStr for ToolName {
         match s.trim().to_ascii_lowercase().as_ref() {
             "cargo" | "cargo.toml" | "cargo.lock" => Ok(Self::Cargo),
             "rokit" | "rokit.toml" => Ok(Self::Rokit),
+            "wally" | "wally.toml" | "wally.lock" => Ok(Self::Wally),
             _ => Err("Unknown tool"),
         }
     }

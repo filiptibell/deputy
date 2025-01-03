@@ -94,6 +94,9 @@ impl WallyClient {
     ) -> RequestResult<Vec<String>> {
         let scope_low = scope.to_ascii_lowercase();
 
+        let mut scope_exists = false;
+        let mut scope_paths = Vec::new();
+
         for index_url in self.get_index_urls_following_fallbacks(index_url).await? {
             let (owner, repo) = parse_index_url(&index_url)?;
 
@@ -108,16 +111,21 @@ impl WallyClient {
                     .get_repository_tree(&owner, &repo, &scope_node.sha)
                     .await?;
 
-                return Ok(root_for_scope.get_file_paths_excluding_json());
+                scope_exists = true;
+                scope_paths.extend(root_for_scope.get_file_paths_excluding_json());
             }
         }
 
-        Err(RequestError::Response(
-            ResponseError::from_status_and_string(
-                StatusCode::NOT_FOUND,
-                format!("No packages were found for scope `{scope_low}`"),
-            ),
-        ))
+        if scope_exists {
+            Ok(scope_paths)
+        } else {
+            Err(RequestError::Response(
+                ResponseError::from_status_and_string(
+                    StatusCode::NOT_FOUND,
+                    format!("No packages were found for scope `{scope_low}`"),
+                ),
+            ))
+        }
     }
 
     pub async fn get_index_metadatas(

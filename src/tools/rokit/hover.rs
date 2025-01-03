@@ -29,7 +29,7 @@ pub async fn get_rokit_hover(
     );
     let mut md = MarkdownBuilder::new();
     md.h2(spec.name.unquoted());
-    md.ver(spec.version.unquoted());
+    md.version(spec.version.unquoted());
 
     // Try to fetch additional information from the index - description, links
     trace!("Fetching repository metrics from GitHub");

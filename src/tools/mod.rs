@@ -20,9 +20,11 @@ pub use tool::*;
 
 mod cargo;
 mod rokit;
+mod wally;
 
 use cargo::*;
 use rokit::*;
+use wally::*;
 
 // Tools manager
 
@@ -30,6 +32,7 @@ use rokit::*;
 pub struct Tools {
     cargo: Cargo,
     rokit: Rokit,
+    wally: Wally,
 }
 
 impl Tools {
@@ -37,6 +40,7 @@ impl Tools {
         Self {
             cargo: Cargo::new(client.clone(), clients.clone(), documents.clone()),
             rokit: Rokit::new(client.clone(), clients.clone(), documents.clone()),
+            wally: Wally::new(client.clone(), clients.clone(), documents.clone()),
         }
     }
 
@@ -55,6 +59,7 @@ impl Tools {
         match ToolName::from_uri(uri) {
             Ok(ToolName::Cargo) => Some(&self.cargo),
             Ok(ToolName::Rokit) => Some(&self.rokit),
+            Ok(ToolName::Wally) => Some(&self.wally),
             Err(e) => {
                 warn!("Failed to parse tool name from uri '{e}'");
                 None
