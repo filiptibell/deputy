@@ -1,7 +1,7 @@
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 
-use crate::parser::Tool;
+use crate::parser::SimpleDependency;
 use crate::util::Versioned;
 
 use super::super::shared::*;
@@ -10,16 +10,13 @@ use super::{Clients, Document};
 pub async fn get_rokit_diagnostics(
     clients: &Clients,
     doc: &Document,
-    tool: &Tool,
+    tool: &SimpleDependency,
 ) -> Result<Vec<Diagnostic>> {
     let parsed = tool.parsed_spec();
 
     // Check for any missing fields
-    let missing_owner = parsed.owner.unquoted().is_empty();
-    let missing_repository = parsed
-        .repository
-        .as_ref()
-        .is_none_or(|r| r.unquoted().is_empty());
+    let missing_owner = parsed.author.unquoted().is_empty();
+    let missing_repository = parsed.name.as_ref().is_none_or(|r| r.unquoted().is_empty());
     let missing_version = parsed
         .version
         .as_ref()
@@ -50,7 +47,7 @@ pub async fn get_rokit_diagnostics(
     let parsed_version = parsed.version.unquoted().trim_start_matches('v');
     let releases = match clients
         .github
-        .get_repository_releases(parsed.owner.unquoted(), parsed.repository.unquoted())
+        .get_repository_releases(parsed.author.unquoted(), parsed.name.unquoted())
         .await
     {
         Ok(v) => v,
@@ -61,8 +58,8 @@ pub async fn get_rokit_diagnostics(
                     range: parsed.range(),
                     message: format!(
                         "No tool exists for `{}/{}`",
-                        parsed.owner.unquoted(),
-                        parsed.repository.unquoted(),
+                        parsed.author.unquoted(),
+                        parsed.name.unquoted(),
                     ),
                     severity: Some(DiagnosticSeverity::ERROR),
                     ..Default::default()
@@ -78,8 +75,8 @@ pub async fn get_rokit_diagnostics(
             range: parsed.range(),
             message: format!(
                 "No releases exist for the tool `{}/{}`",
-                parsed.owner.unquoted(),
-                parsed.repository.unquoted(),
+                parsed.author.unquoted(),
+                parsed.name.unquoted(),
             ),
             severity: Some(DiagnosticSeverity::ERROR),
             ..Default::default()
@@ -98,8 +95,8 @@ pub async fn get_rokit_diagnostics(
             range: parsed.range(),
             message: format!(
                 "Version `{parsed_version}` does not exist for the tool `{}/{}`",
-                parsed.owner.unquoted(),
-                parsed.repository.unquoted(),
+                parsed.author.unquoted(),
+                parsed.name.unquoted(),
             ),
             severity: Some(DiagnosticSeverity::ERROR),
             ..Default::default()
@@ -129,8 +126,8 @@ pub async fn get_rokit_diagnostics(
             message: format!(
                 "A newer version of `{}/{}` is available.\
                 \nThe latest version is `{latest_version_string}`",
-                parsed.owner.unquoted(),
-                parsed.repository.unquoted()
+                parsed.author.unquoted(),
+                parsed.name.unquoted()
             ),
             severity: Some(DiagnosticSeverity::INFORMATION),
             data: Some(

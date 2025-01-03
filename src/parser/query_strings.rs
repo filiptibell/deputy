@@ -122,13 +122,13 @@ pub const PACKAGE_JSON_DEPENDENCIES_QUERY: &str = r#"
 )+
 "#;
 
-pub const ROKIT_MANIFEST_TOOLS_QUERY: &str = r#"
+pub const ROKIT_MANIFEST_DEPENDENCIES_QUERY: &str = r#"
 (table
     (bare_key) @root_name
     (pair
-        (bare_key) @tool_name
-        (string) @tool_spec
-    ) @tool_pair
+        (bare_key) @dependency_name
+        (string) @dependency_spec
+    ) @dependency_pair
     (#eq? @root_name "tools")
 )
 "#;

@@ -4,8 +4,8 @@ use tower_lsp::lsp_types::*;
 use tower_lsp::Client;
 use tracing::debug;
 
-use crate::parser::query_rokit_tools;
-use crate::parser::Tool as ParsedTool;
+use crate::parser::query_rokit_toml_dependencies;
+use crate::parser::SimpleDependency;
 use crate::server::*;
 use crate::util::*;
 
@@ -56,8 +56,8 @@ impl Tool for Rokit {
         };
 
         // Find the dependency that is hovered over
-        let tools = query_rokit_tools(doc.inner());
-        let Some(found) = ParsedTool::find_at_pos(&tools, pos) else {
+        let tools = query_rokit_toml_dependencies(doc.inner());
+        let Some(found) = SimpleDependency::find_at_pos(&tools, pos) else {
             return Ok(None);
         };
 
@@ -73,7 +73,7 @@ impl Tool for Rokit {
         };
 
         // Find all tools
-        let tools = query_rokit_tools(doc.inner());
+        let tools = query_rokit_toml_dependencies(doc.inner());
         if tools.is_empty() {
             return Ok(Vec::new());
         }

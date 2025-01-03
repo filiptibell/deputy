@@ -212,18 +212,19 @@ impl Versioned for Dependency {
 }
 
 /**
-    A fully parsed tool, containing:
+    A fully parsed simple dependency, containing:
 
     - The name of the tool
     - The spec of the tool
 */
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Tool {
+pub struct SimpleDependency {
+    pub kind: DependencyKind,
     pub name: Node<String>,
     pub spec: Node<String>,
 }
 
-impl Tool {
+impl SimpleDependency {
     pub fn sort_vec(vec: &mut [Self]) {
         vec.sort_by(|a, b| {
             let a_range = a.name.range;
@@ -240,8 +241,54 @@ impl Tool {
             .find(|dep| dep.name.contains(pos) || dep.spec.contains(pos))
     }
 
-    pub fn parsed_spec(&self) -> ToolSpecParsed {
-        let raw = self.spec.unquoted();
+    pub fn parsed_spec(&self) -> ParsedSpec {
+        ParsedSpec::from(self.spec.clone())
+    }
+}
+
+impl Versioned for SimpleDependency {
+    fn parse_version(&self) -> Result<semver::Version, semver::Error> {
+        self.parsed_spec().parse_version()
+    }
+}
+
+/**
+    A parsed tool specification, in the format:
+
+    ```
+    "author/name@version"
+    ```
+
+    Note that this is not guaranteed to be fully parsed, only partial.
+*/
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParsedSpec {
+    pub author: Node<String>,
+    pub name: Option<Node<String>>,
+    pub version: Option<Node<String>>,
+}
+
+impl ParsedSpec {
+    pub fn into_full(self) -> Option<ParsedSpecFull> {
+        let name = self.name?;
+        let version = self.version?;
+        Some(ParsedSpecFull {
+            author: self.author,
+            name,
+            version,
+        })
+    }
+}
+
+impl Versioned for ParsedSpec {
+    fn parse_version(&self) -> Result<semver::Version, semver::Error> {
+        self.version.clone().unwrap_or_default().parse()
+    }
+}
+
+impl From<Node<String>> for ParsedSpec {
+    fn from(node: Node<String>) -> ParsedSpec {
+        let raw = node.unquoted();
 
         let (owner, repository, version) = if let Some((owner, rest)) = raw.split_once('/') {
             if let Some((repository, version)) = rest.split_once('@') {
@@ -253,20 +300,20 @@ impl Tool {
             (raw, None, None)
         };
 
-        ToolSpecParsed {
-            owner: Node::new_raw(
-                range_for_substring(self.spec.range, self.spec.quoted(), owner),
+        ParsedSpec {
+            author: Node::new_raw(
+                range_for_substring(node.range, node.quoted(), owner),
                 owner.to_string(),
             ),
-            repository: repository.map(|repository| {
+            name: repository.map(|repository| {
                 Node::new_raw(
-                    range_for_substring(self.spec.range, self.spec.quoted(), repository),
+                    range_for_substring(node.range, node.quoted(), repository),
                     repository.to_string(),
                 )
             }),
             version: version.map(|version| {
                 Node::new_raw(
-                    range_for_substring(self.spec.range, self.spec.quoted(), version),
+                    range_for_substring(node.range, node.quoted(), version),
                     version.to_string(),
                 )
             }),
@@ -274,69 +321,29 @@ impl Tool {
     }
 }
 
-impl Versioned for Tool {
-    fn parse_version(&self) -> Result<semver::Version, semver::Error> {
-        self.parsed_spec().parse_version()
-    }
-}
-
-/**
-    A parsed tool specification, in the format:
-
-    ```
-    "owner/repository@version"
-    ```
-
-    Note that this is not guaranteed to be fully parsed, only partial.
-*/
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ToolSpecParsed {
-    pub owner: Node<String>,
-    pub repository: Option<Node<String>>,
-    pub version: Option<Node<String>>,
-}
-
-impl ToolSpecParsed {
-    pub fn into_full(self) -> Option<ToolSpecParsedFull> {
-        let repository = self.repository?;
-        let version = self.version?;
-        Some(ToolSpecParsedFull {
-            owner: self.owner,
-            repository,
-            version,
-        })
-    }
-}
-
-impl Versioned for ToolSpecParsed {
-    fn parse_version(&self) -> Result<semver::Version, semver::Error> {
-        self.version.clone().unwrap_or_default().parse()
-    }
-}
-
 /**
     A *fully* parsed tool specification, in the format:
 
     ```
-    "owner/repository@version"
+    "author/name@version"
     ```
 
     Contains all fully parsed fields, unlike `ToolSpecParsed`.
 */
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ToolSpecParsedFull {
-    pub owner: Node<String>,
-    pub repository: Node<String>,
+pub struct ParsedSpecFull {
+    pub author: Node<String>,
+    pub name: Node<String>,
     pub version: Node<String>,
 }
 
-impl ToolSpecParsedFull {
+impl ParsedSpecFull {
     pub fn range(&self) -> Range {
-        range_extend(self.owner.range, self.version.range)
+        range_extend(self.author.range, self.version.range)
     }
 }
 
-impl Versioned for ToolSpecParsedFull {
+impl Versioned for ParsedSpecFull {
     fn parse_version(&self) -> Result<semver::Version, semver::Error> {
         self.version.parse()
     }

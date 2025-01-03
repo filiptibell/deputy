@@ -3,11 +3,9 @@ use tree_sitter::QueryCursor;
 
 use super::super::document::TreeSitterDocument;
 use super::super::query_strings::WALLY_MANIFEST_DEPENDENCIES_QUERY;
-use super::super::query_structs::{
-    Dependency, DependencyKind, DependencySource, DependencySpec, Node,
-};
+use super::super::query_structs::{DependencyKind, Node, SimpleDependency};
 
-pub fn query_wally_toml_dependencies(doc: &TreeSitterDocument) -> Vec<Dependency> {
+pub fn query_wally_toml_dependencies(doc: &TreeSitterDocument) -> Vec<SimpleDependency> {
     let Some(query) = doc.query(WALLY_MANIFEST_DEPENDENCIES_QUERY) else {
         return Vec::new();
     };
@@ -50,25 +48,16 @@ pub fn query_wally_toml_dependencies(doc: &TreeSitterDocument) -> Vec<Dependency
             }
         }
 
-        if let (Some(dep_kind), Some(name), Some(spec), Some(spec_range)) =
-            (dep_kind, dep_name_node, dep_spec_node, spec_range)
-        {
-            dependencies.push(Dependency::new_full(
-                dep_kind,
+        if let (Some(dep_kind), Some(name), Some(spec)) = (dep_kind, dep_name_node, dep_spec_node) {
+            dependencies.push(SimpleDependency {
+                kind: dep_kind,
                 name,
-                Node::new(
-                    &spec_range,
-                    DependencySpec {
-                        source: DependencySource::Registry,
-                        version: Some(spec),
-                        features: None, // Wally doesn't have features
-                    },
-                ),
-            ));
+                spec,
+            });
         }
     }
 
-    Dependency::sort_vec(&mut dependencies);
+    SimpleDependency::sort_vec(&mut dependencies);
 
     dependencies
 }
@@ -96,18 +85,9 @@ mod tests {
         );
 
         for (dep, (kind, name, spec)) in deps.into_iter().zip(expected.into_iter()) {
-            assert_eq!(dep.kind(), kind);
-            assert_eq!(dep.name().contents, name);
-            assert_eq!(
-                dep.spec()
-                    .unwrap()
-                    .contents
-                    .version
-                    .as_ref()
-                    .unwrap()
-                    .unquoted(),
-                spec
-            );
+            assert_eq!(dep.kind, kind);
+            assert_eq!(dep.name.unquoted(), name);
+            assert_eq!(dep.spec.unquoted(), spec);
         }
     }
 

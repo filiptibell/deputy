@@ -2,14 +2,14 @@ use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tracing::trace;
 
-use crate::{parser::Tool, tools::MarkdownBuilder};
+use crate::{parser::SimpleDependency, tools::MarkdownBuilder};
 
 use super::{Clients, Document};
 
 pub async fn get_rokit_hover(
     clients: &Clients,
     _doc: &Document,
-    tool: &Tool,
+    tool: &SimpleDependency,
 ) -> Result<Option<Hover>> {
     let Some(spec) = tool.parsed_spec().into_full() else {
         return Ok(None);
@@ -24,18 +24,18 @@ pub async fn get_rokit_hover(
     // Add basic hover information with version and name
     trace!(
         "Hovering: {} version {}",
-        spec.repository.unquoted(),
+        spec.name.unquoted(),
         spec.version.unquoted()
     );
     let mut md = MarkdownBuilder::new();
-    md.h2(spec.repository.unquoted());
+    md.h2(spec.name.unquoted());
     md.ver(spec.version.unquoted());
 
     // Try to fetch additional information from the index - description, links
     trace!("Fetching repository metrics from GitHub");
     if let Ok(repository) = clients
         .github
-        .get_repository_metrics(spec.owner.unquoted(), spec.repository.unquoted())
+        .get_repository_metrics(spec.author.unquoted(), spec.name.unquoted())
         .await
     {
         // Add description, if available
@@ -52,16 +52,16 @@ pub async fn get_rokit_hover(
         "Repository",
         format!(
             "https://github.com/{}/{}",
-            spec.owner.unquoted(),
-            spec.repository.unquoted()
+            spec.author.unquoted(),
+            spec.name.unquoted()
         ),
     );
     md.a(
         "Latest Release",
         format!(
             "https://github.com/{}/{}/releases/latest",
-            spec.owner.unquoted(),
-            spec.repository.unquoted()
+            spec.author.unquoted(),
+            spec.name.unquoted()
         ),
     );
 

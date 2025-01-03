@@ -1,12 +1,14 @@
 use streaming_iterator::StreamingIterator;
 use tree_sitter::QueryCursor;
 
-use super::super::document::TreeSitterDocument;
-use super::super::query_strings::ROKIT_MANIFEST_TOOLS_QUERY;
-use super::super::query_structs::{Node, Tool};
+use crate::parser::DependencyKind;
 
-pub fn query_rokit_tools(doc: &TreeSitterDocument) -> Vec<Tool> {
-    let Some(query) = doc.query(ROKIT_MANIFEST_TOOLS_QUERY) else {
+use super::super::document::TreeSitterDocument;
+use super::super::query_strings::ROKIT_MANIFEST_DEPENDENCIES_QUERY;
+use super::super::query_structs::{Node, SimpleDependency};
+
+pub fn query_rokit_toml_dependencies(doc: &TreeSitterDocument) -> Vec<SimpleDependency> {
+    let Some(query) = doc.query(ROKIT_MANIFEST_DEPENDENCIES_QUERY) else {
         return Vec::new();
     };
 
@@ -25,10 +27,10 @@ pub fn query_rokit_tools(doc: &TreeSitterDocument) -> Vec<Tool> {
             };
 
             match capture_name {
-                "tool_name" => {
+                "dependency_name" => {
                     tool_name_node = Some(Node::string(&capture.node, node_text));
                 }
-                "tool_spec" => {
+                "dependency_spec" => {
                     tool_spec_node = Some(Node::string(&capture.node, node_text));
                 }
                 _ => {}
@@ -36,11 +38,15 @@ pub fn query_rokit_tools(doc: &TreeSitterDocument) -> Vec<Tool> {
         }
 
         if let (Some(name), Some(spec)) = (tool_name_node, tool_spec_node) {
-            tools.push(Tool { name, spec });
+            tools.push(SimpleDependency {
+                kind: DependencyKind::default(),
+                name,
+                spec,
+            });
         }
     }
 
-    Tool::sort_vec(&mut tools);
+    SimpleDependency::sort_vec(&mut tools);
 
     tools
 }
@@ -56,7 +62,7 @@ mod tests {
     fn test_tools(contents: &str, expected: Vec<(&'static str, &'static str)>) {
         let uri = Url::from_file_path(Path::new("/rokit.toml")).unwrap();
         let file = TreeSitterDocument::new(uri, contents.to_string()).unwrap();
-        let tools = query_rokit_tools(&file);
+        let tools = query_rokit_toml_dependencies(&file);
 
         assert_eq!(tools.len(), expected.len(), "mismatched number of tools");
 
