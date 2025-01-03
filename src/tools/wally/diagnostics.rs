@@ -36,7 +36,7 @@ pub async fn get_wally_diagnostics(
     // Propagate missing fields diagnostic, if any
     if let Some(diag) = missing_diag {
         return Ok(vec![Diagnostic {
-            source: Some(String::from("Rokit")),
+            source: Some(String::from("Wally")),
             range: tool.spec.range,
             message: diag.to_string(),
             severity: Some(DiagnosticSeverity::WARNING), // Most likely during typing, don't emit a hard error
@@ -44,7 +44,7 @@ pub async fn get_wally_diagnostics(
         }]);
     }
 
-    // Fetch releases and make sure there is at least one
+    // Fetch versions and make sure there is at least one
     let parsed = parsed.into_full().expect("nothing was missing");
     let Ok(parsed_version_req) = VersionReq::parse(parsed.version.unquoted()) else {
         return Ok(Vec::new());
@@ -60,10 +60,10 @@ pub async fn get_wally_diagnostics(
         Err(e) => {
             if e.is_not_found_error() {
                 return Ok(vec![Diagnostic {
-                    source: Some(String::from("Cargo")),
+                    source: Some(String::from("Wally")),
                     range: parsed.range(),
                     message: format!(
-                        "No package exists for `{}/{}`",
+                        "No package exists with the name `{}/{}`",
                         parsed.author.unquoted(),
                         parsed.name.unquoted(),
                     ),
@@ -77,7 +77,7 @@ pub async fn get_wally_diagnostics(
     };
     if metadatas.is_empty() {
         return Ok(vec![Diagnostic {
-            source: Some(String::from("Cargo")),
+            source: Some(String::from("Wally")),
             range: parsed.range(),
             message: format!(
                 "No versions exist for the package `{}/{}`",
@@ -98,7 +98,7 @@ pub async fn get_wally_diagnostics(
             .is_ok_and(|v| parsed_version_req.matches(&v))
     }) {
         return Ok(vec![Diagnostic {
-            source: Some(String::from("Cargo")),
+            source: Some(String::from("Wally")),
             range: parsed.range(),
             message: format!(
                 "Version `{parsed_version}` does not exist for the package `{}/{}`",
@@ -128,7 +128,7 @@ pub async fn get_wally_diagnostics(
         };
 
         return Ok(vec![Diagnostic {
-            source: Some(String::from("Cargo")),
+            source: Some(String::from("Wally")),
             range: parsed.range(),
             message: format!(
                 "A newer version of `{}/{}` is available.\

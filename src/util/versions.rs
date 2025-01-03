@@ -163,20 +163,34 @@ pub trait Versioned {
                 Ok(v) => Some((o, v)),
                 Err(_) => None,
             })
+            .filter(|(_, v)| {
+                if v.pre.trim().is_empty() {
+                    // No prerelease = always consider
+                    true
+                } else {
+                    // Prerelease = only consider if this is also part of the same x.y.z prereleases
+                    v.major == this_version.major
+                        && v.minor == this_version.minor
+                        && v.patch == this_version.patch
+                }
+            })
             .collect::<Vec<_>>();
 
         other_versions.sort_by_key(|(_, v)| v.clone());
 
-        other_versions
-            .pop()
-            .map(|(item, item_version)| LatestVersion {
-                is_semver_compatible: this_version_req
-                    .is_some_and(|req| req.matches(&item_version)),
-                is_exactly_compatible: item_version.to_string() == this_version.to_string(),
+        other_versions.pop().map(|(item, item_version)| {
+            let is_exactly_compatible = item_version
+                .to_string()
+                .eq_ignore_ascii_case(&this_version.to_string());
+            LatestVersion {
+                is_semver_compatible: is_exactly_compatible
+                    || this_version_req.is_some_and(|req| req.matches(&item_version)),
+                is_exactly_compatible,
                 this_version,
                 item_version,
                 item,
-            })
+            }
+        })
     }
 }
 
@@ -190,16 +204,25 @@ impl Versioned for String {
     fn parse_version(&self) -> Result<Version, Error> {
         self.parse()
     }
+    fn parse_version_req(&self) -> Result<VersionReq, Error> {
+        self.parse()
+    }
 }
 
 impl Versioned for &String {
     fn parse_version(&self) -> Result<Version, Error> {
         self.parse()
     }
+    fn parse_version_req(&self) -> Result<VersionReq, Error> {
+        self.parse()
+    }
 }
 
 impl Versioned for &str {
     fn parse_version(&self) -> Result<Version, Error> {
+        self.parse()
+    }
+    fn parse_version_req(&self) -> Result<VersionReq, Error> {
         self.parse()
     }
 }

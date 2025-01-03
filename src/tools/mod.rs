@@ -19,10 +19,12 @@ pub use tool::*;
 // Individual tools
 
 mod cargo;
+mod npm;
 mod rokit;
 mod wally;
 
 use cargo::*;
+use npm::*;
 use rokit::*;
 use wally::*;
 
@@ -31,6 +33,7 @@ use wally::*;
 #[derive(Debug, Clone)]
 pub struct Tools {
     cargo: Cargo,
+    npm: Npm,
     rokit: Rokit,
     wally: Wally,
 }
@@ -39,6 +42,7 @@ impl Tools {
     pub fn new(client: Client, clients: Clients, documents: Documents) -> Self {
         Self {
             cargo: Cargo::new(client.clone(), clients.clone(), documents.clone()),
+            npm: Npm::new(client.clone(), clients.clone(), documents.clone()),
             rokit: Rokit::new(client.clone(), clients.clone(), documents.clone()),
             wally: Wally::new(client.clone(), clients.clone(), documents.clone()),
         }
@@ -58,6 +62,7 @@ impl Tools {
     fn tool_for_uri(&self, uri: &Url) -> Option<&dyn Tool> {
         match ToolName::from_uri(uri) {
             Ok(ToolName::Cargo) => Some(&self.cargo),
+            Ok(ToolName::Npm) => Some(&self.npm),
             Ok(ToolName::Rokit) => Some(&self.rokit),
             Ok(ToolName::Wally) => Some(&self.wally),
             Err(e) => {

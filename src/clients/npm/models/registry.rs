@@ -8,8 +8,9 @@ use crate::util::Versioned;
 pub struct RegistryMetadata {
     #[serde(flatten)]
     pub current_version: RegistryMetadataVersion,
-    #[serde(rename = "time")]
+    #[serde(default, rename = "time")]
     pub timestamps: HashMap<String, String>,
+    #[serde(default)]
     pub versions: HashMap<String, RegistryMetadataVersion>,
 }
 
@@ -18,10 +19,15 @@ pub struct RegistryMetadataVersion {
     pub name: String,
     #[serde(default)]
     pub version: String,
+    #[serde(default)]
     pub description: Option<String>,
+    #[serde(default)]
     pub license: Option<RegistryMetadataLicenseVariant>,
+    #[serde(default)]
     pub homepage: Option<String>,
+    #[serde(default)]
     pub repository: Option<RegistryMetadataRepositoryVariant>,
+    #[serde(default)]
     pub author: Option<RegistryMetadataHumanVariant>,
     #[serde(default)]
     pub maintainers: Vec<RegistryMetadataHumanVariant>,

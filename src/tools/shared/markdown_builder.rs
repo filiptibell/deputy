@@ -33,8 +33,8 @@ impl MarkdownBuilder {
         self.p(format!("- [{}]({})", text.into(), link.into()));
     }
 
-    pub fn version(&mut self, version: impl Into<String>) {
-        self.p(format!("Version **{}**", version.into()));
+    pub fn version(&mut self, version: impl ToString) {
+        self.p(format!("Version **{}**", version.to_string()));
     }
 
     pub fn extend_last(&mut self, suffix: impl AsRef<str>) {

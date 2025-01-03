@@ -115,7 +115,10 @@ pub struct DependencySpec {
 
 impl Versioned for DependencySpec {
     fn parse_version(&self) -> Result<semver::Version, semver::Error> {
-        self.version.clone().unwrap_or_default().contents.parse()
+        self.version.clone().unwrap_or_default().parse()
+    }
+    fn parse_version_req(&self) -> Result<semver::VersionReq, semver::Error> {
+        self.version.clone().unwrap_or_default().parse()
     }
 }
 
@@ -208,6 +211,14 @@ impl Versioned for Dependency {
             .unwrap_or_default()
             .contents
             .parse_version()
+    }
+
+    fn parse_version_req(&self) -> Result<semver::VersionReq, semver::Error> {
+        self.spec()
+            .cloned()
+            .unwrap_or_default()
+            .contents
+            .parse_version_req()
     }
 }
 

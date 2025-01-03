@@ -54,7 +54,7 @@ pub async fn get_rokit_diagnostics(
         Err(e) => {
             if e.is_not_found_error() {
                 return Ok(vec![Diagnostic {
-                    source: Some(String::from("Cargo")),
+                    source: Some(String::from("Rokit")),
                     range: parsed.range(),
                     message: format!(
                         "No tool exists for `{}/{}`",
@@ -71,7 +71,7 @@ pub async fn get_rokit_diagnostics(
     };
     if releases.is_empty() {
         return Ok(vec![Diagnostic {
-            source: Some(String::from("Cargo")),
+            source: Some(String::from("Rokit")),
             range: parsed.range(),
             message: format!(
                 "No releases exist for the tool `{}/{}`",
@@ -91,7 +91,7 @@ pub async fn get_rokit_diagnostics(
             .eq_ignore_ascii_case(parsed_version)
     }) {
         return Ok(vec![Diagnostic {
-            source: Some(String::from("Cargo")),
+            source: Some(String::from("Rokit")),
             range: parsed.range(),
             message: format!(
                 "Version `{parsed_version}` does not exist for the tool `{}/{}`",
@@ -121,7 +121,7 @@ pub async fn get_rokit_diagnostics(
         };
 
         return Ok(vec![Diagnostic {
-            source: Some(String::from("Cargo")),
+            source: Some(String::from("Rokit")),
             range: parsed.range(),
             message: format!(
                 "A newer version of `{}/{}` is available.\
