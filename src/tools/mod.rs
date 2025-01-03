@@ -19,20 +19,24 @@ pub use tool::*;
 // Individual tools
 
 mod cargo;
+mod rokit;
 
 use cargo::*;
+use rokit::*;
 
 // Tools manager
 
 #[derive(Debug, Clone)]
 pub struct Tools {
     cargo: Cargo,
+    rokit: Rokit,
 }
 
 impl Tools {
     pub fn new(client: Client, clients: Clients, documents: Documents) -> Self {
         Self {
             cargo: Cargo::new(client.clone(), clients.clone(), documents.clone()),
+            rokit: Rokit::new(client.clone(), clients.clone(), documents.clone()),
         }
     }
 
@@ -50,6 +54,7 @@ impl Tools {
     fn tool_for_uri(&self, uri: &Url) -> Option<&dyn Tool> {
         match ToolName::from_uri(uri) {
             Ok(ToolName::Cargo) => Some(&self.cargo),
+            Ok(ToolName::Rokit) => Some(&self.rokit),
             Err(e) => {
                 warn!("Failed to parse tool name from uri '{e}'");
                 None

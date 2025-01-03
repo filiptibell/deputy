@@ -2,7 +2,7 @@ use std::{cmp::Ordering, str::FromStr};
 
 use tower_lsp::lsp_types::{Position, Range};
 
-use super::query_utils::{range_contains, range_from_node};
+use super::query_utils::{range_contains, range_for_substring, range_from_node};
 
 /**
     A node in the tree-sitter parse tree.
@@ -221,4 +221,81 @@ impl Tool {
         vec.iter()
             .find(|dep| dep.name.contains(pos) || dep.spec.contains(pos))
     }
+
+    pub fn parsed_spec(&self) -> ToolSpecParsed {
+        let raw = self.spec.unquoted();
+
+        let (owner, repository, version) = if let Some((owner, rest)) = raw.split_once('/') {
+            if let Some((repository, version)) = rest.split_once('@') {
+                (owner, Some(repository), Some(version))
+            } else {
+                (owner, Some(rest), None)
+            }
+        } else {
+            (raw, None, None)
+        };
+
+        ToolSpecParsed {
+            owner: Node::new_raw(
+                range_for_substring(self.spec.range, self.spec.quoted(), owner),
+                owner.to_string(),
+            ),
+            repository: repository.map(|repository| {
+                Node::new_raw(
+                    range_for_substring(self.spec.range, self.spec.quoted(), repository),
+                    repository.to_string(),
+                )
+            }),
+            version: version.map(|version| {
+                Node::new_raw(
+                    range_for_substring(self.spec.range, self.spec.quoted(), version),
+                    version.to_string(),
+                )
+            }),
+        }
+    }
+}
+
+/**
+    A parsed tool specification, in the format:
+
+    ```
+    "owner/repository@version"
+    ```
+
+    Note that this is not guaranteed to be fully parsed, only partial.
+*/
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ToolSpecParsed {
+    pub owner: Node<String>,
+    pub repository: Option<Node<String>>,
+    pub version: Option<Node<String>>,
+}
+
+impl ToolSpecParsed {
+    pub fn into_full(self) -> Option<ToolSpecParsedFull> {
+        let repository = self.repository?;
+        let version = self.version?;
+        Some(ToolSpecParsedFull {
+            owner: self.owner,
+            repository,
+            version,
+        })
+    }
+}
+
+/**
+    A *fully* parsed tool specification, in the format:
+
+    ```
+    "owner/repository@version"
+    ```
+
+    Contains all fully parsed fields, unlike `ToolSpecParsed`.
+*/
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ToolSpecParsedFull {
+    pub owner: Node<String>,
+    pub repository: Node<String>,
+    pub version: Node<String>,
 }
