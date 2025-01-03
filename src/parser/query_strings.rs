@@ -20,7 +20,7 @@ pub const CARGO_TOML_DEPENDENCIES_QUERY: &str = r#"
                             (array) @features_array
                             (#eq? @features_key "features")
                         )?
-                    )
+                    ) @dependency_table
                 ]
             ) @dependency_pair
 
@@ -64,7 +64,7 @@ pub const CARGO_TOML_DEPENDENCIES_QUERY: &str = r#"
                             (array) @features_array
                             (#eq? @features_key "features")
                         )?
-                    )
+                    ) @dependency_table
                 ]
             ) @dependency_pair
 

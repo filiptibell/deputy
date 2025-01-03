@@ -19,6 +19,10 @@ impl<T> Node<T> {
         Self { contents, range }
     }
 
+    pub fn new_raw(range: Range, contents: T) -> Self {
+        Self { contents, range }
+    }
+
     pub fn contains(&self, pos: Position) -> bool {
         range_contains(self.range, pos)
     }

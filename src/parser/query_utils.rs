@@ -18,3 +18,10 @@ pub fn range_from_node(node: &tree_sitter::Node) -> Range {
 pub fn range_contains(range: Range, pos: Position) -> bool {
     range.start <= pos && pos <= range.end
 }
+
+pub fn range_extend(range: Range, other: Range) -> Range {
+    Range {
+        start: std::cmp::min(range.start, other.start),
+        end: std::cmp::max(range.end, other.end),
+    }
+}

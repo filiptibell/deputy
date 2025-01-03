@@ -1,5 +1,8 @@
 use streaming_iterator::StreamingIterator;
+use tower_lsp::lsp_types::Range;
 use tree_sitter::QueryCursor;
+
+use crate::parser::query_utils::{range_extend, range_from_node};
 
 use super::super::document::TreeSitterDocument;
 use super::super::query_strings::CARGO_TOML_DEPENDENCIES_QUERY;
@@ -22,7 +25,7 @@ pub fn query_cargo_toml_dependencies(doc: &TreeSitterDocument) -> Vec<Dependency
         let mut version_node = None;
         let mut features = Vec::new();
         let mut features_range = None;
-        let mut spec_range = None;
+        let mut spec_range = None::<Range>;
 
         for capture in m.captures {
             let capture_name = query.capture_names()[capture.index as usize];
@@ -44,9 +47,6 @@ pub fn query_cargo_toml_dependencies(doc: &TreeSitterDocument) -> Vec<Dependency
                 }
                 "version" => {
                     version_node = Some(Node::string(&capture.node, node_text));
-                    if spec_range.is_none() {
-                        spec_range = Some(capture.node.parent().unwrap());
-                    }
                 }
                 "features_array" => {
                     if features_range.is_none() {
@@ -62,6 +62,18 @@ pub fn query_cargo_toml_dependencies(doc: &TreeSitterDocument) -> Vec<Dependency
                 }
                 _ => {}
             }
+
+            if matches!(
+                capture_name,
+                "dependency_table" | "version" | "features_array"
+            ) {
+                let range = range_from_node(&capture.node);
+                if let Some(srange) = spec_range {
+                    spec_range = Some(range_extend(range, srange));
+                } else {
+                    spec_range = Some(range);
+                }
+            }
         }
 
         if let (Some(dep_kind), Some(name)) = (dep_kind, dep_name_node) {
@@ -69,8 +81,8 @@ pub fn query_cargo_toml_dependencies(doc: &TreeSitterDocument) -> Vec<Dependency
                 dep_kind,
                 name,
                 spec_range.map(|r| {
-                    Node::new(
-                        &r,
+                    Node::new_raw(
+                        r,
                         DependencySpec {
                             source: DependencySource::Registry,
                             version: version_node,
