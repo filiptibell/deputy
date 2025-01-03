@@ -54,7 +54,7 @@ mod tests {
     use super::*;
 
     fn test_tools(contents: &str, expected: Vec<(&'static str, &'static str)>) {
-        let uri = Url::from_file_path(Path::new("rokit.toml")).unwrap();
+        let uri = Url::from_file_path(Path::new("/rokit.toml")).unwrap();
         let file = TreeSitterDocument::new(uri, contents.to_string()).unwrap();
         let tools = query_rokit_tools(&file);
 

@@ -83,10 +83,10 @@ impl Tool for Cargo {
         };
 
         // Check what we're completing - name or version
-        if found.name.contains(pos) {
+        if found.name().contains(pos) {
             debug!("Completing name: {found:?}");
             get_cargo_completions_name(&self.clients, &doc, found).await
-        } else if found.spec.contains(pos) {
+        } else if found.spec().is_some_and(|s| s.contains(pos)) {
             debug!("Completing version: {found:?}");
             get_cargo_completions_version(&self.clients, &doc, found).await
         } else {

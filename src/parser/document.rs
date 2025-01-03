@@ -82,14 +82,14 @@ mod tests {
             assert!(file.is_none() || file.is_some_and(|f| f.language == language.unwrap()));
         }
 
-        test("package.json", "{}", Some(TreeSitterLanguage::Json));
-        test("Cargo.toml", "[header]", Some(TreeSitterLanguage::Toml));
-        test("Cargo.lock", "[header]", Some(TreeSitterLanguage::Toml));
-        test("wally.toml", "[header]", Some(TreeSitterLanguage::Toml));
-        test("wally.lock", "[header]", Some(TreeSitterLanguage::Toml));
-        test("rokit.toml", "[header]", Some(TreeSitterLanguage::Toml));
+        test("/package.json", "{}", Some(TreeSitterLanguage::Json));
+        test("/Cargo.toml", "[header]", Some(TreeSitterLanguage::Toml));
+        test("/Cargo.lock", "[header]", Some(TreeSitterLanguage::Toml));
+        test("/wally.toml", "[header]", Some(TreeSitterLanguage::Toml));
+        test("/wally.lock", "[header]", Some(TreeSitterLanguage::Toml));
+        test("/rokit.toml", "[header]", Some(TreeSitterLanguage::Toml));
 
-        test("package.txt", "{}", None);
-        test("package.json.txt", "{}", None);
+        test("/package.txt", "{}", None);
+        test("/package.json.txt", "{}", None);
     }
 }

@@ -18,7 +18,7 @@ pub async fn get_cargo_completions_name(
     document: &Document,
     dep: &Dependency,
 ) -> Result<CompletionResponse> {
-    let dname = dep.name.unquoted();
+    let dname = dep.name().unquoted();
 
     let mut packages = top_crates_io_packages_prefixed(dname, MAXIMUM_PACKAGES_SHOWN)
         .into_iter()
@@ -55,7 +55,7 @@ pub async fn get_cargo_completions_name(
             label: package.name.to_string(),
             kind: Some(CompletionItemKind::VALUE),
             text_edit: Some(CompletionTextEdit::Edit(
-                document.create_edit(dep.name.range, package.name.to_string()),
+                document.create_edit(dep.name().range, package.name.to_string()),
             )),
             detail: Some(package.description.to_string()),
             ..Default::default()
@@ -69,8 +69,8 @@ pub async fn get_cargo_completions_version(
     document: &Document,
     dep: &Dependency,
 ) -> Result<CompletionResponse> {
-    let name = dep.name.unquoted();
-    let Some(version) = dep.spec.contents.version.as_ref() else {
+    let name = dep.name().unquoted();
+    let Some(version) = dep.spec().and_then(|s| s.contents.version.as_ref()) else {
         return Ok(CompletionResponse::Array(Vec::new()));
     };
 

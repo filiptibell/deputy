@@ -3,24 +3,32 @@ pub const CARGO_TOML_DEPENDENCIES_QUERY: &str = r#"
     ; Simple table format: [dependencies]
     (table
         (bare_key) @root_name
-        (pair
-            (bare_key) @dependency_name
-            [
-                (string) @version
-                (inline_table
-                    (pair
-                        (bare_key) @version_key
-                        (string) @version
-                        (#eq? @version_key "version")
-                    )?
-                    (pair
-                        (bare_key) @features_key
-                        (array) @features_array
-                        (#eq? @features_key "features")
-                    )?
-                )
-            ]
-        ) @dependency_pair
+        [
+            ; Complete dependency pairs
+            (pair
+                (bare_key) @dependency_name
+                [
+                    (string) @version
+                    (inline_table
+                        (pair
+                            (bare_key) @version_key
+                            (string) @version
+                            (#eq? @version_key "version")
+                        )?
+                        (pair
+                            (bare_key) @features_key
+                            (array) @features_array
+                            (#eq? @features_key "features")
+                        )?
+                    )
+                ]
+            ) @dependency_pair
+
+            ; Incomplete dependency (just the key - for completions)
+            (ERROR
+            	(bare_key) @incomplete_dependency_name
+            ) @incomplete_dependency_pair
+        ]
         (#any-of? @root_name
             "dependencies"
             "dev-dependencies"
@@ -34,32 +42,37 @@ pub const CARGO_TOML_DEPENDENCIES_QUERY: &str = r#"
     (table
         (dotted_key
             [
-                ; First part can be workspace or target
                 (bare_key) @table_prefix
-                ; For target specs, there might be a quoted part
                 (string) @target_spec
             ]?
-            ; Last part must be a dependency type
             (bare_key) @root_name
         )
-        (pair
-            (bare_key) @dependency_name
-            [
-                (string) @version
-                (inline_table
-                    (pair
-                        (bare_key) @version_key
-                        (string) @version
-                        (#eq? @version_key "version")
-                    )?
-                    (pair
-                        (bare_key) @features_key
-                        (array) @features_array
-                        (#eq? @features_key "features")
-                    )?
-                )
-            ]
-        ) @dependency_pair
+        [
+        	; Complete dependency pairs
+            (pair
+                (bare_key) @dependency_name
+                [
+                    (string) @version
+                    (inline_table
+                        (pair
+                            (bare_key) @version_key
+                            (string) @version
+                            (#eq? @version_key "version")
+                        )?
+                        (pair
+                            (bare_key) @features_key
+                            (array) @features_array
+                            (#eq? @features_key "features")
+                        )?
+                    )
+                ]
+            ) @dependency_pair
+
+            ; Incomplete dependency (just the key - for completions)
+            (ERROR
+            	(bare_key) @incomplete_dependency_name
+            ) @incomplete_dependency_pair
+        ]
         (#any-of? @root_name
             "dependencies"
             "dev-dependencies"
@@ -67,6 +80,24 @@ pub const CARGO_TOML_DEPENDENCIES_QUERY: &str = r#"
             "build-dependencies"
             "build_dependencies"
         )
+    )
+
+    ; Incomplete / hanging dependency - actually matches as *sibling* of table (?!?)
+    (
+        (table
+            (bare_key) @root_name
+            (#any-of? @root_name
+                "dependencies"
+                "dev-dependencies"
+                "dev_dependencies"
+                "build-dependencies"
+                "build_dependencies"
+            )
+        )
+        .
+        (ERROR
+            (bare_key) @incomplete_dependency_name
+        ) @incomplete_dependency_pair
     )
 ]
 "#;

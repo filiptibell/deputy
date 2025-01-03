@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{cmp::Ordering, str::FromStr};
 
 use tower_lsp::lsp_types::{Position, Range};
 
@@ -108,40 +108,89 @@ pub struct DependencySpec {
 }
 
 /**
-    A fully parsed dependency.
+    A partial *or* fully parsed dependency.
 
     Contains the kind of dependency, the name of the dependency,
     and the full version specification of the dependency.
 */
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Dependency {
-    pub kind: DependencyKind,
-    pub name: Node<String>,
-    pub spec: Node<DependencySpec>,
+pub enum Dependency {
+    Partial {
+        kind: DependencyKind,
+        name: Node<String>,
+    },
+    Full {
+        kind: DependencyKind,
+        name: Node<String>,
+        spec: Node<DependencySpec>,
+    },
 }
 
 impl Dependency {
+    pub fn new_partial(kind: DependencyKind, name: Node<String>) -> Self {
+        Self::Partial { kind, name }
+    }
+
+    pub fn new_full(kind: DependencyKind, name: Node<String>, spec: Node<DependencySpec>) -> Self {
+        Self::Full { kind, name, spec }
+    }
+
+    pub fn new_opt(
+        kind: DependencyKind,
+        name: Node<String>,
+        spec: Option<Node<DependencySpec>>,
+    ) -> Self {
+        match spec {
+            Some(spec) => Self::new_full(kind, name, spec),
+            None => Self::new_partial(kind, name),
+        }
+    }
+
+    pub fn kind(&self) -> DependencyKind {
+        match self {
+            Self::Partial { kind, .. } => *kind,
+            Self::Full { kind, .. } => *kind,
+        }
+    }
+
+    pub fn name(&self) -> &Node<String> {
+        match self {
+            Self::Partial { name, .. } => name,
+            Self::Full { name, .. } => name,
+        }
+    }
+
+    pub fn spec(&self) -> Option<&Node<DependencySpec>> {
+        match self {
+            Self::Partial { .. } => None,
+            Self::Full { spec, .. } => Some(spec),
+        }
+    }
+
     pub fn sort_vec(vec: &mut [Self]) {
-        vec.sort_by(|a, b| {
-            let a_range = a.spec.range;
-            let b_range = b.spec.range;
-            a_range
-                .start
-                .cmp(&b_range.start)
-                .then_with(|| a_range.end.cmp(&b_range.end))
-                .then_with(|| a.name.range.start.cmp(&b.name.range.start))
-                .then_with(|| a.name.range.end.cmp(&b.name.range.end))
+        vec.sort_by(|a, b| match (a.spec(), b.spec()) {
+            (Some(a), Some(b)) => {
+                let a_range = a.range;
+                let b_range = b.range;
+                a_range
+                    .start
+                    .cmp(&b_range.start)
+                    .then_with(|| a_range.end.cmp(&b_range.end))
+            }
+            (Some(_), None) => Ordering::Less,
+            (None, Some(_)) => Ordering::Greater,
+            (None, None) => Ordering::Equal,
         });
     }
 
     pub fn find_at_pos(vec: &[Self], pos: Position) -> Option<&Self> {
         vec.iter()
-            .find(|dep| dep.name.contains(pos) || dep.spec.contains(pos))
+            .find(|dep| dep.name().contains(pos) || dep.spec().is_some_and(|s| s.contains(pos)))
     }
 }
 
 /**
-    A fully parsed tool specification, containing:
+    A fully parsed tool, containing:
 
     - The name of the tool
     - The spec of the tool

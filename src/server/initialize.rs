@@ -5,6 +5,21 @@ use tower_lsp::lsp_types::*;
 
 use crate::server::*;
 
+fn completion_trigger_characters() -> Vec<String> {
+    let mut chars = vec![
+        String::from("\""),
+        String::from("'"),
+        String::from("/"),
+        String::from("@"),
+        String::from("."),
+        String::from("-"),
+        String::from("_"),
+    ];
+
+    chars.sort();
+    chars
+}
+
 impl Server {
     pub async fn respond_to_initalize(&self, params: InitializeParams) -> Result<InitializeResult> {
         trace!("Initializing server with params: {params:#?}");
@@ -14,15 +29,7 @@ impl Server {
         // Create completion provider parameters
         let completion_options = CompletionOptions {
             resolve_provider: Some(false),
-            trigger_characters: Some(vec![
-                String::from("\""),
-                String::from("'"),
-                String::from("/"),
-                String::from("@"),
-                String::from("."),
-                String::from("-"),
-                String::from("_"),
-            ]),
+            trigger_characters: Some(completion_trigger_characters()),
             ..Default::default()
         };
 

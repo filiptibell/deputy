@@ -53,10 +53,10 @@ pub fn query_wally_toml_dependencies(doc: &TreeSitterDocument) -> Vec<Dependency
         if let (Some(dep_kind), Some(name), Some(spec), Some(spec_range)) =
             (dep_kind, dep_name_node, dep_spec_node, spec_range)
         {
-            dependencies.push(Dependency {
-                kind: dep_kind,
+            dependencies.push(Dependency::new_full(
+                dep_kind,
                 name,
-                spec: Node::new(
+                Node::new(
                     &spec_range,
                     DependencySpec {
                         source: DependencySource::Registry,
@@ -64,7 +64,7 @@ pub fn query_wally_toml_dependencies(doc: &TreeSitterDocument) -> Vec<Dependency
                         features: None, // Wally doesn't have features
                     },
                 ),
-            });
+            ));
         }
     }
 
@@ -85,7 +85,7 @@ mod tests {
         contents: &str,
         expected: Vec<(DependencyKind, &'static str, &'static str)>,
     ) {
-        let uri = Url::from_file_path(Path::new("wally.toml")).unwrap();
+        let uri = Url::from_file_path(Path::new("/wally.toml")).unwrap();
         let file = TreeSitterDocument::new(uri, contents.to_string()).unwrap();
         let deps = query_wally_toml_dependencies(&file);
 
@@ -96,9 +96,18 @@ mod tests {
         );
 
         for (dep, (kind, name, spec)) in deps.into_iter().zip(expected.into_iter()) {
-            assert_eq!(dep.kind, kind);
-            assert_eq!(dep.name.contents, name);
-            assert_eq!(dep.spec.contents.version.as_ref().unwrap().unquoted(), spec);
+            assert_eq!(dep.kind(), kind);
+            assert_eq!(dep.name().contents, name);
+            assert_eq!(
+                dep.spec()
+                    .unwrap()
+                    .contents
+                    .version
+                    .as_ref()
+                    .unwrap()
+                    .unquoted(),
+                spec
+            );
         }
     }
 

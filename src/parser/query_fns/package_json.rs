@@ -75,10 +75,10 @@ pub fn query_package_json_dependencies(doc: &TreeSitterDocument) -> Vec<Dependen
                 DependencySource::Registry
             };
 
-            dependencies.push(Dependency {
-                kind: dep_kind,
+            dependencies.push(Dependency::new_full(
+                dep_kind,
                 name,
-                spec: Node::new(
+                Node::new(
                     &spec_range,
                     DependencySpec {
                         source,
@@ -86,7 +86,7 @@ pub fn query_package_json_dependencies(doc: &TreeSitterDocument) -> Vec<Dependen
                         features: None, // NPM doesn't have features
                     },
                 ),
-            });
+            ));
         }
     }
 
@@ -113,7 +113,7 @@ mod tests {
             Option<DependencySource>,
         )>,
     ) {
-        let uri = Url::from_file_path(Path::new("package.json")).unwrap();
+        let uri = Url::from_file_path(Path::new("/package.json")).unwrap();
         let file = TreeSitterDocument::new(uri, contents.to_string()).unwrap();
         let deps = query_package_json_dependencies(&file);
 
@@ -124,14 +124,22 @@ mod tests {
         );
 
         for (dep, (kind, name, version, source_opt)) in deps.into_iter().zip(expected.into_iter()) {
-            assert_eq!(dep.kind, kind);
-            assert_eq!(dep.name.contents, name);
+            assert_eq!(dep.kind(), kind);
+            assert_eq!(dep.name().contents, name);
             assert_eq!(
-                dep.spec.contents.version.as_ref().map(|v| v.unquoted()),
+                dep.spec()
+                    .unwrap()
+                    .contents
+                    .version
+                    .as_ref()
+                    .map(|v| v.unquoted()),
                 version
             );
             if let Some(source) = source_opt {
-                assert_eq!(dep.spec.contents.source.contents(), source.contents());
+                assert_eq!(
+                    dep.spec().unwrap().clone().contents.source.contents(),
+                    source.contents()
+                );
             }
         }
     }

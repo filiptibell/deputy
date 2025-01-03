@@ -9,18 +9,18 @@ use super::{Clients, Document};
 pub async fn get_cargo_hover(
     clients: &Clients,
     _doc: &Document,
-    hovered: &Dependency,
+    dep: &Dependency,
 ) -> Result<Option<Hover>> {
-    let Some(version) = hovered.spec.contents.version.as_ref() else {
+    let Some(version) = dep.spec().and_then(|s| s.contents.version.as_ref()) else {
         return Ok(None);
     };
 
     // Modify range to show as hovering over the entire "key = version" pair
     let found_range = Range {
-        start: hovered.name.range.start,
-        end: hovered.spec.range.end,
+        start: dep.name().range.start,
+        end: dep.spec().unwrap().range.end,
     };
-    let dependency_name = hovered.name.unquoted();
+    let dependency_name = dep.name().unquoted();
     let dependency_version = version.unquoted();
 
     // Add basic hover information with version and name

@@ -14,7 +14,7 @@ pub async fn get_cargo_diagnostics(
     doc: &Document,
     dep: &Dependency,
 ) -> Result<Option<Diagnostic>> {
-    let Some(version) = dep.spec.contents.version.as_ref() else {
+    let Some(version) = dep.spec().and_then(|s| s.contents.version.as_ref()) else {
         return Ok(None);
     };
     let Ok(version_req) = VersionReq::parse(version.unquoted()) else {
@@ -24,7 +24,7 @@ pub async fn get_cargo_diagnostics(
     trace!("Fetching crate data from crates.io");
     let metadatas = match clients
         .crates
-        .get_sparse_index_crate_metadatas(dep.name.unquoted())
+        .get_sparse_index_crate_metadatas(dep.name().unquoted())
         .await
     {
         Ok(v) => v,
@@ -32,8 +32,11 @@ pub async fn get_cargo_diagnostics(
             if e.is_not_found_error() {
                 return Ok(Some(Diagnostic {
                     source: Some(String::from("Cargo")),
-                    range: dep.name.range,
-                    message: format!("No package exists with the name `{}`", dep.name.unquoted()),
+                    range: dep.name().range,
+                    message: format!(
+                        "No package exists with the name `{}`",
+                        dep.name().unquoted()
+                    ),
                     severity: Some(DiagnosticSeverity::ERROR),
                     ..Default::default()
                 }));

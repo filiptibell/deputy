@@ -39,7 +39,7 @@ pub fn query_cargo_toml_dependencies(doc: &TreeSitterDocument) -> Vec<Dependency
                         _ => continue,
                     });
                 }
-                "dependency_name" => {
+                "dependency_name" | "incomplete_dependency_name" => {
                     dep_name_node = Some(Node::string(&capture.node, node_text));
                 }
                 "version" => {
@@ -64,21 +64,21 @@ pub fn query_cargo_toml_dependencies(doc: &TreeSitterDocument) -> Vec<Dependency
             }
         }
 
-        if let (Some(dep_kind), Some(name), Some(spec_range)) =
-            (dep_kind, dep_name_node, spec_range)
-        {
-            dependencies.push(Dependency {
-                kind: dep_kind,
+        if let (Some(dep_kind), Some(name)) = (dep_kind, dep_name_node) {
+            dependencies.push(Dependency::new_opt(
+                dep_kind,
                 name,
-                spec: Node::new(
-                    &spec_range,
-                    DependencySpec {
-                        source: DependencySource::Registry,
-                        version: version_node,
-                        features: features_range.map(|r| Node::new(r, features)),
-                    },
-                ),
-            });
+                spec_range.map(|r| {
+                    Node::new(
+                        &r,
+                        DependencySpec {
+                            source: DependencySource::Registry,
+                            version: version_node,
+                            features: features_range.map(|r| Node::new(r, features)),
+                        },
+                    )
+                }),
+            ));
         }
     }
 
@@ -102,7 +102,7 @@ mod tests {
             Vec<&'static str>,
         )>,
     ) {
-        let uri = Url::from_file_path(Path::new("Cargo.toml")).unwrap();
+        let uri = Url::from_file_path(Path::new("/Cargo.toml")).unwrap();
         let file = TreeSitterDocument::new(uri, contents.to_string()).unwrap();
         let deps = query_cargo_toml_dependencies(&file);
 
@@ -113,14 +113,22 @@ mod tests {
         );
 
         for (dep, (kind, name, version, features)) in deps.into_iter().zip(expected.into_iter()) {
-            assert_eq!(dep.kind, kind);
-            assert_eq!(dep.name.contents, name);
+            assert_eq!(dep.kind(), kind);
+            assert_eq!(dep.name().contents, name);
             assert_eq!(
-                dep.spec.contents.version.as_ref().unwrap().unquoted(),
+                dep.spec()
+                    .unwrap()
+                    .contents
+                    .version
+                    .as_ref()
+                    .unwrap()
+                    .unquoted(),
                 version
             );
             assert_eq!(
-                dep.spec
+                dep.spec()
+                    .unwrap()
+                    .clone()
                     .contents
                     .features
                     .into_iter()
@@ -230,5 +238,67 @@ mod tests {
                 vec!["full", "macros"],
             )],
         );
+    }
+
+    #[test]
+    fn test_incomplete_dependency_first() {
+        let contents = r#"
+        [dependencies]
+        incomplete
+        tokio = "1.0"
+        serde = "1.0"
+        "#;
+
+        let uri = Url::from_file_path(Path::new("/Cargo.toml")).unwrap();
+        let file = TreeSitterDocument::new(uri, contents.to_string()).unwrap();
+        let deps = query_cargo_toml_dependencies(&file);
+
+        assert_eq!(deps.len(), 3, "mismatched number of dependencies");
+
+        let dep = deps.first().unwrap();
+        assert_eq!(dep.kind(), DependencyKind::Default);
+        assert_eq!(dep.name().contents, "incomplete");
+        assert!(dep.spec().is_none());
+    }
+
+    #[test]
+    fn test_incomplete_dependency_middle() {
+        let contents = r#"
+        [dependencies]
+        tokio = "1.0"
+        incomplete
+        serde = "1.0"
+        "#;
+
+        let uri = Url::from_file_path(Path::new("/Cargo.toml")).unwrap();
+        let file = TreeSitterDocument::new(uri, contents.to_string()).unwrap();
+        let deps = query_cargo_toml_dependencies(&file);
+
+        assert_eq!(deps.len(), 3, "mismatched number of dependencies");
+
+        let dep = deps.get(1).unwrap();
+        assert_eq!(dep.kind(), DependencyKind::Default);
+        assert_eq!(dep.name().contents, "incomplete");
+        assert!(dep.spec().is_none());
+    }
+
+    #[test]
+    fn test_incomplete_dependency_hanging() {
+        let contents = r#"
+        [dependencies]
+        tokio = "1.0"
+        incomplete
+        "#;
+
+        let uri = Url::from_file_path(Path::new("/Cargo.toml")).unwrap();
+        let file = TreeSitterDocument::new(uri, contents.to_string()).unwrap();
+        let deps = query_cargo_toml_dependencies(&file);
+
+        assert_eq!(deps.len(), 2, "mismatched number of dependencies");
+
+        let dep = deps.get(1).unwrap();
+        assert_eq!(dep.kind(), DependencyKind::Default);
+        assert_eq!(dep.name().contents, "incomplete");
+        assert!(dep.spec().is_none());
     }
 }
