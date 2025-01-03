@@ -7,7 +7,7 @@ use lsp_document::{IndexedText, TextAdapter, TextMap};
 
 use tower_lsp::lsp_types::*;
 
-use crate::util::*;
+use crate::{parser::TreeSitterDocument, util::*};
 
 type Span = std::ops::Range<usize>;
 
@@ -18,7 +18,9 @@ pub struct Document {
     uri: Url,
     name: String,
     version: i32,
+    opened: bool,
     text: IndexedText<String>,
+    inner: TreeSitterDocument,
 }
 
 impl Document {
@@ -36,6 +38,10 @@ impl Document {
 
     pub fn as_str(&self) -> &str {
         &self.text.text
+    }
+
+    pub fn inner(&self) -> &TreeSitterDocument {
+        &self.inner
     }
 
     pub fn lsp_position_to_offset(&self, position: Position) -> usize {
@@ -60,21 +66,30 @@ impl Document {
         Span { start, end }
     }
 
-    pub fn create_edit(&self, span: Span, new_text: impl Into<String>) -> TextEdit {
-        TextEdit {
-            range: self.lsp_range_from_span(span),
-            new_text: new_text.into(),
-        }
+    pub fn create_edit(&self, range: Range, new_text: impl Into<String>) -> TextEdit {
+        let new_text = new_text.into();
+        TextEdit { range, new_text }
     }
 
     pub fn set_version(&mut self, version: impl Into<i32>) {
         self.version = version.into();
     }
 
+    pub fn set_opened(&mut self, opened: bool) {
+        self.opened = opened;
+    }
+
+    pub fn set_text(&mut self, new_text: impl Into<String>) {
+        let text = new_text.into();
+        self.text = IndexedText::new(text.clone());
+        self.inner.set_contents(text);
+    }
+
     pub fn apply_change(&mut self, change: TextDocumentContentChangeEvent) {
         let change = self.text.lsp_change_to_change(change).unwrap();
         let replaced = lsp_document::apply_change(&self.text, change);
-        self.text = IndexedText::new(replaced);
+        self.text = IndexedText::new(replaced.clone());
+        self.inner.set_contents(replaced);
     }
 }
 
@@ -83,6 +98,7 @@ pub struct DocumentBuilder {
     uri: Option<Url>,
     name: Option<String>,
     version: Option<i32>,
+    opened: Option<bool>,
     text: Option<String>,
 }
 
@@ -119,17 +135,31 @@ impl DocumentBuilder {
         }
     }
 
+    pub fn with_opened(self) -> Self {
+        Self {
+            opened: Some(true),
+            ..self
+        }
+    }
+
     pub fn build(self) -> Document {
         let uri = self.uri.expect("Missing uri");
         let name = self.name.unwrap_or_else(|| match uri.file_name() {
             None => panic!("Encountered document without file name"),
             Some(f) => f,
         });
+
+        let text = IndexedText::new(self.text.clone().unwrap_or_default());
+        let inner = TreeSitterDocument::new(uri.clone(), self.text.unwrap_or_default())
+            .expect("encountered unexpected file name with no corresponding language");
+
         Document {
             uri,
             name,
             version: self.version.unwrap_or(i32::MIN),
-            text: IndexedText::new(self.text.unwrap_or_default()),
+            opened: self.opened.unwrap_or(false),
+            text,
+            inner,
         }
     }
 }

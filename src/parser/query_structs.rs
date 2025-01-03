@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
-use tower_lsp::lsp_types::Range;
+use tower_lsp::lsp_types::{Position, Range};
 
-use super::query_utils::range_from_node;
+use super::query_utils::{range_contains, range_from_node};
 
 /**
     A node in the tree-sitter parse tree.
@@ -17,6 +17,10 @@ impl<T> Node<T> {
     pub fn new(node: &tree_sitter::Node<'_>, contents: T) -> Self {
         let range = range_from_node(node);
         Self { contents, range }
+    }
+
+    pub fn contains(&self, pos: Position) -> bool {
+        range_contains(self.range, pos)
     }
 }
 
@@ -129,6 +133,11 @@ impl Dependency {
                 .then_with(|| a.name.range.end.cmp(&b.name.range.end))
         });
     }
+
+    pub fn find_at_pos(vec: &[Self], pos: Position) -> Option<&Self> {
+        vec.iter()
+            .find(|dep| dep.name.contains(pos) || dep.spec.contains(pos))
+    }
 }
 
 /**
@@ -153,5 +162,10 @@ impl Tool {
                 .cmp(&b_range.start)
                 .then_with(|| a_range.end.cmp(&b_range.end))
         });
+    }
+
+    pub fn find_at_pos(vec: &[Self], pos: Position) -> Option<&Self> {
+        vec.iter()
+            .find(|dep| dep.name.contains(pos) || dep.spec.contains(pos))
     }
 }

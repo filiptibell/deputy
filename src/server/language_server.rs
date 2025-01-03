@@ -1,10 +1,11 @@
 use std::io;
 use std::sync::Arc;
+use std::time::Duration;
 
 use futures::future::join_all;
 use tokio::fs;
-use tower_lsp::jsonrpc::Result;
-use tower_lsp::lsp_types::notification::PublishDiagnostics;
+use tokio::time::timeout;
+use tower_lsp::jsonrpc::{Error, ErrorCode, Result};
 use tower_lsp::lsp_types::*;
 use tower_lsp::LanguageServer;
 use tracing::{trace, warn};
@@ -29,56 +30,66 @@ impl LanguageServer for Server {
         let text = params.text_document.text.clone();
 
         let documents = Arc::clone(&self.documents);
+        let waiting = self.waiting.clone();
 
-        let new_document = DocumentBuilder::new()
-            .with_uri(uri.clone())
-            .with_version(version)
-            .with_text(text)
-            .build();
-        let old_document = documents.insert(uri.clone(), new_document);
+        // Modify any existing file with new version & contents, or insert a new one
+        documents
+            .entry(uri.clone())
+            .and_modify(|document| {
+                document.set_version(version);
+                document.set_opened(true);
+                document.set_text(&text);
+            })
+            .or_insert_with(|| {
+                DocumentBuilder::new()
+                    .with_uri(uri.clone())
+                    .with_version(version)
+                    .with_text(text)
+                    .with_opened()
+                    .build()
+            });
+        waiting.trigger(uri.clone());
 
-        // If this is the first time we're opening this file, we should read
-        // and insert any other relevant files that are not already stored,
-        // and if any were found, re-run diagnostics right away
-        if old_document.is_none() {
-            let relevant_uris = Tools::relevant_file_uris(&uri)
-                .into_iter()
-                .filter(|u| !documents.contains_key(u))
-                .collect::<Vec<_>>();
+        // If we have any relevant files, try to read those too right away
+        let relevant_uris = Tools::relevant_file_uris(&uri)
+            .into_iter()
+            .filter(|u| !documents.contains_key(u))
+            .collect::<Vec<_>>();
 
-            let mut futs = Vec::new();
-            for relevant_uri in &relevant_uris {
-                let file_path = relevant_uri
-                    .to_file_path()
-                    .expect("relevant_file_uris should only return file paths");
-                futs.push(async move {
-                    let bytes = fs::read(&file_path).await?;
-                    convert_to_utf8(&file_path, &bytes).await
-                });
-            }
+        let mut futs = Vec::new();
+        for relevant_uri in &relevant_uris {
+            let file_path = relevant_uri
+                .to_file_path()
+                .expect("relevant_file_uris should only return file paths");
+            futs.push(async move {
+                let bytes = fs::read(&file_path).await?;
+                convert_to_utf8(&file_path, &bytes).await
+            });
+        }
 
-            let mut needs_diagnostic_refresh = false;
-            for (index, result) in join_all(futs).await.into_iter().enumerate() {
-                let relevant_uri = relevant_uris.get(index).expect("Missing or unordered uri");
-                match result {
-                    Err(e) => {
-                        if e.kind() != io::ErrorKind::NotFound {
-                            warn!("Failed to read relevant file at '{uri}' - {e}");
-                        }
-                    }
-                    Ok(s) => {
-                        let relevant_document = DocumentBuilder::new()
-                            .with_uri(relevant_uri.clone())
-                            .with_text(s)
-                            .build();
-                        documents.insert(relevant_uri.clone(), relevant_document);
-                        needs_diagnostic_refresh = true;
+        for (index, result) in join_all(futs).await.into_iter().enumerate() {
+            let relevant_uri = relevant_uris.get(index).expect("Missing or unordered uri");
+            match result {
+                Err(e) => {
+                    if e.kind() != io::ErrorKind::NotFound {
+                        warn!("Failed to read relevant file at '{uri}' - {e}");
                     }
                 }
-            }
-
-            if needs_diagnostic_refresh {
-                self.run_diagnostics_on(uri.clone()).await;
+                Ok(s) => {
+                    documents
+                        .entry(relevant_uri.clone())
+                        .and_modify(|document| {
+                            document.set_text(&s);
+                        })
+                        .or_insert_with(|| {
+                            DocumentBuilder::new()
+                                .with_uri(relevant_uri.clone())
+                                .with_text(s)
+                                .with_opened()
+                                .build()
+                        });
+                    waiting.trigger(relevant_uri.clone());
+                }
             }
         }
 
@@ -87,6 +98,12 @@ impl LanguageServer for Server {
 
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
         let uri = params.text_document.uri.clone();
+
+        let documents = Arc::clone(&self.documents);
+        let mut document = documents
+            .get_mut(&uri)
+            .expect("Got close event for nonexistent document");
+        document.set_opened(false);
 
         trace!("File closed: {uri}");
     }
@@ -146,10 +163,14 @@ impl LanguageServer for Server {
     }
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
+        let uri = &params.text_document_position_params.text_document.uri;
+        self.wait_if_nonexistent_or_timeout(uri).await?;
         self.tools.hover(params).await
     }
 
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
+        let uri = &params.text_document_position.text_document.uri;
+        self.wait_if_nonexistent_or_timeout(uri).await?;
         match self.tools.completion(params).await {
             Err(e) => Err(e),
             Ok(r) => Ok(Some(r)),
@@ -164,6 +185,8 @@ impl LanguageServer for Server {
         &self,
         params: DocumentDiagnosticParams,
     ) -> Result<DocumentDiagnosticReportResult> {
+        let uri = &params.text_document.uri;
+        self.wait_if_nonexistent_or_timeout(uri).await?;
         match self.tools.diagnostics(params).await {
             Err(e) => Err(e),
             Ok(v) => Ok(DocumentDiagnosticReportResult::Report(
@@ -200,25 +223,25 @@ impl LanguageServer for Server {
 }
 
 impl Server {
-    async fn run_diagnostics_on(&self, uri: Url) {
-        let diagnostics_result = self
-            .tools
-            .diagnostics(DocumentDiagnosticParams {
-                text_document: TextDocumentIdentifier { uri: uri.clone() },
-                work_done_progress_params: WorkDoneProgressParams::default(),
-                partial_result_params: PartialResultParams::default(),
-                previous_result_id: None,
-                identifier: None,
-            })
-            .await;
-        if let Ok(diagnostics) = diagnostics_result {
-            self.client
-                .send_notification::<PublishDiagnostics>(PublishDiagnosticsParams {
-                    uri,
-                    diagnostics,
-                    version: None,
-                })
-                .await;
+    async fn wait_if_nonexistent_or_timeout(&self, uri: &Url) -> Result<()> {
+        // HACK: Sometimes we receive a notification or request for diagnostics
+        // or something similar before the file has been opened, so we need to
+        // first wait for it to open and register with the language server
+
+        if self.documents.contains_key(uri) {
+            return Ok(());
+        }
+
+        let uri = uri.clone();
+        let waiting = self.waiting.clone();
+        let receiver = waiting.insert(uri.clone());
+
+        match timeout(Duration::from_secs(5), receiver).await {
+            Ok(_) => Ok(()),
+            Err(_) => {
+                waiting.remove(&uri);
+                Err(Error::new(ErrorCode::RequestCancelled))
+            }
         }
     }
 }

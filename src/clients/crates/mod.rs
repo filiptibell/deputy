@@ -59,7 +59,7 @@ impl CratesClient {
             let tx = self.crawl_limit_tx.clone();
             lim.store(true, Ordering::SeqCst);
             tokio::spawn(async move {
-                sleep(Duration::from_secs(consts::CRAWL_MAX_INTERVAL_SECONDS)).await;
+                sleep(Duration::from_secs_f32(consts::CRAWL_MAX_INTERVAL_SECONDS)).await;
                 lim.store(false, Ordering::SeqCst);
                 tx.try_send(()).ok();
             });

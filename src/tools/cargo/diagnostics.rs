@@ -1,110 +1,115 @@
-use semver::Version;
+use semver::{Version, VersionReq};
+use tracing::trace;
+
+use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 
-use crate::clients::*;
+use crate::parser::Dependency;
 
-use super::super::util::*;
-use super::manifest::*;
+use super::super::shared::*;
+use super::{Clients, Document};
 
-pub async fn diagnose_dependency(
+pub async fn get_cargo_diagnostics(
     clients: &Clients,
-    uri: &Url,
-    dep: &ManifestDependency,
-    range_name: &Range,
-    range_version: &Range,
-) -> Option<Diagnostic> {
-    let spec = match dep.spec() {
-        Ok(spec) => spec,
-        Err(e) if matches!(e, SpecError::InvalidName(_)) => {
-            return Some(Diagnostic {
-                source: Some(String::from("Cargo")),
-                range: *range_name,
-                message: e.to_string(),
-                severity: Some(e.diagnostic_severity()),
-                ..Default::default()
-            })
-        }
+    doc: &Document,
+    dep: &Dependency,
+) -> Result<Option<Diagnostic>> {
+    let Some(version) = dep.spec.contents.version.as_ref() else {
+        return Ok(None);
+    };
+    let Ok(version_req) = VersionReq::parse(version.unquoted()) else {
+        return Ok(None);
+    };
+
+    trace!("Fetching crate data from crates.io");
+    let metadatas = match clients
+        .crates
+        .get_sparse_index_crate_metadatas(dep.name.unquoted())
+        .await
+    {
+        Ok(v) => v,
         Err(e) => {
-            return Some(Diagnostic {
-                source: Some(String::from("Cargo")),
-                range: *range_version,
-                message: e.to_string(),
-                severity: Some(e.diagnostic_severity()),
-                ..Default::default()
-            })
+            if e.is_not_found_error() {
+                return Ok(Some(Diagnostic {
+                    source: Some(String::from("Cargo")),
+                    range: dep.name.range,
+                    message: format!("No package exists with the name `{}`", dep.name.unquoted()),
+                    severity: Some(DiagnosticSeverity::ERROR),
+                    ..Default::default()
+                }));
+            } else {
+                return Ok(None);
+            }
         }
     };
 
-    let metadatas = clients.crates.get_index_metadatas(&spec.name).await;
-    if metadatas.as_deref().is_err_and(|e| e.is_not_found_error()) {
-        return Some(Diagnostic {
-            source: Some(String::from("Cargo")),
-            range: *range_name,
-            message: format!("No package exists with the name `{}`", spec.name),
-            severity: Some(DiagnosticSeverity::ERROR),
-            ..Default::default()
-        });
-    }
-
-    let metadatas = metadatas.ok()?;
+    // Check if the specified package version exists in the index
     if !metadatas.iter().any(|r| {
         Version::parse(&r.version)
-            .map(|version| spec.version_req.matches(&version))
+            .map(|version| version_req.matches(&version))
             .ok()
             .unwrap_or_default()
     }) {
-        return Some(Diagnostic {
+        return Ok(Some(Diagnostic {
             source: Some(String::from("Cargo")),
-            range: *range_version,
+            range: version.range,
             message: format!(
                 "No version exists that matches requirement `{}`",
-                spec.version_req
+                version.unquoted()
             ),
             severity: Some(DiagnosticSeverity::ERROR),
             ..Default::default()
-        });
+        }));
     }
 
-    let latest_non_prerelease = metadatas.iter().find(|v| {
+    // Try to find the latest non-prerelease version
+    let Some(latest_non_prerelease) = metadatas.iter().find(|v| {
         Version::parse(&v.version)
             .map(|version| version.pre.is_empty())
             .unwrap_or_default()
-    })?;
-    let latest_non_prerelease_name = latest_non_prerelease.name.as_str();
-    let latest_non_prerelease_version = Version::parse(&latest_non_prerelease.version).ok()?;
-    if !spec.version_req.matches(&latest_non_prerelease_version) {
-        // HACK: If we have an exact version specified,
+    }) else {
+        return Ok(None);
+    };
+    let latest_name = latest_non_prerelease.name.as_str();
+    let Ok(latest_version) = Version::parse(&latest_non_prerelease.version) else {
+        return Ok(None);
+    };
+
+    if !version_req.matches(&latest_version) {
+        // NOTE: If we have an exact version specified,
         // and it is more recent than the latest non-prerelease, we
         // should not tell the user that a more recent version exists
-        if let Ok(exact_version) = Version::parse(&spec.version) {
-            if exact_version > latest_non_prerelease_version {
-                return None;
+        if let Ok(exact_version) = Version::parse(version.unquoted()) {
+            if exact_version > latest_version {
+                return Ok(None);
             }
         }
+
         let metadata = CodeActionMetadata::LatestVersion {
-            source_uri: uri.clone(),
-            source_text: dep.version_source().to_string(),
-            version_current: dep.version_text().to_string(),
-            version_latest: latest_non_prerelease_version.to_string(),
+            source_uri: doc.uri().clone(),
+            source_text: version.quoted().to_string(),
+            version_current: version.unquoted().to_string(),
+            version_latest: latest_version.to_string(),
         };
-        return Some(Diagnostic {
+
+        return Ok(Some(Diagnostic {
             source: Some(String::from("Cargo")),
-            range: *range_version,
+            range: version.range,
             message: format!(
-                "A newer version of `{latest_non_prerelease_name}` is available.\
-                \nThe latest version is `{latest_non_prerelease_version}`"
+                "A newer version of `{latest_name}` is available.\
+                \nThe latest version is `{latest_version}`"
             ),
             severity: Some(DiagnosticSeverity::INFORMATION),
             data: Some(
                 ResolveContext {
-                    uri: uri.clone(),
+                    uri: doc.uri().clone(),
                     value: metadata,
                 }
                 .into(),
             ),
             ..Default::default()
-        });
+        }));
     }
 
-    None
+    Ok(None)
 }

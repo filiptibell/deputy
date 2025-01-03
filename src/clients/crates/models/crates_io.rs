@@ -1,9 +1,15 @@
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct CrateData {
+pub struct CrateDataSingle {
     #[serde(rename = "crate")]
     pub inner: CrateDataInner,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct CrateDataMulti {
+    #[serde(rename = "crates")]
+    pub inner: Vec<CrateDataInner>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

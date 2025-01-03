@@ -16,6 +16,9 @@ mod initialize;
 mod language_server;
 mod requests;
 mod transport;
+mod waiting;
+
+use waiting::*;
 
 pub use document::*;
 pub use transport::*;
@@ -31,6 +34,7 @@ pub struct ServerInner {
     clients: Clients,
     documents: Documents,
     tools: Tools,
+    waiting: Waiting,
 }
 
 pub struct Server {
@@ -69,6 +73,7 @@ impl Server {
             clients: clients.clone(),
             documents: Arc::clone(&documents),
             tools: Tools::new(client, clients, documents),
+            waiting: Waiting::new(),
         });
 
         self.watch_rate_limit();

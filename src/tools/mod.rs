@@ -9,42 +9,30 @@ use crate::server::*;
 // Tools modules
 
 mod name;
+mod shared;
 mod tool;
-mod util;
 
 use name::*;
+use shared::*;
 pub use tool::*;
-use util::*;
 
 // Individual tools
 
 mod cargo;
-mod npm;
-mod toolchain;
-mod wally;
 
 use cargo::*;
-use npm::*;
-use toolchain::*;
-use wally::*;
 
 // Tools manager
 
 #[derive(Debug, Clone)]
 pub struct Tools {
     cargo: Cargo,
-    npm: Npm,
-    toolchain: Toolchain,
-    wally: Wally,
 }
 
 impl Tools {
     pub fn new(client: Client, clients: Clients, documents: Documents) -> Self {
         Self {
             cargo: Cargo::new(client.clone(), clients.clone(), documents.clone()),
-            npm: Npm::new(client.clone(), clients.clone(), documents.clone()),
-            toolchain: Toolchain::new(client.clone(), clients.clone(), documents.clone()),
-            wally: Wally::new(client.clone(), clients.clone(), documents.clone()),
         }
     }
 
@@ -61,12 +49,7 @@ impl Tools {
 
     fn tool_for_uri(&self, uri: &Url) -> Option<&dyn Tool> {
         match ToolName::from_uri(uri) {
-            Ok(ToolName::Aftman) => Some(&self.toolchain),
             Ok(ToolName::Cargo) => Some(&self.cargo),
-            Ok(ToolName::Foreman) => Some(&self.toolchain),
-            Ok(ToolName::Npm) => Some(&self.npm),
-            Ok(ToolName::Rokit) => Some(&self.toolchain),
-            Ok(ToolName::Wally) => Some(&self.wally),
             Err(e) => {
                 warn!("Failed to parse tool name from uri '{e}'");
                 None

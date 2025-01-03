@@ -14,3 +14,7 @@ pub fn range_from_node(node: &tree_sitter::Node) -> Range {
         end: point_to_position(node.end_position()),
     }
 }
+
+pub fn range_contains(range: Range, pos: Position) -> bool {
+    range.start <= pos && pos <= range.end
+}

@@ -5,7 +5,10 @@ use super::models::*;
 use super::*;
 
 impl CratesClient {
-    pub async fn get_index_metadatas(&self, name: &str) -> RequestResult<Vec<IndexMetadata>> {
+    pub async fn get_sparse_index_crate_metadatas(
+        &self,
+        name: &str,
+    ) -> RequestResult<Vec<IndexMetadata>> {
         let name_low = name.to_ascii_lowercase();
         let index_url = if name_low.len() <= 2 {
             format!("{BASE_URL_INDEX}/{}/{name_low}", name_low.len())
@@ -36,7 +39,12 @@ impl CratesClient {
                 vec.reverse();
             }
 
-            self.emit_result(&inner);
+            if inner
+                .as_ref()
+                .is_err_and(|e: &RequestError| !e.is_not_found_error())
+            {
+                self.emit_result(&inner);
+            }
 
             inner
         };
@@ -63,12 +71,12 @@ impl CratesClient {
         ### Rate Limiting
 
         This method is heavily rate limited, and can only process
-        ***one request every five seconds, globally***. This is due
-        to the [crates.io crawling policy](https://crates.io/policies).
+        ***one request per second, globally***. This is due to the
+        [crates.io data access policy](https://crates.io/data-access).
     */
-    pub async fn get_crate_data(&self, name: &str) -> RequestResult<CrateData> {
-        let name_low = name.to_ascii_lowercase();
-        let crates_url = format!("{BASE_URL_CRATES}/{name_low}{QUERY_STRING_CRATES}");
+    pub async fn get_crate_data(&self, name: &str) -> RequestResult<CrateDataSingle> {
+        let crates_name = name.trim().to_ascii_lowercase();
+        let crates_url = format!("{BASE_URL_CRATES}/{crates_name}{QUERY_STRING_CRATE_SINGLE}");
 
         let fut = async {
             self.wait_for_crawl_limit().await;
@@ -80,7 +88,58 @@ impl CratesClient {
             // we can catch and emit all errors at once
             let inner = async {
                 let bytes = self.request_get(&crates_url).await?;
-                Ok(serde_json::from_slice::<CrateData>(&bytes)?)
+                Ok(serde_json::from_slice::<CrateDataSingle>(&bytes)?)
+            }
+            .await;
+
+            if inner
+                .as_ref()
+                .is_err_and(|e: &RequestError| !e.is_not_found_error())
+            {
+                self.emit_result(&inner);
+            }
+
+            inner
+        };
+
+        self.cache
+            .crate_datas
+            .with_caching(crates_url.clone(), fut)
+            .await
+    }
+
+    /**
+        Searches crates.io for crates matching the given query.
+
+        This allows us to search for and list crates for autocomplete.
+
+        ### Caching
+
+        This method caches its result for the given `query` with a
+        duration of *one hour or longer*. For more up-to-date info
+        on versions of a package, please use [`get_index_metadatas`].
+
+        ### Rate Limiting
+
+        This method is heavily rate limited, and can only process
+        ***one request per second, globally***. This is due to the
+        [crates.io data access policy](https://crates.io/data-access).
+    */
+    pub async fn search_crates(&self, query: &str) -> RequestResult<CrateDataMulti> {
+        let crates_query = query.trim().to_ascii_lowercase();
+        let crates_url = format!("{BASE_URL_CRATES}{QUERY_STRING_CRATE_MULTI}&q={crates_query}");
+
+        let fut = async {
+            self.wait_for_crawl_limit().await;
+            self.set_crawl_limited();
+
+            debug!("Searching crate datas for '{crates_query}'");
+
+            // NOTE: We make this inner scope so that
+            // we can catch and emit all errors at once
+            let inner = async {
+                let bytes = self.request_get(&crates_url).await?;
+                Ok(serde_json::from_slice::<CrateDataMulti>(&bytes)?)
             }
             .await;
 
@@ -90,7 +149,7 @@ impl CratesClient {
         };
 
         self.cache
-            .crate_datas
+            .crate_search
             .with_caching(crates_url.clone(), fut)
             .await
     }

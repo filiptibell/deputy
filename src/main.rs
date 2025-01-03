@@ -1,6 +1,5 @@
 mod cli;
 mod clients;
-mod lang;
 mod parser;
 mod server;
 mod tools;

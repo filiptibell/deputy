@@ -5,7 +5,8 @@ use super::models::*;
 #[derive(Debug, Clone)]
 pub(super) struct CratesCache {
     pub index_metadatas: RequestCacheMap<RequestResult<Vec<IndexMetadata>>>,
-    pub crate_datas: RequestCacheMap<RequestResult<CrateData>>,
+    pub crate_datas: RequestCacheMap<RequestResult<CrateDataSingle>>,
+    pub crate_search: RequestCacheMap<RequestResult<CrateDataMulti>>,
 }
 
 impl CratesCache {
@@ -13,6 +14,7 @@ impl CratesCache {
         Self {
             index_metadatas: RequestCacheMap::new(60, 15),
             crate_datas: RequestCacheMap::new(240, 120),
+            crate_search: RequestCacheMap::new(480, 240),
         }
     }
 }
