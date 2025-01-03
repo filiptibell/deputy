@@ -1,18 +1,22 @@
+use std::collections::HashMap;
+
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct IndexMetadata {
     pub name: String,
-    #[serde(rename = "vers")]
+    #[serde(alias = "vers")]
     pub version: String,
-    #[serde(rename = "deps")]
+    #[serde(default, alias = "deps")]
     pub dependencies: Vec<IndexMetadataDependency>,
+    #[serde(default, alias = "feats")]
+    pub features: HashMap<String, Vec<String>>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct IndexMetadataDependency {
     pub name: String,
-    #[serde(rename = "req")]
+    #[serde(alias = "req")]
     pub version_requirement: String,
     pub features: Vec<String>,
     pub optional: bool,

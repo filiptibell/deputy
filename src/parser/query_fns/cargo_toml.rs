@@ -34,8 +34,8 @@ pub fn query_cargo_toml_dependencies(doc: &TreeSitterDocument) -> Vec<Dependency
                 "root_name" => {
                     dep_kind = Some(match node_text {
                         "dependencies" => DependencyKind::Default,
-                        "dev-dependencies" => DependencyKind::Dev,
-                        "build-dependencies" => DependencyKind::Build,
+                        "dev-dependencies" | "dev_dependencies" => DependencyKind::Dev,
+                        "build-dependencies" | "build_dependencies" => DependencyKind::Build,
                         _ => continue,
                     });
                 }

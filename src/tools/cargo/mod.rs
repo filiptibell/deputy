@@ -15,6 +15,7 @@ mod completion;
 mod constants;
 mod diagnostics;
 mod hover;
+mod util;
 
 use completion::*;
 use diagnostics::*;
@@ -85,13 +86,28 @@ impl Tool for Cargo {
         // Check what we're completing - name or version
         if found.name().contains(pos) {
             debug!("Completing name: {found:?}");
-            get_cargo_completions_name(&self.clients, &doc, found).await
+            return get_cargo_completions_name(&self.clients, &doc, found).await;
         } else if found.spec().is_some_and(|s| s.contains(pos)) {
-            debug!("Completing version: {found:?}");
-            get_cargo_completions_version(&self.clients, &doc, found).await
-        } else {
-            Ok(CompletionResponse::Array(Vec::new()))
+            let s = found.spec().unwrap();
+            if s.contents.version.as_ref().is_some_and(|v| v.contains(pos)) {
+                debug!("Completing version: {found:?}");
+                return get_cargo_completions_version(&self.clients, &doc, found).await;
+            } else if s
+                .contents
+                .features
+                .as_ref()
+                .is_some_and(|f| f.contains(pos))
+            {
+                debug!("Completing features: {found:?}");
+                let feats = s.contents.features.as_ref().unwrap();
+                if let Some(feat) = feats.contents.iter().find(|f| f.contains(pos)) {
+                    debug!("Completing feature: {feat:?}");
+                    return get_cargo_completions_features(&self.clients, &doc, found, feat).await;
+                }
+            }
         }
+
+        Ok(CompletionResponse::Array(Vec::new()))
     }
 
     async fn diagnostics(&self, params: DocumentDiagnosticParams) -> Result<Vec<Diagnostic>> {

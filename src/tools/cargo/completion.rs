@@ -4,9 +4,10 @@ use tower_lsp::lsp_types::*;
 use tracing::debug;
 
 use crate::clients::*;
-use crate::parser::Dependency;
+use crate::parser::{Dependency, Node};
 use crate::server::*;
 use crate::tools::cargo::constants::CratesIoPackage;
+use crate::tools::cargo::util::get_features;
 
 use super::constants::top_crates_io_packages_prefixed;
 
@@ -118,4 +119,31 @@ pub async fn get_cargo_completions_version(
         .collect::<Vec<_>>();
 
     Ok(CompletionResponse::Array(valid_vec))
+}
+
+pub async fn get_cargo_completions_features(
+    clients: &Clients,
+    _document: &Document,
+    dep: &Dependency,
+    feat: &Node<String>,
+) -> Result<CompletionResponse> {
+    let known_features = get_features(clients, dep).await;
+    tracing::debug!("Known features: {known_features:?}");
+
+    let valid_features = known_features
+        .into_iter()
+        .filter(|f| f.starts_with(feat.unquoted()))
+        .enumerate()
+        .map(|(index, known_feat)| CompletionItem {
+            label: known_feat.to_string(),
+            kind: Some(CompletionItemKind::VALUE),
+            sort_text: Some(format!("{:0>5}", index)),
+            text_edit: Some(CompletionTextEdit::Edit(
+                _document.create_edit(feat.range, known_feat.to_string()),
+            )),
+            ..Default::default()
+        })
+        .collect::<Vec<_>>();
+
+    Ok(CompletionResponse::Array(valid_features))
 }
