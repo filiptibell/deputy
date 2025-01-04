@@ -67,11 +67,6 @@ pub async fn get_npm_completions_version(
         .filter_map(|(metadata, metadata_version)| {
             let dep_version = strip_specifiers(version.unquoted());
             let met_version = metadata_version.to_string();
-            tracing::debug!(
-                "CMP {dep_version} WITH {met_version}: {} {}",
-                dep_version.is_empty(),
-                (dep_version.len() <= met_version.len() && met_version.starts_with(dep_version))
-            );
             if dep_version.is_empty()
                 || (dep_version.len() <= met_version.len() && met_version.starts_with(dep_version))
             {
