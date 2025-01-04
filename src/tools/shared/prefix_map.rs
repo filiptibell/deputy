@@ -1,4 +1,7 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 /**
     An append-only map of prefixes to values.
@@ -53,8 +56,13 @@ impl<T: Clone + AsRef<str>> FromIterator<T> for PrefixOrderedMap<T> {
         let mut single_char = HashMap::<char, Vec<T>>::new();
         let mut double_char = HashMap::<char, HashMap<char, Vec<T>>>::new();
 
+        let mut inserted = HashSet::new();
         for value in iter {
-            let key = value.as_ref();
+            let key: &str = value.as_ref();
+            if !inserted.insert(key.to_string()) {
+                continue;
+            }
+
             let mut chars = key.chars();
 
             let Some(first_char) = chars.next() else {
