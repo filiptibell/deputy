@@ -53,7 +53,7 @@ impl AsRef<str> for CratesIoPackage {
 /*
     We bundle about 10,000 top crates.io packages in a text file,
     and pre-compute them here for fast autocomplete - see the
-    implementation for `PrefixMap` for more details on this.
+    implementation for `PrefixOrderedMap` for more details on this.
 */
 
 static TOP_PACKAGES_CRATES_IO: &str = include_str!("../../../assets/top-crates-io-packages.txt");

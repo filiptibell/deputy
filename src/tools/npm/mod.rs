@@ -11,9 +11,12 @@ use crate::util::*;
 
 use super::*;
 
+mod completion;
+mod constants;
 mod diagnostics;
 mod hover;
 
+use completion::*;
 use diagnostics::*;
 use hover::*;
 
@@ -64,6 +67,34 @@ impl Tool for Npm {
         // Fetch some extra info and return the hover
         debug!("Hovering: {found:?}");
         get_npm_hover(&self.clients, &doc, found).await
+    }
+
+    async fn completion(&self, params: CompletionParams) -> Result<CompletionResponse> {
+        let uri = params.text_document_position.text_document.uri;
+        let pos = params.text_document_position.position;
+        let Some(doc) = self.get_document(&uri) else {
+            return Ok(CompletionResponse::Array(Vec::new()));
+        };
+
+        // Find the dependency that is being completed
+        let dependencies = query_package_json_dependencies(doc.inner());
+        let Some(found) = Dependency::find_at_pos(&dependencies, pos) else {
+            return Ok(CompletionResponse::Array(Vec::new()));
+        };
+
+        // Check what we're completing - name or version
+        if found.name().contains(pos) {
+            debug!("Completing name: {found:?}");
+            return get_npm_completions_name(&self.clients, &doc, found).await;
+        } else if found.spec().is_some_and(|s| s.contains(pos)) {
+            let s = found.spec().unwrap();
+            if s.contents.version.as_ref().is_some_and(|v| v.contains(pos)) {
+                debug!("Completing version: {found:?}");
+                return get_npm_completions_version(&self.clients, &doc, found).await;
+            }
+        }
+
+        Ok(CompletionResponse::Array(Vec::new()))
     }
 
     async fn diagnostics(&self, params: DocumentDiagnosticParams) -> Result<Vec<Diagnostic>> {
