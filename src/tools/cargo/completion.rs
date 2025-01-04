@@ -10,6 +10,7 @@ use crate::tools::cargo::constants::CratesIoPackage;
 use crate::tools::cargo::util::get_features;
 
 use super::constants::top_crates_io_packages_prefixed;
+use super::strip_specifiers;
 
 const MAXIMUM_PACKAGES_SHOWN: usize = 64;
 const MINIMUM_PACKAGES_BEFORE_FETCH: usize = 16; // Less than 16 packages found statically = fetch dynamically
@@ -91,7 +92,7 @@ pub async fn get_cargo_completions_version(
     let mut valid_metadatas = valid_metadatas_with_versions
         .into_iter()
         .filter_map(|(metadata, metadata_version)| {
-            let dep_version = version.unquoted();
+            let dep_version = strip_specifiers(version.unquoted());
             let met_version = metadata_version.to_string();
             if dep_version.is_empty()
                 || (dep_version.len() <= met_version.len() && met_version.starts_with(dep_version))
@@ -111,9 +112,11 @@ pub async fn get_cargo_completions_version(
             label: meta_version.to_string(),
             kind: Some(CompletionItemKind::VALUE),
             sort_text: Some(format!("{:0>5}", index)),
-            text_edit: Some(CompletionTextEdit::Edit(
-                document.create_edit(version.range, meta_version.to_string()),
-            )),
+            text_edit: Some(CompletionTextEdit::Edit(document.create_substring_edit(
+                version.range.start.line,
+                strip_specifiers(version.unquoted()),
+                meta_version.to_string(),
+            ))),
             ..Default::default()
         })
         .collect::<Vec<_>>();
@@ -123,7 +126,7 @@ pub async fn get_cargo_completions_version(
 
 pub async fn get_cargo_completions_features(
     clients: &Clients,
-    _document: &Document,
+    document: &Document,
     dep: &Dependency,
     feat: &Node<String>,
 ) -> Result<CompletionResponse> {
@@ -138,9 +141,11 @@ pub async fn get_cargo_completions_features(
             label: known_feat.to_string(),
             kind: Some(CompletionItemKind::VALUE),
             sort_text: Some(format!("{:0>5}", index)),
-            text_edit: Some(CompletionTextEdit::Edit(
-                _document.create_edit(feat.range, known_feat.to_string()),
-            )),
+            text_edit: Some(CompletionTextEdit::Edit(document.create_substring_edit(
+                feat.range.start.line,
+                feat.unquoted(),
+                known_feat.to_string(),
+            ))),
             ..Default::default()
         })
         .collect::<Vec<_>>();

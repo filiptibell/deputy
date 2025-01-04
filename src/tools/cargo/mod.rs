@@ -87,22 +87,15 @@ impl Tool for Cargo {
         if found.name().contains(pos) {
             debug!("Completing name: {found:?}");
             return get_cargo_completions_name(&self.clients, &doc, found).await;
-        } else if found.spec().is_some_and(|s| s.contains(pos)) {
-            let s = found.spec().unwrap();
+        } else if let Some(s) = found.spec().filter(|s| s.contains(pos)) {
             if s.contents.version.as_ref().is_some_and(|v| v.contains(pos)) {
                 debug!("Completing version: {found:?}");
                 return get_cargo_completions_version(&self.clients, &doc, found).await;
-            } else if s
-                .contents
-                .features
-                .as_ref()
-                .is_some_and(|f| f.contains(pos))
-            {
+            } else if let Some(f) = s.contents.features.as_ref().filter(|f| f.contains(pos)) {
                 debug!("Completing features: {found:?}");
-                let feats = s.contents.features.as_ref().unwrap();
-                if let Some(feat) = feats.contents.iter().find(|f| f.contains(pos)) {
-                    debug!("Completing feature: {feat:?}");
-                    return get_cargo_completions_features(&self.clients, &doc, found, feat).await;
+                if let Some(f) = f.contents.iter().find(|f| f.contains(pos)) {
+                    debug!("Completing feature: {f:?}");
+                    return get_cargo_completions_features(&self.clients, &doc, found, f).await;
                 }
             }
         }

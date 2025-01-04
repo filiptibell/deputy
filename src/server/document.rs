@@ -68,7 +68,52 @@ impl Document {
 
     pub fn create_edit(&self, range: Range, new_text: impl Into<String>) -> TextEdit {
         let new_text = new_text.into();
+        tracing::trace!(
+            "Created edit: '{}' at range '{}:{} -> {}:{}' becomes '{}'",
+            &self.as_str()[self.lsp_range_to_span(range)],
+            range.start.line,
+            range.start.character,
+            range.end.line,
+            range.end.character,
+            new_text
+        );
         TextEdit { range, new_text }
+    }
+
+    pub fn create_substring_edit(
+        &self,
+        line: u32,
+        substring: impl AsRef<str>,
+        replacement: impl Into<String>,
+    ) -> TextEdit {
+        let substring = substring.as_ref();
+        let replacement = replacement.into();
+
+        let range = self.text.line_range(line).expect("invalid line");
+        let slice = &self.as_str()[self.lsp_range_to_span(Range {
+            start: Position {
+                line: range.start.line,
+                character: 0,
+            },
+            end: Position {
+                line: range.end.line,
+                character: range.end.col,
+            },
+        })];
+
+        let offset = slice.find(substring).expect("invalid source text");
+        let edit_range = Range {
+            start: Position {
+                line: range.start.line,
+                character: offset as u32,
+            },
+            end: Position {
+                line: range.end.line,
+                character: (offset + substring.len()) as u32,
+            },
+        };
+
+        self.create_edit(edit_range, replacement)
     }
 
     pub fn set_version(&mut self, version: impl Into<i32>) {

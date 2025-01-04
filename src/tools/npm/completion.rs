@@ -7,6 +7,7 @@ use crate::parser::Dependency;
 use crate::server::*;
 
 use super::constants::top_npm_packages_prefixed;
+use super::strip_specifiers;
 
 const MAXIMUM_PACKAGES_SHOWN: usize = 64;
 
@@ -64,8 +65,13 @@ pub async fn get_npm_completions_version(
     let mut valid_metadatas = valid_metadatas_with_versions
         .into_iter()
         .filter_map(|(metadata, metadata_version)| {
-            let dep_version = version.unquoted();
+            let dep_version = strip_specifiers(version.unquoted());
             let met_version = metadata_version.to_string();
+            tracing::debug!(
+                "CMP {dep_version} WITH {met_version}: {} {}",
+                dep_version.is_empty(),
+                (dep_version.len() <= met_version.len() && met_version.starts_with(dep_version))
+            );
             if dep_version.is_empty()
                 || (dep_version.len() <= met_version.len() && met_version.starts_with(dep_version))
             {
@@ -84,9 +90,11 @@ pub async fn get_npm_completions_version(
             label: meta_version.to_string(),
             kind: Some(CompletionItemKind::VALUE),
             sort_text: Some(format!("{:0>5}", index)),
-            text_edit: Some(CompletionTextEdit::Edit(
-                document.create_edit(version.range, meta_version.to_string()),
-            )),
+            text_edit: Some(CompletionTextEdit::Edit(document.create_substring_edit(
+                version.range.start.line,
+                strip_specifiers(version.unquoted()),
+                meta_version.to_string(),
+            ))),
             ..Default::default()
         })
         .collect::<Vec<_>>();

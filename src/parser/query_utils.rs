@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use tower_lsp::lsp_types::{Position, Range};
 use tree_sitter::Point;
 
@@ -21,8 +23,8 @@ pub fn range_contains(range: Range, pos: Position) -> bool {
 
 pub fn range_extend(range: Range, other: Range) -> Range {
     Range {
-        start: std::cmp::min(range.start, other.start),
-        end: std::cmp::max(range.end, other.end),
+        start: pos_min(range.start, other.start),
+        end: pos_max(range.end, other.end),
     }
 }
 
@@ -37,5 +39,27 @@ pub fn range_for_substring(original_range: Range, original_string: &str, substri
             line: original_range.start.line,
             character: original_range.start.character + offset + substring.len() as u32,
         },
+    }
+}
+
+pub fn pos_min(pos: Position, other: Position) -> Position {
+    match pos.line.cmp(&other.line) {
+        Ordering::Equal => Position {
+            line: pos.line,
+            character: pos.character.min(other.character),
+        },
+        Ordering::Less => pos,
+        Ordering::Greater => other,
+    }
+}
+
+pub fn pos_max(pos: Position, other: Position) -> Position {
+    match pos.line.cmp(&other.line) {
+        Ordering::Equal => Position {
+            line: pos.line,
+            character: pos.character.max(other.character),
+        },
+        Ordering::Less => other,
+        Ordering::Greater => pos,
     }
 }

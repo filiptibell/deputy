@@ -86,8 +86,7 @@ impl Tool for Npm {
         if found.name().contains(pos) {
             debug!("Completing name: {found:?}");
             return get_npm_completions_name(&self.clients, &doc, found).await;
-        } else if found.spec().is_some_and(|s| s.contains(pos)) {
-            let s = found.spec().unwrap();
+        } else if let Some(s) = found.spec().filter(|s| s.contains(pos)) {
             if s.contents.version.as_ref().is_some_and(|v| v.contains(pos)) {
                 debug!("Completing version: {found:?}");
                 return get_npm_completions_version(&self.clients, &doc, found).await;
