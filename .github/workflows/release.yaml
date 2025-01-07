@@ -15,17 +15,20 @@ jobs:
     name: Init
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.get_version.outputs.value }}
+      version: ${{ steps.get_version.outputs.version }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Get version from manifest
-        uses: SebRollen/toml-action@9062fbef52816d61278d24ce53c8070440e1e8dd
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Get version
         id: get_version
-        with:
-          file: Cargo.toml
-          field: package.version
+        run: |
+          VERSION=$(cargo info --color never --quiet --offline rtk | grep "^version:" | cut -d' ' -f2)
+          echo "Found version '$VERSION' for package"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
   build:
     needs: ["init"]
@@ -52,13 +55,13 @@ jobs:
             vscode-target: linux-arm64
 
           - name: macOS x86_64
-            runner-os: macos-latest
+            runner-os: macos-13
             artifact-name: tooling-language-server-${{ needs.init.outputs.version }}-macos-x86_64
             cargo-target: x86_64-apple-darwin
             vscode-target: darwin-x64
 
           - name: macOS aarch64
-            runner-os: macos-latest
+            runner-os: macos-14
             artifact-name: tooling-language-server-${{ needs.init.outputs.version }}-macos-aarch64
             cargo-target: aarch64-apple-darwin
             vscode-target: darwin-arm64
@@ -105,13 +108,13 @@ jobs:
         run: just zip-release ${{ matrix.cargo-target }}
 
       - name: Upload release artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact-name }}
           path: release.zip
 
-  release:
-    name: Release
+  release-github:
+    name: Release (GitHub)
     runs-on: ubuntu-latest
     needs: ["init", "build"]
     steps:
@@ -122,7 +125,7 @@ jobs:
         uses: extractions/setup-just@v1
 
       - name: Download releases
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: ./releases
 
@@ -130,7 +133,7 @@ jobs:
         run: just unpack-releases "./releases"
 
       - name: Create release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
