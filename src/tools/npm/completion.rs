@@ -55,6 +55,7 @@ pub async fn get_npm_completions_version(
     let valid_vec = dep
         .extract_completion_versions(metadata.versions.into_values())
         .into_iter()
+        .take(MAXIMUM_PACKAGES_SHOWN)
         .enumerate()
         .map(|(index, potential_version)| CompletionItem {
             label: potential_version.item_version_raw.to_string(),

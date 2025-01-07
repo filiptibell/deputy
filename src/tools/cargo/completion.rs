@@ -83,6 +83,7 @@ pub async fn get_cargo_completions_version(
     let valid_vec = dep
         .extract_completion_versions(metadatas.into_iter())
         .into_iter()
+        .take(MAXIMUM_PACKAGES_SHOWN)
         .enumerate()
         .map(|(index, potential_version)| CompletionItem {
             label: potential_version.item_version_raw.to_string(),

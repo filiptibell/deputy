@@ -11,9 +11,11 @@ use crate::util::*;
 
 use super::*;
 
+mod completion;
 mod diagnostics;
 mod hover;
 
+use completion::*;
 use diagnostics::*;
 use hover::*;
 
@@ -66,6 +68,39 @@ impl Tool for Wally {
         // Fetch some extra info and return the hover
         debug!("Hovering: {found:?}");
         get_wally_hover(&self.clients, &doc, index_url, found).await
+    }
+
+    async fn completion(&self, params: CompletionParams) -> Result<CompletionResponse> {
+        let uri = params.text_document_position.text_document.uri;
+        let pos = params.text_document_position.position;
+        let Some(doc) = self.get_document(&uri) else {
+            return Ok(CompletionResponse::Array(Vec::new()));
+        };
+
+        let index_url = extract_wally_index_url(doc.as_str());
+
+        // Find the dependency that is being completed
+        let dependencies = query_wally_toml_dependencies(doc.inner());
+        let Some(found) = SimpleDependency::find_at_pos(&dependencies, pos) else {
+            return Ok(CompletionResponse::Array(Vec::new()));
+        };
+
+        // Check what we're completing - author, name, or version
+        let parsed = found.parsed_spec();
+        if parsed.version.as_ref().is_some_and(|v| v.contains(pos)) {
+            debug!("Completing version: {found:?}");
+            return get_wally_completions_spec_version(&self.clients, &doc, index_url, found).await;
+        } else if parsed.name.is_some_and(|n| n.contains(pos)) {
+            debug!("Completing name: {found:?}");
+            return get_wally_completions_spec_name(&self.clients, &doc, index_url, found).await;
+        } else if parsed.author.contains(pos)
+            || (parsed.author.unquoted().is_empty() && found.spec.contains(pos))
+        {
+            debug!("Completing author: {found:?}");
+            return get_wally_completions_spec_author(&self.clients, &doc, index_url, found).await;
+        }
+
+        Ok(CompletionResponse::Array(Vec::new()))
     }
 
     async fn diagnostics(&self, params: DocumentDiagnosticParams) -> Result<Vec<Diagnostic>> {
