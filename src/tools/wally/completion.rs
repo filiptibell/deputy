@@ -68,7 +68,7 @@ pub async fn get_wally_completions_spec_name(
         .take(MAXIMUM_PACKAGES_SHOWN)
         .map(|package| CompletionItem {
             label: package.to_string(),
-            kind: Some(CompletionItemKind::VALUE),
+            kind: Some(CompletionItemKind::ENUM_MEMBER),
             text_edit: Some(CompletionTextEdit::Edit(
                 document.create_edit(name.range, package.to_string()),
             )),

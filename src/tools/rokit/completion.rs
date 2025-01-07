@@ -49,7 +49,7 @@ pub async fn get_rokit_completions_spec_name(
             .into_iter()
             .map(|item| CompletionItem {
                 label: item.name.to_string(),
-                kind: Some(CompletionItemKind::VALUE),
+                kind: Some(CompletionItemKind::ENUM_MEMBER),
                 text_edit: Some(CompletionTextEdit::Edit(
                     document.create_edit(name.range, item.name.to_string()),
                 )),
