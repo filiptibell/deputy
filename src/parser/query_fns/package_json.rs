@@ -130,8 +130,8 @@ mod tests {
             Option<DependencySource>,
         )>,
     ) {
-        let uri = Url::from_file_path(Path::new("/package.json")).unwrap();
-        let file = TreeSitterDocument::new(uri, contents.to_string()).unwrap();
+        let path = Path::new("package.json");
+        let file = TreeSitterDocument::new_file(path, contents).unwrap();
         let deps = query_package_json_dependencies(&file);
 
         assert_eq!(

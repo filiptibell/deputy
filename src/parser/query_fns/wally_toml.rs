@@ -74,8 +74,8 @@ mod tests {
         contents: &str,
         expected: Vec<(DependencyKind, &'static str, &'static str)>,
     ) {
-        let uri = Url::from_file_path(Path::new("/wally.toml")).unwrap();
-        let file = TreeSitterDocument::new(uri, contents.to_string()).unwrap();
+        let path = Path::new("wally.toml");
+        let file = TreeSitterDocument::new_file(path, contents).unwrap();
         let deps = query_wally_toml_dependencies(&file);
 
         assert_eq!(

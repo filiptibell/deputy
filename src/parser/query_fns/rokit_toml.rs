@@ -60,8 +60,8 @@ mod tests {
     use super::*;
 
     fn test_tools(contents: &str, expected: Vec<(&'static str, &'static str)>) {
-        let uri = Url::from_file_path(Path::new("/rokit.toml")).unwrap();
-        let file = TreeSitterDocument::new(uri, contents.to_string()).unwrap();
+        let path = Path::new("rokit.toml");
+        let file = TreeSitterDocument::new_file(path, contents).unwrap();
         let tools = query_rokit_toml_dependencies(&file);
 
         assert_eq!(tools.len(), expected.len(), "mismatched number of tools");

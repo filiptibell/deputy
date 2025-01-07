@@ -133,8 +133,8 @@ mod tests {
             Vec<&'static str>,
         )>,
     ) {
-        let uri = Url::from_file_path(Path::new("/Cargo.toml")).unwrap();
-        let file = TreeSitterDocument::new(uri, contents.to_string()).unwrap();
+        let path = Path::new("Cargo.toml");
+        let file = TreeSitterDocument::new_file(path, contents).unwrap();
         let deps = query_cargo_toml_dependencies(&file);
 
         assert_eq!(
@@ -280,8 +280,8 @@ mod tests {
         serde = "1.0"
         "#;
 
-        let uri = Url::from_file_path(Path::new("/Cargo.toml")).unwrap();
-        let file = TreeSitterDocument::new(uri, contents.to_string()).unwrap();
+        let path = Path::new("Cargo.toml");
+        let file = TreeSitterDocument::new_file(path, contents).unwrap();
         let deps = query_cargo_toml_dependencies(&file);
 
         assert_eq!(deps.len(), 3, "mismatched number of dependencies");
@@ -301,8 +301,8 @@ mod tests {
         serde = "1.0"
         "#;
 
-        let uri = Url::from_file_path(Path::new("/Cargo.toml")).unwrap();
-        let file = TreeSitterDocument::new(uri, contents.to_string()).unwrap();
+        let path = Path::new("Cargo.toml");
+        let file = TreeSitterDocument::new_file(path, contents).unwrap();
         let deps = query_cargo_toml_dependencies(&file);
 
         assert_eq!(deps.len(), 3, "mismatched number of dependencies");
@@ -321,8 +321,8 @@ mod tests {
         incomplete
         "#;
 
-        let uri = Url::from_file_path(Path::new("/Cargo.toml")).unwrap();
-        let file = TreeSitterDocument::new(uri, contents.to_string()).unwrap();
+        let path = Path::new("Cargo.toml");
+        let file = TreeSitterDocument::new_file(path, contents).unwrap();
         let deps = query_cargo_toml_dependencies(&file);
 
         assert_eq!(deps.len(), 2, "mismatched number of dependencies");

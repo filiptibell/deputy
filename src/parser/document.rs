@@ -1,4 +1,4 @@
-use std::{path::Path, sync::Arc};
+use std::{env::current_dir, path::Path, sync::Arc};
 
 use tree_sitter::{Query, Tree};
 use url::Url;
@@ -35,6 +35,20 @@ impl TreeSitterDocument {
             language,
             tree,
         })
+    }
+
+    pub fn new_file(file_path: impl AsRef<Path>, contents: impl Into<Arc<str>>) -> Option<Self> {
+        let file_path: &Path = file_path.as_ref();
+        let contents: Arc<str> = contents.into();
+
+        let uri = if file_path.is_absolute() {
+            Url::from_file_path(file_path).unwrap()
+        } else {
+            let cwd = current_dir().expect("failed to get current dir");
+            Url::from_file_path(cwd.join(file_path)).unwrap()
+        };
+
+        Self::new(uri, contents)
     }
 
     pub fn set_uri(&mut self, new_path: impl Into<Arc<Url>>) {
@@ -75,21 +89,20 @@ mod tests {
             let file_path = Path::new(file_path);
             let contents = contents.to_string();
 
-            let file_uri = Url::from_file_path(file_path).unwrap();
-            let file = TreeSitterDocument::new(file_uri, contents);
+            let file = TreeSitterDocument::new_file(file_path, contents);
 
             assert!(file.is_some() == language.is_some());
             assert!(file.is_none() || file.is_some_and(|f| f.language == language.unwrap()));
         }
 
-        test("/package.json", "{}", Some(TreeSitterLanguage::Json));
-        test("/Cargo.toml", "[header]", Some(TreeSitterLanguage::Toml));
-        test("/Cargo.lock", "[header]", Some(TreeSitterLanguage::Toml));
-        test("/wally.toml", "[header]", Some(TreeSitterLanguage::Toml));
-        test("/wally.lock", "[header]", Some(TreeSitterLanguage::Toml));
-        test("/rokit.toml", "[header]", Some(TreeSitterLanguage::Toml));
+        test("package.json", "{}", Some(TreeSitterLanguage::Json));
+        test("Cargo.toml", "[header]", Some(TreeSitterLanguage::Toml));
+        test("Cargo.lock", "[header]", Some(TreeSitterLanguage::Toml));
+        test("wally.toml", "[header]", Some(TreeSitterLanguage::Toml));
+        test("wally.lock", "[header]", Some(TreeSitterLanguage::Toml));
+        test("rokit.toml", "[header]", Some(TreeSitterLanguage::Toml));
 
-        test("/package.txt", "{}", None);
-        test("/package.json.txt", "{}", None);
+        test("package.txt", "{}", None);
+        test("package.json.txt", "{}", None);
     }
 }
