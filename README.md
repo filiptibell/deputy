@@ -21,9 +21,9 @@
 
 A language server supporting several tools and package managers:
 
-- [Aftman](https://github.com/LPGhatguy/aftman) / [Foreman](https://github.com/roblox/foreman)
 - [Cargo](https://crates.io)
 - [NPM](https://www.npmjs.com)
+- [Rokit](https://github.com/rojo-rbx/rokit)
 - [Wally](https://github.com/UpliftGames/wally)
 
 Provides autocomplete, diagnostics for out-of-date versions, and more. <br/>
@@ -41,29 +41,8 @@ The language server can be installed as an extension from:
 - Hover for information - includes description, links to documentation & more
 - Diagnostics:
   - A newer version is available
-  - The specified tool / package does not exist
-  - Unsupported platform / architecture / name
+  - The specified tool / package / version does not exist
 - Quick actions on diagnostics - update to newest version
-
-## TODO
-
-<details>
-<summary>Cargo</summary>
-
-Not yet implemented:
-
-- Autocomplete for dependencies - features
-
-</details>
-
-<details>
-<summary>Foreman</summary>
-
-Not yet implemented:
-
-- Everything supported by Aftman
-
-</details>
 
 ## Development
 
