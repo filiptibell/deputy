@@ -71,6 +71,7 @@ pub enum DependencyKind {
     Build,
     Peer,
     Optional,
+    Bundled,
     Server,
 }
 
@@ -133,32 +134,45 @@ impl Versioned for DependencySpec {
 pub enum Dependency {
     Partial {
         kind: DependencyKind,
+        range: Range,
         name: Node<String>,
     },
     Full {
         kind: DependencyKind,
+        range: Range,
         name: Node<String>,
         spec: Node<DependencySpec>,
     },
 }
 
 impl Dependency {
-    pub fn new_partial(kind: DependencyKind, name: Node<String>) -> Self {
-        Self::Partial { kind, name }
+    pub fn new_partial(kind: DependencyKind, range: Range, name: Node<String>) -> Self {
+        Self::Partial { kind, range, name }
     }
 
-    pub fn new_full(kind: DependencyKind, name: Node<String>, spec: Node<DependencySpec>) -> Self {
-        Self::Full { kind, name, spec }
+    pub fn new_full(
+        kind: DependencyKind,
+        range: Range,
+        name: Node<String>,
+        spec: Node<DependencySpec>,
+    ) -> Self {
+        Self::Full {
+            kind,
+            range,
+            name,
+            spec,
+        }
     }
 
     pub fn new_opt(
         kind: DependencyKind,
+        range: Range,
         name: Node<String>,
         spec: Option<Node<DependencySpec>>,
     ) -> Self {
         match spec {
-            Some(spec) => Self::new_full(kind, name, spec),
-            None => Self::new_partial(kind, name),
+            Some(spec) => Self::new_full(kind, range, name, spec),
+            None => Self::new_partial(kind, range, name),
         }
     }
 
@@ -166,6 +180,13 @@ impl Dependency {
         match self {
             Self::Partial { kind, .. } => *kind,
             Self::Full { kind, .. } => *kind,
+        }
+    }
+
+    pub fn range(&self) -> Range {
+        match self {
+            Self::Partial { range, .. } => *range,
+            Self::Full { range, .. } => *range,
         }
     }
 
@@ -200,8 +221,7 @@ impl Dependency {
     }
 
     pub fn find_at_pos(vec: &[Self], pos: Position) -> Option<&Self> {
-        vec.iter()
-            .find(|dep| dep.name().contains(pos) || dep.spec().is_some_and(|s| s.contains(pos)))
+        vec.iter().find(|dep| range_contains(dep.range(), pos))
     }
 }
 
@@ -241,8 +261,11 @@ impl SimpleDependency {
     }
 
     pub fn find_at_pos(vec: &[Self], pos: Position) -> Option<&Self> {
-        vec.iter()
-            .find(|dep| dep.name.contains(pos) || dep.spec.contains(pos))
+        vec.iter().find(|dep| range_contains(dep.range(), pos))
+    }
+
+    pub fn range(&self) -> Range {
+        range_extend(self.name.range, self.spec.range)
     }
 
     pub fn parsed_spec(&self) -> ParsedSpec {

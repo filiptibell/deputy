@@ -21,6 +21,7 @@ pub fn query_cargo_toml_dependencies(doc: &TreeSitterDocument) -> Vec<Dependency
     let mut it = cursor.matches(&query, doc.tree.root_node(), doc.contents.as_bytes());
     while let Some(m) = it.next() {
         let mut dep_kind = None;
+        let mut dep_range = None;
         let mut dep_name_node = None;
         let mut version_node = None;
         let mut features = Vec::new();
@@ -65,6 +66,23 @@ pub fn query_cargo_toml_dependencies(doc: &TreeSitterDocument) -> Vec<Dependency
 
             if matches!(
                 capture_name,
+                "dependency_name"
+                    | "incomplete_dependency_name"
+                    | "dependency_table"
+                    | "dependency_full_capture"
+                    | "version"
+                    | "features_array"
+            ) {
+                let range = range_from_node(&capture.node);
+                if let Some(drange) = dep_range {
+                    dep_range = Some(range_extend(range, drange));
+                } else {
+                    dep_range = Some(range);
+                }
+            }
+
+            if matches!(
+                capture_name,
                 "dependency_table" | "version" | "features_array"
             ) {
                 let range = range_from_node(&capture.node);
@@ -76,9 +94,10 @@ pub fn query_cargo_toml_dependencies(doc: &TreeSitterDocument) -> Vec<Dependency
             }
         }
 
-        if let (Some(dep_kind), Some(name)) = (dep_kind, dep_name_node) {
+        if let (Some(dep_kind), Some(range), Some(name)) = (dep_kind, dep_range, dep_name_node) {
             dependencies.push(Dependency::new_opt(
                 dep_kind,
+                range,
                 name,
                 spec_range.map(|r| {
                     Node::new_raw(

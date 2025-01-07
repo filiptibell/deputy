@@ -1,6 +1,6 @@
 pub const CARGO_TOML_DEPENDENCIES_QUERY: &str = r#"
 [
-    ; Simple table format: [dependencies]
+    ; Regular dependencies table: [dependencies]
     (table
         (bare_key) @root_name
         [
@@ -20,13 +20,27 @@ pub const CARGO_TOML_DEPENDENCIES_QUERY: &str = r#"
                             (array) @features_array
                             (#eq? @features_key "features")
                         )?
+                        (pair
+                            (bare_key) @misc_key
+                            [
+                                (string) @misc_value
+                                (boolean) @misc_value
+                            ]
+                            (#any-of? @misc_key
+                                "default-features"
+                                "optional"
+                                "git"
+                                "rev"
+                                "branch"
+                            )
+                        )?
                     ) @dependency_table
                 ]
             ) @dependency_pair
 
             ; Incomplete dependency (just the key - for completions)
             (ERROR
-            	(bare_key) @incomplete_dependency_name
+                (bare_key) @incomplete_dependency_name
             ) @incomplete_dependency_pair
         ]
         (#any-of? @root_name
@@ -38,17 +52,16 @@ pub const CARGO_TOML_DEPENDENCIES_QUERY: &str = r#"
         )
     )
 
-    ; Dotted key format: [workspace.dependencies] or [target.xxx.dependencies]
+    ; Workspace/target dependencies: [workspace.dependencies] or [target.'cfg(...)'.dependencies]
     (table
         (dotted_key
-            [
-                (bare_key) @table_prefix
-                (string) @target_spec
-            ]?
+            (bare_key) @table_prefix
+            (#any-of? @table_prefix "workspace" "target")
+            (string)? @target_spec
             (bare_key) @root_name
         )
         [
-        	; Complete dependency pairs
+            ; Complete dependency pairs
             (pair
                 (bare_key) @dependency_name
                 [
@@ -64,13 +77,27 @@ pub const CARGO_TOML_DEPENDENCIES_QUERY: &str = r#"
                             (array) @features_array
                             (#eq? @features_key "features")
                         )?
+                        (pair
+                            (bare_key) @misc_key
+                            [
+                                (string) @misc_value
+                                (boolean) @misc_value
+                            ]
+                            (#any-of? @misc_key
+                                "default-features"
+                                "optional"
+                                "git"
+                                "rev"
+                                "branch"
+                            )
+                        )?
                     ) @dependency_table
                 ]
             ) @dependency_pair
 
             ; Incomplete dependency (just the key - for completions)
             (ERROR
-            	(bare_key) @incomplete_dependency_name
+                (bare_key) @incomplete_dependency_name
             ) @incomplete_dependency_pair
         ]
         (#any-of? @root_name
@@ -81,6 +108,47 @@ pub const CARGO_TOML_DEPENDENCIES_QUERY: &str = r#"
             "build_dependencies"
         )
     )
+
+    ; Named dependency sections: [dependencies.package-name]
+    (table
+        (dotted_key
+            (bare_key) @root_name
+            (bare_key) @dependency_name
+        )
+        [
+        	(pair
+                (bare_key) @version_key
+                (string) @version
+                (#eq? @version_key "version")
+            )?
+            (pair
+                (bare_key) @features_key
+                (array) @features_array
+                (#eq? @features_key "features")
+            )?
+            (pair
+                (bare_key) @misc_key
+                [
+                    (string) @misc_value
+                    (boolean) @misc_value
+                ]
+                (#any-of? @misc_key
+                    "default-features"
+                    "optional"
+                    "git"
+                    "rev"
+                    "branch"
+                )
+            )?
+        ]*
+        (#any-of? @root_name
+            "dependencies"
+            "dev-dependencies"
+            "dev_dependencies"
+            "build-dependencies"
+            "build_dependencies"
+        )
+    ) @dependency_full_capture
 
     ; Incomplete / hanging dependency - actually matches as *sibling* of table (?!?)
     (
@@ -109,7 +177,7 @@ pub const PACKAGE_JSON_DEPENDENCIES_QUERY: &str = r#"
         (pair
             key: (string (string_content) @dependency_name)
             value: (string (string_content) @value)
-        )
+        ) @dependency_pair
     )+
     (#any-of? @root_name
         "dependencies"

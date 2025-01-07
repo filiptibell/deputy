@@ -15,12 +15,6 @@ pub async fn get_rokit_hover(
         return Ok(None);
     };
 
-    // Modify range to show as hovering over the entire "key = version" pair
-    let found_range = Range {
-        start: tool.name.range.start,
-        end: tool.spec.range.end,
-    };
-
     // Add basic hover information with version and name
     trace!(
         "Hovering: {} version {}",
@@ -66,7 +60,7 @@ pub async fn get_rokit_hover(
     );
 
     Ok(Some(Hover {
-        range: Some(found_range),
+        range: Some(tool.range()),
         contents: HoverContents::Markup(MarkupContent {
             kind: MarkupKind::Markdown,
             value: md.build(),

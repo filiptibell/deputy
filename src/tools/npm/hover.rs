@@ -19,11 +19,6 @@ pub async fn get_npm_hover(
         return Ok(None);
     };
 
-    // Modify range to show as hovering over the entire "key = version" pair
-    let found_range = Range {
-        start: dep.name().range.start,
-        end: dep.spec().unwrap().range.end,
-    };
     let dependency_name = dep.name().unquoted();
     let dependency_version = version_req.minimum_version();
 
@@ -62,7 +57,7 @@ pub async fn get_npm_hover(
     }
 
     Ok(Some(Hover {
-        range: Some(found_range),
+        range: Some(dep.range()),
         contents: HoverContents::Markup(MarkupContent {
             kind: MarkupKind::Markdown,
             value: md.build(),

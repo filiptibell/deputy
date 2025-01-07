@@ -3,6 +3,8 @@ use std::cmp::Ordering;
 use streaming_iterator::StreamingIterator;
 use tree_sitter::QueryCursor;
 
+use crate::parser::query_utils::{range_extend, range_from_node};
+
 use super::super::document::TreeSitterDocument;
 use super::super::query_strings::PACKAGE_JSON_DEPENDENCIES_QUERY;
 use super::super::query_structs::{
@@ -20,6 +22,7 @@ pub fn query_package_json_dependencies(doc: &TreeSitterDocument) -> Vec<Dependen
     let mut it = cursor.matches(&query, doc.tree.root_node(), doc.contents.as_bytes());
     while let Some(m) = it.next() {
         let mut dep_kind = None;
+        let mut dep_range = None;
         let mut dep_name_node = None;
         let mut version_node = None;
         let mut git_url = None;
@@ -39,6 +42,7 @@ pub fn query_package_json_dependencies(doc: &TreeSitterDocument) -> Vec<Dependen
                         "devDependencies" => DependencyKind::Dev,
                         "peerDependencies" => DependencyKind::Peer,
                         "optionalDependencies" => DependencyKind::Optional,
+                        "bundleDependencies" | "bundledDependencies" => DependencyKind::Bundled,
                         _ => continue,
                     });
                 }
@@ -62,10 +66,22 @@ pub fn query_package_json_dependencies(doc: &TreeSitterDocument) -> Vec<Dependen
                 }
                 _ => {}
             }
+
+            if matches!(
+                capture_name,
+                "dependency_table" | "dependency_name" | "dependency_full_capture" | "value"
+            ) {
+                let range = range_from_node(&capture.node);
+                if let Some(drange) = dep_range {
+                    dep_range = Some(range_extend(range, drange));
+                } else {
+                    dep_range = Some(range);
+                }
+            }
         }
 
-        if let (Some(dep_kind), Some(name), Some(spec_range)) =
-            (dep_kind, dep_name_node, spec_range)
+        if let (Some(dep_kind), Some(range), Some(name), Some(spec_range)) =
+            (dep_kind, dep_range, dep_name_node, spec_range)
         {
             let source = if let Some(url) = git_url {
                 DependencySource::Git { url }
@@ -77,6 +93,7 @@ pub fn query_package_json_dependencies(doc: &TreeSitterDocument) -> Vec<Dependen
 
             dependencies.push(Dependency::new_full(
                 dep_kind,
+                range,
                 name,
                 Node::new(
                     &spec_range,
