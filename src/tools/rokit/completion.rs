@@ -26,6 +26,7 @@ pub async fn get_rokit_completions_spec_author(
             text_edit: Some(CompletionTextEdit::Edit(
                 document.create_edit(author.range, item.name.to_string()),
             )),
+            commit_characters: Some(vec![String::from("/")]),
             ..Default::default()
         })
         .collect::<Vec<_>>();
@@ -53,6 +54,7 @@ pub async fn get_rokit_completions_spec_name(
                 text_edit: Some(CompletionTextEdit::Edit(
                     document.create_edit(name.range, item.name.to_string()),
                 )),
+                commit_characters: Some(vec![String::from("@")]),
                 ..Default::default()
             })
             .collect::<Vec<_>>();

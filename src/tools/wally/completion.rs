@@ -34,6 +34,7 @@ pub async fn get_wally_completions_spec_author(
             text_edit: Some(CompletionTextEdit::Edit(
                 document.create_edit(author.range, package.to_string()),
             )),
+            commit_characters: Some(vec![String::from("/")]),
             ..Default::default()
         })
         .collect::<Vec<_>>();
@@ -72,6 +73,7 @@ pub async fn get_wally_completions_spec_name(
             text_edit: Some(CompletionTextEdit::Edit(
                 document.create_edit(name.range, package.to_string()),
             )),
+            commit_characters: Some(vec![String::from("@")]),
             ..Default::default()
         })
         .collect::<Vec<_>>();
