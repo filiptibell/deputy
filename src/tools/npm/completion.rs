@@ -1,4 +1,3 @@
-use semver::Version;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 
@@ -7,7 +6,7 @@ use crate::parser::Dependency;
 use crate::server::*;
 
 use super::constants::top_npm_packages_prefixed;
-use super::strip_specifiers;
+use super::Versioned;
 
 const MAXIMUM_PACKAGES_SHOWN: usize = 64;
 
@@ -53,42 +52,18 @@ pub async fn get_npm_completions_version(
         Ok(m) => m,
     };
 
-    let valid_metadatas_with_versions = metadata
-        .versions
-        .into_values()
-        .filter_map(|metadata| match Version::parse(&metadata.version) {
-            Ok(version) => Some((metadata, version)),
-            Err(_) => None,
-        })
-        .collect::<Vec<_>>();
-
-    let mut valid_metadatas = valid_metadatas_with_versions
-        .into_iter()
-        .filter_map(|(metadata, metadata_version)| {
-            let dep_version = strip_specifiers(version.unquoted());
-            let met_version = metadata_version.to_string();
-            if dep_version.is_empty()
-                || (dep_version.len() <= met_version.len() && met_version.starts_with(dep_version))
-            {
-                Some((metadata, metadata_version))
-            } else {
-                None
-            }
-        })
-        .collect::<Vec<_>>();
-    valid_metadatas.sort_by(|left, right| right.1.cmp(&left.1));
-
-    let valid_vec = valid_metadatas
+    let valid_vec = dep
+        .extract_completion_versions(metadata.versions.into_values())
         .into_iter()
         .enumerate()
-        .map(|(index, (_, meta_version))| CompletionItem {
-            label: meta_version.to_string(),
+        .map(|(index, potential_version)| CompletionItem {
+            label: potential_version.item_version_raw.to_string(),
             kind: Some(CompletionItemKind::VALUE),
             sort_text: Some(format!("{:0>5}", index)),
             text_edit: Some(CompletionTextEdit::Edit(document.create_substring_edit(
                 version.range.start.line,
-                strip_specifiers(version.unquoted()),
-                meta_version.to_string(),
+                potential_version.this_version_raw,
+                potential_version.item_version_raw,
             ))),
             ..Default::default()
         })

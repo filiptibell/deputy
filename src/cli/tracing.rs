@@ -28,4 +28,6 @@ pub fn setup_tracing() {
         .with_ansi(stderr().is_terminal())
         .with_writer(stderr) // Stdio transport takes up stdout, so emit output to stderr
         .init();
+
+    std::panic::set_hook(Box::new(tracing_panic::panic_hook));
 }

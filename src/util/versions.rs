@@ -124,6 +124,15 @@ fn possible_versions_for_req(req: &VersionReq) -> Vec<Version> {
         .collect()
 }
 
+fn trim_version_specifiers(s: String) -> String {
+    s.trim_start_matches('^')
+        .trim_start_matches('>')
+        .trim_start_matches('<')
+        .trim_start_matches('=')
+        .trim_start_matches('~')
+        .to_string()
+}
+
 /**
     The latest found version from a comparison.
 
@@ -140,13 +149,35 @@ pub struct LatestVersion<T> {
 }
 
 /**
+    A version to be used for completion purposes.
+
+    Includes the current version, the version that can be completed,
+    as well as the associated data for whatever was compared to.
+
+    Note that a completion must not necessarily contain fully valid
+    semver versions, since completions can by definition be partial.
+*/
+#[allow(dead_code)]
+pub struct CompletionVersion<T> {
+    pub this_version: Option<Version>,
+    pub this_version_raw: String,
+    pub item_version: Option<Version>,
+    pub item_version_raw: String,
+    pub item: T,
+}
+
+/**
     Helper trait for anything that contains a version string.
 */
 pub trait Versioned {
-    fn parse_version(&self) -> Result<Version, Error>;
+    fn raw_version_string(&self) -> String;
+
+    fn parse_version(&self) -> Result<Version, Error> {
+        self.raw_version_string().trim().parse()
+    }
 
     fn parse_version_req(&self) -> Result<VersionReq, Error> {
-        self.parse_version().and_then(|v| v.to_string().parse())
+        self.raw_version_string().trim().parse()
     }
 
     fn extract_latest_version<I, V>(&self, other_versions: I) -> Option<LatestVersion<V>>
@@ -192,37 +223,68 @@ pub trait Versioned {
             }
         })
     }
+
+    fn extract_completion_versions<I, V>(&self, potential_versions: I) -> Vec<CompletionVersion<V>>
+    where
+        I: IntoIterator<Item = V>,
+        V: Versioned,
+    {
+        let this_version_raw = match self.parse_version_req() {
+            Ok(req) => req.minimum_version().to_string(), // Removes prefixes like '^' in a "correct" manner
+            Err(_) => trim_version_specifiers(self.raw_version_string()), // Tries to still remove prefixes, less correct
+        };
+
+        let mut potential_versions = potential_versions
+            .into_iter()
+            .filter_map(|item| {
+                let item_version = item.raw_version_string();
+                if this_version_raw.is_empty()
+                    || (this_version_raw.len() <= item_version.len()
+                        && item_version.starts_with(&this_version_raw))
+                {
+                    Some(item)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
+        potential_versions.sort_by_key(|item| item.raw_version_string());
+        potential_versions.reverse();
+
+        potential_versions
+            .into_iter()
+            .map(|item| CompletionVersion {
+                this_version: this_version_raw.parse().ok(),
+                this_version_raw: this_version_raw.clone(),
+                item_version: item.parse_version().ok(),
+                item_version_raw: item.raw_version_string(),
+                item,
+            })
+            .collect()
+    }
 }
 
 impl Versioned for Version {
-    fn parse_version(&self) -> Result<Version, Error> {
-        Ok(self.clone())
+    fn raw_version_string(&self) -> String {
+        self.to_string()
     }
 }
 
 impl Versioned for String {
-    fn parse_version(&self) -> Result<Version, Error> {
-        self.parse()
-    }
-    fn parse_version_req(&self) -> Result<VersionReq, Error> {
-        self.parse()
+    fn raw_version_string(&self) -> String {
+        self.to_string()
     }
 }
 
 impl Versioned for &String {
-    fn parse_version(&self) -> Result<Version, Error> {
-        self.parse()
-    }
-    fn parse_version_req(&self) -> Result<VersionReq, Error> {
-        self.parse()
+    fn raw_version_string(&self) -> String {
+        self.to_string()
     }
 }
 
 impl Versioned for &str {
-    fn parse_version(&self) -> Result<Version, Error> {
-        self.parse()
-    }
-    fn parse_version_req(&self) -> Result<VersionReq, Error> {
-        self.parse()
+    fn raw_version_string(&self) -> String {
+        self.to_string()
     }
 }

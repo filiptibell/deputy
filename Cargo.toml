@@ -48,6 +48,7 @@ moka = { version = "0.12", features = ["future"] }
 
 tokio = { version = "1.25", features = ["full"] }
 tracing = "0.1"
+tracing-panic = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [dependencies.tower-lsp]

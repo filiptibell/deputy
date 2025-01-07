@@ -21,8 +21,8 @@ pub struct RepositoryRelease {
 }
 
 impl Versioned for RepositoryRelease {
-    fn parse_version(&self) -> Result<semver::Version, semver::Error> {
-        self.tag_name.trim_start_matches('v').parse()
+    fn raw_version_string(&self) -> String {
+        self.tag_name.trim_start_matches('v').to_string()
     }
 }
 

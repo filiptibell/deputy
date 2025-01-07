@@ -114,11 +114,12 @@ pub struct DependencySpec {
 }
 
 impl Versioned for DependencySpec {
-    fn parse_version(&self) -> Result<semver::Version, semver::Error> {
-        self.version.clone().unwrap_or_default().parse()
-    }
-    fn parse_version_req(&self) -> Result<semver::VersionReq, semver::Error> {
-        self.version.clone().unwrap_or_default().parse()
+    fn raw_version_string(&self) -> String {
+        self.version
+            .clone()
+            .unwrap_or_default()
+            .unquoted()
+            .to_string()
     }
 }
 
@@ -205,20 +206,12 @@ impl Dependency {
 }
 
 impl Versioned for Dependency {
-    fn parse_version(&self) -> Result<semver::Version, semver::Error> {
+    fn raw_version_string(&self) -> String {
         self.spec()
             .cloned()
             .unwrap_or_default()
             .contents
-            .parse_version()
-    }
-
-    fn parse_version_req(&self) -> Result<semver::VersionReq, semver::Error> {
-        self.spec()
-            .cloned()
-            .unwrap_or_default()
-            .contents
-            .parse_version_req()
+            .raw_version_string()
     }
 }
 
@@ -258,8 +251,12 @@ impl SimpleDependency {
 }
 
 impl Versioned for SimpleDependency {
-    fn parse_version(&self) -> Result<semver::Version, semver::Error> {
-        self.parsed_spec().parse_version()
+    fn raw_version_string(&self) -> String {
+        self.parsed_spec()
+            .version
+            .unwrap_or_default()
+            .unquoted()
+            .to_string()
     }
 }
 
@@ -292,8 +289,12 @@ impl ParsedSpec {
 }
 
 impl Versioned for ParsedSpec {
-    fn parse_version(&self) -> Result<semver::Version, semver::Error> {
-        self.version.clone().unwrap_or_default().parse()
+    fn raw_version_string(&self) -> String {
+        self.version
+            .clone()
+            .unwrap_or_default()
+            .unquoted()
+            .to_string()
     }
 }
 
@@ -355,7 +356,7 @@ impl ParsedSpecFull {
 }
 
 impl Versioned for ParsedSpecFull {
-    fn parse_version(&self) -> Result<semver::Version, semver::Error> {
-        self.version.parse()
+    fn raw_version_string(&self) -> String {
+        self.version.unquoted().to_string()
     }
 }

@@ -12,8 +12,8 @@ pub struct Metadata {
 }
 
 impl Versioned for Metadata {
-    fn parse_version(&self) -> Result<semver::Version, semver::Error> {
-        self.package.version.parse()
+    fn raw_version_string(&self) -> String {
+        self.package.version.to_string()
     }
 }
 
@@ -42,8 +42,8 @@ pub struct MetadataPackage {
 }
 
 impl Versioned for MetadataPackage {
-    fn parse_version(&self) -> Result<semver::Version, semver::Error> {
-        self.version.parse()
+    fn raw_version_string(&self) -> String {
+        self.version.to_string()
     }
 }
 

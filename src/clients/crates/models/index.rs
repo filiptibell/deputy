@@ -16,8 +16,8 @@ pub struct IndexMetadata {
 }
 
 impl Versioned for IndexMetadata {
-    fn parse_version(&self) -> Result<semver::Version, semver::Error> {
-        self.version.parse()
+    fn raw_version_string(&self) -> String {
+        self.version.to_string()
     }
 }
 
