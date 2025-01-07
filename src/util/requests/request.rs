@@ -1,8 +1,7 @@
 #![allow(dead_code)]
 
-use std::{collections::HashMap, str::FromStr};
+use std::{collections::HashMap, str::FromStr, sync::LazyLock};
 
-use once_cell::sync::Lazy;
 use reqwest::{
     header::{HeaderName, HeaderValue, USER_AGENT},
     Client, Method,
@@ -21,7 +20,7 @@ const USER_AGENT_VALUE: &str = concat!(
     " )"
 );
 
-static CLIENT: Lazy<Client> = Lazy::new(Client::new);
+static CLIENT: LazyLock<Client> = LazyLock::new(Client::new);
 
 #[derive(Clone, Debug)]
 pub struct Request {
