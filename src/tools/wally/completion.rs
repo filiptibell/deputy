@@ -5,6 +5,7 @@ use crate::clients::*;
 use crate::parser::SimpleDependency;
 use crate::server::*;
 
+use super::shared::*;
 use super::Versioned;
 
 const MAXIMUM_PACKAGES_SHOWN: usize = 64;
@@ -25,7 +26,7 @@ pub async fn get_wally_completions_spec_author(
 
     let items = package_scopes
         .into_iter()
-        .filter(|package| package.trim().starts_with(author.unquoted()))
+        .filter(|package| filter_starts_with(package.as_str(), author.unquoted()))
         .take(MAXIMUM_PACKAGES_SHOWN)
         .map(|package| CompletionItem {
             label: package.to_string(),
@@ -63,7 +64,7 @@ pub async fn get_wally_completions_spec_name(
 
     let items = package_names
         .into_iter()
-        .filter(|package| package.trim().starts_with(name.unquoted()))
+        .filter(|package| filter_starts_with(package.as_str(), name.unquoted()))
         .take(MAXIMUM_PACKAGES_SHOWN)
         .map(|package| CompletionItem {
             label: package.to_string(),

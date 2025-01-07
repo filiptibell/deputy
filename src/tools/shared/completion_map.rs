@@ -3,6 +3,8 @@ use std::{
     sync::Arc,
 };
 
+use super::filter_starts_with;
+
 /**
     An append-only map for completion purposes.
 
@@ -65,12 +67,9 @@ impl<T: Clone + AsRef<str> + 'static> CompletionMap<T> {
     */
     pub fn iter(&self, prefix: impl AsRef<str>) -> impl Iterator<Item = &T> {
         let prefix: String = prefix.as_ref().trim().to_ascii_lowercase();
-        self.get(prefix.as_str()).iter().filter(move |item| {
-            item.as_ref()
-                .trim()
-                .to_ascii_lowercase()
-                .starts_with(prefix.as_str())
-        })
+        self.get(prefix.as_str())
+            .iter()
+            .filter(move |item| filter_starts_with(item.as_ref(), prefix.as_str()))
     }
 }
 

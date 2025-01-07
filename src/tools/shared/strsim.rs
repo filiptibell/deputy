@@ -21,3 +21,13 @@ where
         None
     }
 }
+
+pub fn filter_starts_with<S1, S2>(s: S1, prefix: S2) -> bool
+where
+    S1: Into<String>,
+    S2: Into<String>,
+{
+    let s: String = s.into().trim().to_ascii_lowercase();
+    let prefix: String = prefix.into().trim().to_ascii_lowercase();
+    s.starts_with(prefix.as_str())
+}
