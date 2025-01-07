@@ -2,7 +2,10 @@ use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tracing::trace;
 
-use crate::{parser::SimpleDependency, tools::MarkdownBuilder};
+use crate::{
+    parser::SimpleDependency,
+    tools::{wally::WALLY_DEFAULT_REGISTRY, MarkdownBuilder},
+};
 
 use super::{Clients, Document};
 
@@ -31,8 +34,9 @@ pub async fn get_wally_hover(
         .get_index_metadatas(index_url, spec.author.unquoted(), spec.name.unquoted())
         .await
     {
+        metadatas.reverse(); // Latest last, so we can pop
         if let Some(metadata) = metadatas.pop() {
-            md.h2(metadata.package.name);
+            md.h2(&metadata.package.name);
             md.version(spec.version.unquoted());
 
             // Add description, if available
@@ -42,7 +46,21 @@ pub async fn get_wally_hover(
             }
 
             // Add links, if available
-            if metadata.package.homepage.is_some() || metadata.package.repository.is_some() {
+            let wally_run = metadata
+                .package
+                .registry
+                .eq_ignore_ascii_case(WALLY_DEFAULT_REGISTRY)
+                .then(|| {
+                    format!(
+                        "https://wally.run/package/{}?version={}",
+                        metadata.package.name,
+                        spec.version.unquoted()
+                    )
+                });
+            if wally_run.is_some()
+                || metadata.package.homepage.is_some()
+                || metadata.package.repository.is_some()
+            {
                 md.br();
                 md.h3("Links");
                 if let Some(homepage) = metadata.package.homepage {
@@ -50,6 +68,9 @@ pub async fn get_wally_hover(
                 }
                 if let Some(repository) = metadata.package.repository {
                     md.a("Repository", repository);
+                }
+                if let Some(wally) = wally_run {
+                    md.a("Wally", wally);
                 }
             }
         } else {

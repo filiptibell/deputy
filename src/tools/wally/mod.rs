@@ -12,10 +12,12 @@ use crate::util::*;
 use super::*;
 
 mod completion;
+mod constants;
 mod diagnostics;
 mod hover;
 
 use completion::*;
+use constants::*;
 use diagnostics::*;
 use hover::*;
 
@@ -158,5 +160,5 @@ fn extract_wally_index_url(doc_contents: &str) -> &str {
                         .trim_end_matches(".git")
                 })
         })
-        .unwrap_or("https://github.com/UpliftGames/wally-index")
+        .unwrap_or(WALLY_DEFAULT_REGISTRY)
 }
