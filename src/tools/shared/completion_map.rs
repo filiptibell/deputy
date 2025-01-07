@@ -4,12 +4,20 @@ use std::{
 };
 
 /**
-    An append-only map of prefixes to values.
+    An append-only map for completion purposes.
 
-    This is useful for autocomplete, where we want to
-    return a list of values that start with a given
-    prefix, but we may have thousands of values,
-    which would lead to unacceptably slow performance.
+    This map handles a few things for us, notably:
+
+    - Performance: Items are stored and referenced by prefixes,
+      improving performance by 10x or more for single-character
+      prefixes, and 100x or more for doubled prefixes or longer.
+
+    - Case sensitivity: Items are matched in a case-insensitive
+      manner, which is generally preferred behavior for completions.
+
+    - Whitespace sensitivity: Item names and prefixes are trimmed
+      of whitespace on both ends (leading, trailing), which is
+      also generally preferred behavior for completions.
 
     # CAUTION
 
@@ -18,16 +26,16 @@ use std::{
     many duplicate values and take up a lot of memory.
 */
 #[derive(Debug, Clone)]
-pub struct PrefixOrderedMap<T> {
+pub struct CompletionMap<T> {
     unprefixed: Arc<Vec<T>>,
     single_char: Arc<HashMap<char, Vec<T>>>,
     double_char: Arc<HashMap<char, HashMap<char, Vec<T>>>>,
 }
 
-impl<T: Clone + 'static> PrefixOrderedMap<T> {
+impl<T: Clone + AsRef<str> + 'static> CompletionMap<T> {
     const EMPTY: &[T] = &[];
 
-    pub fn get(&self, key: &str) -> &[T] {
+    fn get(&self, key: &str) -> &[T] {
         if key.is_empty() {
             return &self.unprefixed;
         }
@@ -48,9 +56,25 @@ impl<T: Clone + 'static> PrefixOrderedMap<T> {
                 .unwrap_or(Self::EMPTY)
         }
     }
+
+    /**
+        Iterates over items that are guaranteed to match the given prefix.
+
+        See the top-level documentation for additional
+        details on filtering and what prefixing means.
+    */
+    pub fn iter(&self, prefix: impl AsRef<str>) -> impl Iterator<Item = &T> {
+        let prefix: String = prefix.as_ref().trim().to_ascii_lowercase();
+        self.get(prefix.as_str()).iter().filter(move |item| {
+            item.as_ref()
+                .trim()
+                .to_ascii_lowercase()
+                .starts_with(prefix.as_str())
+        })
+    }
 }
 
-impl<T: Clone + AsRef<str>> FromIterator<T> for PrefixOrderedMap<T> {
+impl<T: Clone + AsRef<str> + 'static> FromIterator<T> for CompletionMap<T> {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         let mut unprefixed = Vec::new();
         let mut single_char = HashMap::<char, Vec<T>>::new();
@@ -58,10 +82,12 @@ impl<T: Clone + AsRef<str>> FromIterator<T> for PrefixOrderedMap<T> {
 
         let mut inserted = HashSet::new();
         for value in iter {
-            let key: &str = value.as_ref();
+            let key: &str = value.as_ref().trim();
             if !inserted.insert(key.to_string()) {
                 continue;
             }
+
+            unprefixed.push(value.clone());
 
             let mut chars = key.chars();
 
@@ -69,7 +95,10 @@ impl<T: Clone + AsRef<str>> FromIterator<T> for PrefixOrderedMap<T> {
                 continue;
             };
 
+            let first_char = first_char.to_ascii_lowercase();
+
             if let Some(second_char) = chars.next() {
+                let second_char = second_char.to_ascii_lowercase();
                 double_char
                     .entry(first_char)
                     .or_default()
@@ -77,8 +106,6 @@ impl<T: Clone + AsRef<str>> FromIterator<T> for PrefixOrderedMap<T> {
                     .or_default()
                     .push(value.clone());
             }
-
-            unprefixed.push(value.clone());
 
             single_char.entry(first_char).or_default().push(value);
         }

@@ -237,10 +237,13 @@ pub trait Versioned {
         let mut potential_versions = potential_versions
             .into_iter()
             .filter_map(|item| {
+                if this_version_raw.is_empty() {
+                    return Some(item);
+                }
+
                 let item_version = item.raw_version_string();
-                if this_version_raw.is_empty()
-                    || (this_version_raw.len() <= item_version.len()
-                        && item_version.starts_with(&this_version_raw))
+                if this_version_raw.len() <= item_version.len()
+                    && item_version.starts_with(&this_version_raw)
                 {
                     Some(item)
                 } else {
@@ -249,8 +252,18 @@ pub trait Versioned {
             })
             .collect::<Vec<_>>();
 
-        potential_versions.sort_by_key(|item| item.raw_version_string());
-        potential_versions.reverse();
+        potential_versions.sort_unstable_by(|a, b| {
+            if let Ok(v_a) = a.parse_version() {
+                if let Ok(v_b) = b.parse_version() {
+                    return v_a.cmp(&v_b);
+                }
+            }
+            let s_a = a.raw_version_string();
+            let s_b = b.raw_version_string();
+            s_a.cmp(&s_b)
+        });
+
+        potential_versions.reverse(); // Latest versions first
 
         potential_versions
             .into_iter()

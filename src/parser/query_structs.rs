@@ -302,32 +302,58 @@ impl From<Node<String>> for ParsedSpec {
     fn from(node: Node<String>) -> ParsedSpec {
         let raw = node.unquoted();
 
-        let (owner, repository, version) = if let Some((owner, rest)) = raw.split_once('/') {
-            if let Some((repository, version)) = rest.split_once('@') {
-                (owner, Some(repository), Some(version))
+        let (author, name, version) = match raw.split_once('/') {
+            Some((author, rest)) => match rest.split_once('@') {
+                Some((name, version)) => (author, Some(name), Some(version)),
+                None => (author, Some(rest), None),
+            },
+            None => (raw, None, None),
+        };
+
+        // NOTE: range_for_substring will not work for empty substrings
+        // but in this case we can just grab whatever the last position
+        // is and use that as our full zero-length range
+        let end_pos = Position {
+            line: node.range.end.line,
+            character: if node.unquoted().len() < node.quoted().len() {
+                node.range.end.character.saturating_sub(1)
             } else {
-                (owner, Some(rest), None)
-            }
-        } else {
-            (raw, None, None)
+                node.range.end.character
+            },
+        };
+        let end_range = Range {
+            start: end_pos,
+            end: end_pos,
         };
 
         ParsedSpec {
-            author: Node::new_raw(
-                range_for_substring(node.range, node.quoted(), owner),
-                owner.to_string(),
-            ),
-            name: repository.map(|repository| {
+            author: if author.is_empty() {
+                Node::new_raw(end_range, String::new())
+            } else {
                 Node::new_raw(
-                    range_for_substring(node.range, node.quoted(), repository),
-                    repository.to_string(),
+                    range_for_substring(node.range, node.quoted(), author),
+                    author.to_string(),
                 )
+            },
+            name: name.map(|name| {
+                if name.is_empty() {
+                    Node::new_raw(end_range, String::new())
+                } else {
+                    Node::new_raw(
+                        range_for_substring(node.range, node.quoted(), name),
+                        name.to_string(),
+                    )
+                }
             }),
             version: version.map(|version| {
-                Node::new_raw(
-                    range_for_substring(node.range, node.quoted(), version),
-                    version.to_string(),
-                )
+                if version.is_empty() {
+                    Node::new_raw(end_range, String::new())
+                } else {
+                    Node::new_raw(
+                        range_for_substring(node.range, node.quoted(), version),
+                        version.to_string(),
+                    )
+                }
             }),
         }
     }

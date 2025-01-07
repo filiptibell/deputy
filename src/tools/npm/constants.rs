@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
-use super::PrefixOrderedMap;
+use super::CompletionMap;
 
 /**
     A statically stored package from the NPM registry.
@@ -48,19 +48,15 @@ impl AsRef<str> for NpmPackage {
 */
 
 static TOP_PACKAGES_NPM: &str = include_str!("../../../assets/top-npm-packages.txt");
-static TOP_PACKAGES: OnceLock<PrefixOrderedMap<NpmPackage>> = OnceLock::new();
+static TOP_PACKAGES: OnceLock<CompletionMap<NpmPackage>> = OnceLock::new();
 
 pub fn top_npm_packages_prefixed(prefix: &str, limit: usize) -> Vec<&NpmPackage> {
     let top = TOP_PACKAGES.get_or_init(|| {
         TOP_PACKAGES_NPM
             .lines()
             .map(|s| s.parse().unwrap())
-            .collect::<PrefixOrderedMap<_>>()
+            .collect::<CompletionMap<_>>()
     });
 
-    top.get(prefix)
-        .iter()
-        .filter(|p| p.name.starts_with(prefix))
-        .take(limit)
-        .collect()
+    top.iter(prefix).take(limit).collect()
 }

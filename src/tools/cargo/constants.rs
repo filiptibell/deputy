@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
-use super::PrefixOrderedMap;
+use super::CompletionMap;
 
 /**
     A statically stored package from the crates.io index.
@@ -57,19 +57,15 @@ impl AsRef<str> for CratesIoPackage {
 */
 
 static TOP_PACKAGES_CRATES_IO: &str = include_str!("../../../assets/top-crates-io-packages.txt");
-static TOP_PACKAGES: OnceLock<PrefixOrderedMap<CratesIoPackage>> = OnceLock::new();
+static TOP_PACKAGES: OnceLock<CompletionMap<CratesIoPackage>> = OnceLock::new();
 
 pub fn top_crates_io_packages_prefixed(prefix: &str, limit: usize) -> Vec<&CratesIoPackage> {
     let top = TOP_PACKAGES.get_or_init(|| {
         TOP_PACKAGES_CRATES_IO
             .lines()
             .map(|s| s.parse().unwrap())
-            .collect::<PrefixOrderedMap<_>>()
+            .collect::<CompletionMap<_>>()
     });
 
-    top.get(prefix)
-        .iter()
-        .filter(|p| p.name.starts_with(prefix))
-        .take(limit)
-        .collect()
+    top.iter(prefix).take(limit).collect()
 }
