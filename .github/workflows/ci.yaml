@@ -78,6 +78,6 @@ jobs:
       - name: Test
         run: |
           cargo test \
-          --lib --workspace \
+          --workspace \
           --locked --all-features \
           --target ${{ matrix.cargo-target }}
