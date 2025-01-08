@@ -83,7 +83,10 @@ jobs:
       - name: Install Node
         uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: 22.x
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v1
 
       - name: Install build tooling (aarch64-unknown-linux-gnu)
         if: matrix.cargo-target == 'aarch64-unknown-linux-gnu'
@@ -94,7 +97,8 @@ jobs:
 
       - name: Install other tooling
         run: |
-          npm install -g @vscode/vsce
+          bun install -g @vscode/vsce
+          bun pm trust -g @vscode/vsce-sign
 
       - name: Build server
         run: just build --locked --release --target ${{ matrix.cargo-target }}

@@ -16,7 +16,7 @@
     },
     "icon": "assets/icon-128.png",
     "engines": {
-        "vscode": "^1.81.0"
+        "vscode": "^1.90.0"
     },
     "categories": [
         "Other"
@@ -49,28 +49,23 @@
         ]
     },
     "scripts": {
-        "vscode:prepublish": "npm run esbuild -- --minify",
+        "vscode:prepublish": "bun run esbuild -- --minify",
         "esbuild": "esbuild ./src/extension.js --bundle --outfile=out/extension.js --external:vscode --platform=node --target=node16.13 --sourcemap",
-        "esbuild-watch": "npm run esbuild -- --watch",
-        "compile": "tsc -p ./ && npm run esbuild",
-        "watch": "tsc -p ./ && npm run esbuild-watch",
-        "lint": "eslint src --ext ts"
+        "esbuild-watch": "bun run esbuild -- --watch",
+        "compile": "tsc -p ./ && bun run esbuild",
+        "watch": "tsc -p ./ && bun run esbuild-watch"
     },
     "devDependencies": {
         "@types/mocha": "^10.0.1",
-        "@types/node": "16.x",
+        "@types/node": "^22.0",
         "@types/vscode": "^1.81.0",
-        "@typescript-eslint/eslint-plugin": "^5.56.0",
-        "@typescript-eslint/parser": "^5.56.0",
-        "@vscode/test-electron": "^2.3.0",
-        "esbuild": "^0.17.18",
-        "eslint": "^8.36.0",
-        "glob": "^8.1.0",
-        "mocha": "^10.2.0",
-        "typescript": "^4.9.5"
+        "esbuild": "^0.24.2",
+        "glob": "^11.0.0",
+        "mocha": "^11.1.0",
+        "typescript": "^5.7.2"
     },
     "dependencies": {
         "axios": "^1.5.0",
-        "vscode-languageclient": "^8.1.0"
+        "vscode-languageclient": "^9.0.1"
     }
 }

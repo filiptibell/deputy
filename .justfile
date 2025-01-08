@@ -52,7 +52,7 @@ vscode-build:
 	#!/usr/bin/env bash
 	set -euo pipefail
 	cd "{{VSCODE}}/"
-	npm install
+	bun install
 	vsce package --out "{{VSCODE}}/bin/"
 
 # Builds and installs the VSCode extension locally
