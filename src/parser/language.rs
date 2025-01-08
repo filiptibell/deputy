@@ -6,6 +6,7 @@ use url::Url;
 
 pub const JSON_FILE_NAMES: &[&str] = &["package.json"];
 pub const TOML_FILE_NAMES: &[&str] = &[
+    "aftman.toml",
     "Cargo.toml",
     "Cargo.lock",
     "wally.toml",

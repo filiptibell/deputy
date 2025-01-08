@@ -5,7 +5,19 @@ use crate::parser::SimpleDependency;
 use crate::util::Versioned;
 
 use super::super::shared::*;
-use super::{Clients, Document};
+use super::{Clients, Document, LspUriExt};
+
+fn diag_source_for_doc(doc: &Document) -> String {
+    if doc
+        .uri()
+        .file_name()
+        .is_some_and(|n| n.eq_ignore_ascii_case("aftman.toml"))
+    {
+        String::from("Aftman")
+    } else {
+        String::from("Rokit")
+    }
+}
 
 pub async fn get_rokit_diagnostics(
     clients: &Clients,
@@ -34,7 +46,7 @@ pub async fn get_rokit_diagnostics(
     // Propagate missing fields diagnostic, if any
     if let Some(diag) = missing_diag {
         return Ok(vec![Diagnostic {
-            source: Some(String::from("Rokit")),
+            source: Some(diag_source_for_doc(doc)),
             range: tool.spec.range,
             message: diag.to_string(),
             severity: Some(DiagnosticSeverity::WARNING), // Most likely during typing, don't emit a hard error
@@ -54,7 +66,7 @@ pub async fn get_rokit_diagnostics(
         Err(e) => {
             if e.is_not_found_error() {
                 return Ok(vec![Diagnostic {
-                    source: Some(String::from("Rokit")),
+                    source: Some(diag_source_for_doc(doc)),
                     range: parsed.range(),
                     message: format!(
                         "No tool exists for `{}/{}`",
@@ -71,7 +83,7 @@ pub async fn get_rokit_diagnostics(
     };
     if releases.is_empty() {
         return Ok(vec![Diagnostic {
-            source: Some(String::from("Rokit")),
+            source: Some(diag_source_for_doc(doc)),
             range: parsed.range(),
             message: format!(
                 "No releases exist for the tool `{}/{}`",
@@ -91,7 +103,7 @@ pub async fn get_rokit_diagnostics(
             .eq_ignore_ascii_case(parsed_version)
     }) {
         return Ok(vec![Diagnostic {
-            source: Some(String::from("Rokit")),
+            source: Some(diag_source_for_doc(doc)),
             range: parsed.range(),
             message: format!(
                 "Version `{parsed_version}` does not exist for the tool `{}/{}`",
@@ -121,7 +133,7 @@ pub async fn get_rokit_diagnostics(
         };
 
         return Ok(vec![Diagnostic {
-            source: Some(String::from("Rokit")),
+            source: Some(diag_source_for_doc(doc)),
             range: parsed.range(),
             message: format!(
                 "A newer version of `{}/{}` is available.\

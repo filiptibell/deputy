@@ -2,11 +2,11 @@ use streaming_iterator::StreamingIterator;
 use tree_sitter::QueryCursor;
 
 use super::super::document::TreeSitterDocument;
-use super::super::query_strings::WALLY_MANIFEST_DEPENDENCIES_QUERY;
+use super::super::query_strings::WALLY_TOML_DEPENDENCIES_QUERY;
 use super::super::query_structs::{DependencyKind, Node, SimpleDependency};
 
 pub fn query_wally_toml_dependencies(doc: &TreeSitterDocument) -> Vec<SimpleDependency> {
-    let Some(query) = doc.query(WALLY_MANIFEST_DEPENDENCIES_QUERY) else {
+    let Some(query) = doc.query(WALLY_TOML_DEPENDENCIES_QUERY) else {
         return Vec::new();
     };
 

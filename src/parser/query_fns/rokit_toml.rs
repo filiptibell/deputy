@@ -4,11 +4,11 @@ use tree_sitter::QueryCursor;
 use crate::parser::DependencyKind;
 
 use super::super::document::TreeSitterDocument;
-use super::super::query_strings::ROKIT_MANIFEST_DEPENDENCIES_QUERY;
+use super::super::query_strings::ROKIT_TOML_DEPENDENCIES_QUERY;
 use super::super::query_structs::{Node, SimpleDependency};
 
 pub fn query_rokit_toml_dependencies(doc: &TreeSitterDocument) -> Vec<SimpleDependency> {
-    let Some(query) = doc.query(ROKIT_MANIFEST_DEPENDENCIES_QUERY) else {
+    let Some(query) = doc.query(ROKIT_TOML_DEPENDENCIES_QUERY) else {
         return Vec::new();
     };
 

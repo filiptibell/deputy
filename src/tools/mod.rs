@@ -61,6 +61,7 @@ impl Tools {
 
     fn tool_for_uri(&self, uri: &Url) -> Option<&dyn Tool> {
         match ToolName::from_uri(uri) {
+            Ok(ToolName::Aftman) => Some(&self.rokit),
             Ok(ToolName::Cargo) => Some(&self.cargo),
             Ok(ToolName::Npm) => Some(&self.npm),
             Ok(ToolName::Rokit) => Some(&self.rokit),

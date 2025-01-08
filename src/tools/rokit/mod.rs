@@ -37,11 +37,9 @@ impl Rokit {
     }
 
     fn get_document(&self, uri: &Url) -> Option<Document> {
-        if uri
-            .file_name()
-            .as_deref()
-            .is_some_and(|f| f.eq_ignore_ascii_case("rokit.toml"))
-        {
+        if uri.file_name().as_deref().is_some_and(|f| {
+            f.eq_ignore_ascii_case("rokit.toml") || f.eq_ignore_ascii_case("aftman.toml")
+        }) {
             self.documents.get(uri).map(|r| r.clone())
         } else {
             None
