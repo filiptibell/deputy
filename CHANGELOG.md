@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## `0.4.0` - January 7th, 2025
+
+Version `0.4.0` refactors JSON and TOML parsing to use [tree-sitter](https://github.com/tree-sitter/tree-sitter) instead of a custom parser.
+This means that the language server now handles errors & invalid syntax in both JSON and TOML much more gracefully.
+More specifically, it will now provide most services (hover, completion, diagnostics) even if the file does not fully parse 🚀
+
+### Added
+
+- Added support for more kinds of links in hovers (Wally homepage and repository fields + more)
+- Added support for merging of package scopes when using private Wally registries, matching Wally behavior
+- Added support for completions even in files that would not normally parse, eg:
+
+  ```toml
+  # Cargo.toml
+
+  [dependencies]
+  tok|
+  ```
+
+  The language server will now complete "tokio" and various other packages at the `|` cursor!
+
+### Changes
+
+- Various performance improvements across the board for faster diagnostics and hover responsiveness
+- Links, versions, and other information in hovers are now *much* more consistent and look the same across Cargo, NPM, Rokit, and Wally
+
+### Fixes
+
+- Fixed missing hovers, completions, diagnostics, when using version specifiers and ranges like `"^x.y.z"`, `">=x.y.z"`, ...
+- Fixed invalid diagnostics for newer versions being available when using `x.y.z-additional-info.1` and similar specifiers
+- Fixed duplicate diagnostics and a couple other race conditions related to file opening
+- Fixed invalid error diagnostics for NPM package names & others
+- Other miscellaneous fixes, check GitHub issues and git history for more
+
+### Breaking Changes
+
+[Aftman](https://github.com/LPGhatguy/aftman) and [Foreman](https://github.com/Roblox/foreman) are no longer supported - due to the language server now being streamlined and providing more consistent features across all different tooling it supports.
+Supporting both Aftman and Foreman would add a non-trivial amount of complexity with all of the changes in this version, and [Rokit](https://github.com/rojo-rbx/rokit) can replace both of them while keeping full compatibility.
+
 ## `0.3.0` - May 10th, 2024
 
 ### Added
