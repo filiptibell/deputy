@@ -26,7 +26,7 @@ jobs:
       - name: Get version
         id: get_version
         run: |
-          VERSION=$(cargo info --color never --quiet --offline rtk | grep "^version:" | cut -d' ' -f2)
+          VERSION=$(cargo info --color never --quiet --offline tooling-language-server | grep "^version:" | cut -d' ' -f2)
           echo "Found version '$VERSION' for package"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
