@@ -1,4 +1,3 @@
-pub const CARGO_TOML_DEPENDENCIES_QUERY: &str = r#"
 [
     ; Regular dependencies table: [dependencies]
     (table
@@ -168,46 +167,3 @@ pub const CARGO_TOML_DEPENDENCIES_QUERY: &str = r#"
         ) @incomplete_dependency_pair
     )
 ]
-"#;
-
-pub const PACKAGE_JSON_DEPENDENCIES_QUERY: &str = r#"
-(pair
-    key: (string (string_content) @root_name)
-    value: (object
-        (pair
-            key: (string (string_content) @dependency_name)
-            value: (string (string_content) @value)
-        ) @dependency_pair
-    )+
-    (#any-of? @root_name
-        "dependencies"
-        "devDependencies"
-        "peerDependencies"
-        "optionalDependencies"
-        "bundledDependencies"
-        "bundleDependencies"
-    )
-)+
-"#;
-
-pub const ROKIT_MANIFEST_DEPENDENCIES_QUERY: &str = r#"
-(table
-    (bare_key) @root_name
-    (pair
-        (bare_key) @dependency_name
-        (string) @dependency_spec
-    ) @dependency_pair
-    (#eq? @root_name "tools")
-)
-"#;
-
-pub const WALLY_MANIFEST_DEPENDENCIES_QUERY: &str = r#"
-(table
-    (bare_key) @root_name
-    (pair
-        (bare_key) @dependency_name
-        (string) @dependency_spec
-    ) @dependency_pair
-    (#any-of? @root_name "dependencies" "server-dependencies" "dev-dependencies")
-)
-"#;
