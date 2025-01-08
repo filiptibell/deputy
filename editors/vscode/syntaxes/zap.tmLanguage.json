@@ -1,0 +1,268 @@
+{
+    "name": "Zap",
+    "scopeName": "source.zap",
+    "patterns": [
+        { "include": "#line-comment" },
+        { "include": "#option-declaration" },
+        { "include": "#item-declaration" },
+        { "include": "#type-declaration" },
+        { "include": "#ranges" },
+        { "include": "#punctuation" }
+    ],
+    "repository": {
+        "line-comment": {
+            "match": "\\s*--.*$",
+            "name": "comment.line.zap"
+        },
+
+        "key-value-pairs": {
+            "begin": "([a-zA-Z0-9_]+)\\s*(:)\\s*",
+            "beginCaptures": {
+                "1": { "name": "variable.property.zap" },
+                "2": { "name": "punctuation.separator.zap" }
+            },
+            "end": ",|$",
+            "patterns": [
+                { "include": "#line-comment" },
+                { "include": "#value" }
+            ]
+        },
+        "value": {
+            "patterns": [
+                { "include": "#line-comment" },
+                {
+                    "name": "string.quoted.double.zap",
+                    "begin": "\"",
+                    "end": "\""
+                },
+                {
+                    "match": "(string|f64|boolean|u8|u16|u32|i8|i16|i32|f32|CFrame|AlignedCFrame|Vector3|Vector2|DateTime|DateTimeMillis|Color3|BrickColor)",
+                    "name": "storage.type.primitive.zap"
+                },
+                { "include": "#set" },
+                { "include": "#map" },
+                { "include": "#struct" },
+                { "include": "#enum" },
+                {
+                    "name": "variable.other.zap",
+                    "match": "[a-zA-Z0-9_]+"
+                },
+                { "include": "#ranges" },
+                { "include": "#punctuation" }
+            ]
+        },
+
+        "option-declaration": {
+            "patterns": [
+                { "include": "#option-declaration-valid" },
+                { "include": "#option-declaration-invalid" }
+            ]
+        },
+        "option-declaration-valid": {
+            "match": "^(opt)\\s+(server_output|client_output|remote_scope|remote_folder|casing|write_checks|typescript|manual_event_loop|typescript_max_tuple_length|yield_type|async_lib|tooling|tooling_output|tooling_show_internal_data|disable_fire_all)\\s*(=)\\s*(.+)$",
+            "captures": {
+                "1": { "name": "keyword.control.zap" },
+                "2": { "name": "variable.other.zap" },
+                "3": { "name": "punctuation.assignment.zap" },
+                "4": { "patterns": [{ "include": "#value" }] }
+            }
+        },
+        "option-declaration-invalid": {
+            "match": "^(opt)\\s+([a-zA-Z0-9_]+)\\s*(=)\\s*(.+)$",
+            "captures": {
+                "1": { "name": "keyword.control.zap" },
+                "2": { "name": "invalid.illegal.zap" },
+                "3": { "name": "punctuation.assignment.zap" },
+                "4": { "patterns": [{ "include": "#value" }] }
+            }
+        },
+
+        "item-declaration": {
+            "begin": "(event|funct)\\s+([a-zA-Z0-9_]+)\\s*(=)\\s*",
+            "beginCaptures": {
+                "1": { "name": "keyword.control.zap" },
+                "2": { "name": "entity.name.function.zap" },
+                "3": { "name": "punctuation.assignment.zap" }
+            },
+            "end": "(?=\\})",
+            "patterns": [
+                { "include": "#item-declaration-value" },
+                { "include": "#item-declaration-data" },
+                { "include": "#item-declaration-invalid" }
+            ]
+        },
+        "item-declaration-value": {
+            "patterns": [
+                {
+                    "match": "(from)\\s*(:)\\s*(Server|Client)",
+                    "captures": {
+                        "1": { "name": "variable.property.zap" },
+                        "2": { "name": "punctuation.separator.zap" },
+                        "3": { "name": "constant.language.zap" }
+                    }
+                },
+                {
+                    "match": "(type)\\s*(:)\\s*(Reliable|Unreliable)",
+                    "captures": {
+                        "1": { "name": "variable.property.zap" },
+                        "2": { "name": "punctuation.separator.zap" },
+                        "3": { "name": "constant.language.zap" }
+                    }
+                },
+                {
+                    "match": "(call)\\s*(:)\\s*(ManyAsync|ManySync|SingleAsync|SingleSync|Async|Sync)",
+                    "captures": {
+                        "1": { "name": "variable.property.zap" },
+                        "2": { "name": "punctuation.separator.zap" },
+                        "3": { "name": "constant.language.zap" }
+                    }
+                }
+            ]
+        },
+        "item-declaration-data": {
+            "begin": "(data|args|rets)\\s*(:)\\s*",
+            "beginCaptures": {
+                "1": { "name": "variable.property.zap" },
+                "2": { "name": "punctuation.separator.zap" }
+            },
+            "end": ",|$",
+            "patterns": [{ "include": "#value" }]
+        },
+        "item-declaration-invalid": {
+            "match": "([a-zA-Z0-9_]+)\\s*(:)\\s*",
+            "captures": {
+                "1": { "name": "invalid.illegal.zap" },
+                "2": { "name": "punctuation.separator.zap" }
+            }
+        },
+
+        "type-declaration": {
+            "begin": "(type)\\s+([a-zA-Z0-9_]+)\\s*(=)\\s*",
+            "beginCaptures": {
+                "1": { "name": "keyword.control.zap" },
+                "2": { "name": "variable.other.zap" },
+                "3": { "name": "punctuation.assignment.zap" }
+            },
+            "end": "(?=\\})|(?=$)",
+            "patterns": [{ "include": "#value" }]
+        },
+
+        "set": {
+            "match": "(set)\\s*\\{([^\\}]+)\\}",
+            "captures": {
+                "1": { "name": "keyword.control.zap" },
+                "2": { "patterns": [{ "include": "#value" }] }
+            }
+        },
+
+        "map": {
+            "begin": "(map)\\s*\\{\\s*\\[([^\\]]+)\\]\\s*(:)",
+            "beginCaptures": {
+                "1": { "name": "keyword.control.zap" },
+                "2": { "patterns": [{ "include": "#value" }] }
+            },
+            "end": "(?=\\})|(?=$)",
+            "patterns": [{ "include": "#value" }]
+        },
+
+        "struct": {
+            "begin": "(struct)\\s*\\{",
+            "beginCaptures": {
+                "1": { "name": "keyword.control.zap" }
+            },
+            "end": "(?=\\})",
+            "patterns": [
+                { "include": "#line-comment" },
+                { "include": "#key-value-pairs" }
+            ]
+        },
+
+        "enum": {
+            "patterns": [
+                { "include": "#line-comment" },
+                { "include": "#enum-tagged" },
+                { "include": "#enum-unit" }
+            ]
+        },
+        "enum-tagged": {
+            "begin": "(enum)\\s*(\"[a-zA-Z0-9_]+\")\\s*\\{",
+            "beginCaptures": {
+                "1": { "name": "keyword.control.zap" },
+                "2": { "name": "string.quoted.double.zap" }
+            },
+            "end": "(?=\\})",
+            "patterns": [{ "include": "#enum-variant" }]
+        },
+        "enum-unit": {
+            "begin": "(enum)\\s*\\{",
+            "beginCaptures": {
+                "1": { "name": "keyword.control.zap" }
+            },
+            "end": "(?=\\})",
+            "patterns": [{ "include": "#enum-variant" }]
+        },
+
+        "enum-variant": {
+            "patterns": [
+                { "include": "#enum-variant-table" },
+                { "include": "#enum-variant-plain" }
+            ]
+        },
+        "enum-variant-table": {
+            "begin": "([a-zA-Z0-9_]+)\\s*(\\{)",
+            "beginCaptures": {
+                "1": { "name": "entity.name.type.enum.zap" },
+                "2": { "name": "punctuation.curly.zap" }
+            },
+            "end": "(\\})",
+            "endCaptures": {
+                "1": { "name": "punctuation.curly.zap" }
+            },
+            "patterns": [{ "include": "#key-value-pairs" }]
+        },
+        "enum-variant-plain": {
+            "match": "([a-zA-Z0-9_]+),?",
+            "captures": {
+                "1": { "name": "entity.name.type.enum.zap" }
+            }
+        },
+
+        "ranges": {
+            "patterns": [
+                {
+                    "match": "(\\()(\\d*)(\\.\\.)(\\d*)(\\))",
+                    "captures": {
+                        "1": { "name": "punctuation.parenthesis.zap" },
+                        "2": { "name": "constant.numeric.range-start.zap" },
+                        "3": { "name": "punctuation.separator.zap" },
+                        "4": { "name": "constant.numeric.range-end.zap" },
+                        "5": { "name": "punctuation.parenthesis.zap" }
+                    }
+                },
+                {
+                    "match": "(\\[)(\\d*)(\\.\\.)(\\d*)(\\])",
+                    "captures": {
+                        "1": { "name": "punctuation.bracket.zap" },
+                        "2": { "name": "constant.numeric.range-start.zap" },
+                        "3": { "name": "punctuation.separator.zap" },
+                        "4": { "name": "constant.numeric.range-end.zap" },
+                        "5": { "name": "punctuation.bracket.zap" }
+                    }
+                }
+            ]
+        },
+
+        "punctuation": {
+            "patterns": [
+                { "name": "punctuation.assignment.zap", "match": "\\=" },
+                { "name": "punctuation.curly.zap", "match": "{" },
+                { "name": "punctuation.curly.zap", "match": "}" },
+                { "name": "punctuation.bracket.zap", "match": "\\[" },
+                { "name": "punctuation.bracket.zap", "match": "\\]" },
+                { "name": "punctuation.comma.zap", "match": "," },
+                { "name": "punctuation.separator.zap", "match": ":" },
+                { "name": "punctuation.separator.zap", "match": ";" }
+            ]
+        }
+    }
+}

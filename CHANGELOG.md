@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- Added syntax highlighting and language support for [Zap](https://github.com/red-blox/zap)
+- Added back support for [Aftman](https://github.com/LPGHatguy/aftman)
+
 ## `0.4.0` - January 7th, 2025
 
 Version `0.4.0` refactors JSON and TOML parsing to use [tree-sitter](https://github.com/tree-sitter/tree-sitter) instead of a custom parser.
@@ -29,7 +36,7 @@ More specifically, it will now provide most services (hover, completion, diagnos
 ### Changes
 
 - Various performance improvements across the board for faster diagnostics and hover responsiveness
-- Links, versions, and other information in hovers are now *much* more consistent and look the same across Cargo, NPM, Rokit, and Wally
+- Links, versions, and other information in hovers are now _much_ more consistent and look the same across Cargo, NPM, Rokit, and Wally
 
 ### Fixes
 

@@ -35,6 +35,23 @@
                     "wally.toml",
                     "wally.lock"
                 ]
+            },
+            {
+                "id": "zap",
+                "configuration": "./configs/zap.language-configuration.json",
+                "aliases": [
+                    "Zap"
+                ],
+                "extensions": [
+                    "zap"
+                ]
+            }
+        ],
+        "grammars": [
+            {
+                "language": "zap",
+                "scopeName": "source.zap",
+                "path": "./syntaxes/zap.tmLanguage.json"
             }
         ],
         "commands": [

@@ -1,7 +1,7 @@
 <!-- markdownlint-disable MD033 -->
 <!-- markdownlint-disable MD041 -->
 
-<img align="right" width="256" src="assets/icon-256.png" />
+<img align="right" width="256" src="assets/icon-256.png" alt="Tooling Language Server icon" />
 
 <h1 align="center">Tooling Language Server</h1>
 
@@ -43,6 +43,12 @@ The language server can be installed as an extension from:
   - A newer version is available
   - The specified tool / package / version does not exist
 - Quick actions on diagnostics - update to newest version
+
+## Additional Language Support
+
+Additionally, the language server provides syntax highlighting for:
+
+- [Zap](https://github.com/red-blox/zap)
 
 ## Development
 
