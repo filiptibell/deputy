@@ -1,0 +1,19 @@
+id = "tooling-language-server"
+name = "Tooling Language Server"
+version = "0.1.0"
+schema_version = 1
+authors = ["Filip Tibell <filip.tibell@gmail.com>", "teapo <4teapo@gmail.com>"]
+description = "Tooling Language Server support."
+repository = "https://github.com/filiptibell/tooling-language-server"
+
+[language_servers.tooling-language-server]
+name = "Tooling Language Server"
+languages = ["TOML", "JSON"]
+
+[slash_commands.tooling-language-server-set-github-personal-access-token]
+description = "Sets the GitHub personal access token Tooling Language Server should use."
+requires_argument = true
+
+[slash_commands.tooling-language-server-remove-github-personal-access-token]
+description = "Removes the GitHub personal access token Tooling Language Server should use."
+requires_argument = false

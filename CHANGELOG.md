@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added syntax highlighting and language support for [Zap](https://github.com/red-blox/zap)
 - Added back support for [Aftman](https://github.com/LPGHatguy/aftman)
+- Added an extension for the [Zed code editor](https://zed.dev/).
 
 ## `0.4.0` - January 7th, 2025
 
