@@ -20,10 +20,10 @@ build *ARGS:
 	set -euo pipefail
 	cargo build --bin {{BIN_NAME}} {{ARGS}}
 
-# Packs the language server into the VSCode (VSIX) extension build directory
+# Copies the built language server into the VSCode (VSIX) extension build directory
 [no-exit-message]
 [private]
-vsix-pack TARGET_DIR DEBUG="false":
+vsix-copy-files TARGET_DIR DEBUG="false":
 	#!/usr/bin/env bash
 	set -euo pipefail
 	#
@@ -45,34 +45,41 @@ vsix-pack TARGET_DIR DEBUG="false":
 	cp CHANGELOG.md {{VSCODE}}/CHANGELOG.md
 	cp LICENSE.txt {{VSCODE}}/LICENSE.txt
 
-# Builds the VSCode (VSIX) extension - must be used after vsix-pack
+# Packages the VSCode (VSIX) extension - vsix-copy-files must be used first
 [no-exit-message]
 [private]
-vsix-build:
+vsix-package:
 	#!/usr/bin/env bash
 	set -euo pipefail
 	cd "{{VSCODE}}/"
 	bun install
 	vsce package --out "{{VSCODE}}/bin/"
 
-# Builds and publishes the VSIX (VSCode + Open VSX) extension to marketplaces
+# Fully builds the language server + VSIX (VSCode + Open VSX) extension for publishing
 [no-exit-message]
-vsix-publish TARGET_TRIPLE VSCODE_TARGET:
+vsix-build TARGET_TRIPLE:
 	#!/usr/bin/env bash
 	set -euo pipefail
 	#
-	echo "🚧 [1/4] Building language server..."
+	echo "🚧 Building language server..."
 	just build --release --target {{TARGET_TRIPLE}}
-	echo "📦 [2/4] Packing language server..."
-	just vsix-pack "target/{{TARGET_TRIPLE}}"
-	echo "🧰 [3/4] Building extension..."
-	just vsix-build
-	echo "🚀 [4/4] Publishing extension..."
+	echo "📦 Copying language server files..."
+	just vsix-copy-files "target/{{TARGET_TRIPLE}}"
+	echo "🧰 Building extension..."
+	just vsix-package
+
+# Builds and publishes the VSIX (VSCode + Open VSX) extension to marketplaces
+[no-exit-message]
+vsix-publish TARGET_TRIPLE EXTENSION_TARGET:
+	#!/usr/bin/env bash
+	set -euo pipefail
 	#
+	just vsix-build {{TARGET_TRIPLE}}
+	#
+	echo "🚀 Publishing extension..."
 	cd "{{VSCODE}}/"
-	vsce publish --target {{VSCODE_TARGET}}
-	ovsx publish --target {{VSCODE_TARGET}}
-	#
+	vsce publish --target {{EXTENSION_TARGET}}
+	ovsx publish --target {{EXTENSION_TARGET}}
 	echo "✅ Published extension successfully!"
 
 # Builds and installs the VSCode extension locally
@@ -81,17 +88,17 @@ vscode-install DEBUG="false":
 	#!/usr/bin/env bash
 	set -euo pipefail
 	#
-	echo "🚧 [1/4] Building language server..."
+	echo "🚧 Building language server..."
 	if [[ "{{DEBUG}}" == "true" ]]; then
 		just build
 	else
 		just build --release
 	fi
-	echo "📦 [2/4] Packing language server..."
-	just vsix-pack "target" {{DEBUG}} > /dev/null
-	echo "🧰 [3/4] Building extension..."
-	just vsix-build > /dev/null
-	echo "🚀 [4/4] Installing extension..."
+	echo "📦 Copying language server files..."
+	just vsix-copy-files "target" {{DEBUG}} > /dev/null
+	echo "🧰 Building extension..."
+	just vsix-package > /dev/null
+	echo "🚀 Installing extension..."
 	#
 	EXTENSION=$(find "{{VSCODE}}/bin/" -name "*.vsix")
 	code --install-extension "$EXTENSION" &> /dev/null
