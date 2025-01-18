@@ -103,11 +103,8 @@ jobs:
       - name: Build server
         run: just build --locked --release --target ${{ matrix.cargo-target }}
 
-      - name: Build & publish extension - VSCode + Open VSX
-        run: just vsix-publish ${{ matrix.cargo-target }} ${{ matrix.vscode-target }}
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_TOKEN }}
-          OVSX_PAT: ${{ secrets.OVSX_TOKEN }}
+      - name: Build VSIX extension
+        run: just vsix-build ${{ matrix.cargo-target }}
 
       - name: Create release archive
         run: just zip-release ${{ matrix.cargo-target }}
@@ -117,6 +114,12 @@ jobs:
         with:
           name: ${{ matrix.artifact-name }}
           path: release.zip
+
+      - name: Publish VSIX extension
+        run: just vsix-publish ${{ matrix.cargo-target }} ${{ matrix.vscode-target }}
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_TOKEN }}
+          OVSX_PAT: ${{ secrets.OVSX_TOKEN }}
 
   release-github:
     name: Release (GitHub)
