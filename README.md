@@ -34,6 +34,7 @@ Check out the [features](#features) section for a full list of features.
 The language server can be installed as an extension from:
 
 - The [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=filiptibell.tooling-language-server) (VSCode)
+- The [Open VSX Registry](https://open-vsx.org/extension/filiptibell/tooling-language-server) (Cursor, Windsurf, ...)
 
 ## Features
 
