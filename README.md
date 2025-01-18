@@ -27,7 +27,7 @@ A language server supporting several tools and package managers:
 - [Wally](https://github.com/UpliftGames/wally)
 
 Provides autocomplete, diagnostics for out-of-date versions, and more. <br/>
-Check out the [features](#features) section for a full list of features.
+Check out the [features](#features) and [screenshots](#screenshots) sections for a full overview.
 
 ## Installation
 
@@ -44,6 +44,20 @@ The language server can be installed as an extension from:
   - A newer version is available
   - The specified tool / package / version does not exist
 - Quick actions on diagnostics - update to newest version
+
+## Screenshots
+
+### Hovers
+
+<img src="assets/screenshots/cargo-screenshot-hover.png" alt="Hover" height="50%" width="50%" />
+
+### Diagnostics
+
+<img src="assets/screenshots/cargo-screenshot-diagnostics.png" alt="Diagnostics" height="50%" width="50%" />
+
+### Completions
+
+<img src="assets/screenshots/cargo-screenshot-completions.png" alt="Completions" height="50%" width="50%" />
 
 ## Additional Language Support
 
