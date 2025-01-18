@@ -18,21 +18,21 @@ pub fn validate(token: &str) -> Result<()> {
     fetch(&request).map_err(|e| {
         const STATUS_CODE_START: &str = "status code ";
         format!(
-            "Token validation failed. {}",
+            "Token validation failed{}",
             match e.find(STATUS_CODE_START) {
                 Some(status_code_position) => {
                     let status_str = &e[status_code_position + STATUS_CODE_START.len()..];
                     match status_str {
-                        "401 Unauthorized" => "Invalid token.".to_string(),
+                        "401 Unauthorized" => ": Invalid token.".to_string(),
                         "403 Forbidden" => {
-                            "Too many invalid attempts or token has insufficient permissions."
+                            ": Too many failed attempts or token has insufficient permissions."
                                 .to_string()
                         }
-                        "404 Not Found" => "Token has insufficient permissions.".to_string(),
-                        _ => format!("Http error: {}", &e),
+                        "404 Not Found" => ": Token has insufficient permissions.".to_string(),
+                        _ => format!(". Http error: {}", &e),
                     }
                 }
-                None => format!("Http error: {}", &e),
+                None => format!(". Http error: {}", &e),
             }
         )
     })?;
@@ -53,7 +53,7 @@ pub fn run_set_personal_access_token(
         .map_err(|e| format!("Failed to write to GitHub personal access token file: {e}"))?;
 
     Ok(zed::SlashCommandOutput {
-        text: "Successfully set the GitHub personal access token. Restart the language server for the changes to the effect.".to_owned(),
+        text: "Successfully set the GitHub personal access token. Restart the language server for the changes to take effect.".to_owned(),
         sections: Vec::new(),
     })
 }
@@ -73,7 +73,7 @@ pub fn run_remove_personal_access_token(
         .map_err(|e| format!("Failed to remove personal access token file: {e}"))?;
 
     Ok(zed::SlashCommandOutput {
-        text: "Successfully removed the GitHub personal access token if it was set. Restart the language server for the changes to take effect.".to_owned(),
+        text: "Successfully removed the GitHub personal access token. Restart the language server for the changes to take effect.".to_owned(),
         sections: Vec::new(),
     })
 }
