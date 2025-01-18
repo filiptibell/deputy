@@ -20,10 +20,10 @@ build *ARGS:
 	set -euo pipefail
 	cargo build --bin {{BIN_NAME}} {{ARGS}}
 
-# Packs the language server into the VSCode extension build directory
+# Packs the language server into the VSCode (VSIX) extension build directory
 [no-exit-message]
 [private]
-vscode-pack TARGET_DIR DEBUG="false":
+vsix-pack TARGET_DIR DEBUG="false":
 	#!/usr/bin/env bash
 	set -euo pipefail
 	#
@@ -45,15 +45,35 @@ vscode-pack TARGET_DIR DEBUG="false":
 	cp CHANGELOG.md {{VSCODE}}/CHANGELOG.md
 	cp LICENSE.txt {{VSCODE}}/LICENSE.txt
 
-# Builds the VSCode extension - must be used after vscode-pack
+# Builds the VSCode (VSIX) extension - must be used after vsix-pack
 [no-exit-message]
 [private]
-vscode-build:
+vsix-build:
 	#!/usr/bin/env bash
 	set -euo pipefail
 	cd "{{VSCODE}}/"
 	bun install
 	vsce package --out "{{VSCODE}}/bin/"
+
+# Builds and publishes the VSIX (VSCode + Open VSX) extension to marketplaces
+[no-exit-message]
+vsix-publish TARGET_TRIPLE VSCODE_TARGET:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	#
+	echo "🚧 [1/4] Building language server..."
+	just build --release --target {{TARGET_TRIPLE}}
+	echo "📦 [2/4] Packing language server..."
+	just vsix-pack "target/{{TARGET_TRIPLE}}"
+	echo "🧰 [3/4] Building extension..."
+	just vsix-build
+	echo "🚀 [4/4] Publishing extension..."
+	#
+	cd "{{VSCODE}}/"
+	vsce publish --target {{VSCODE_TARGET}}
+	ovsx publish --target {{VSCODE_TARGET}}
+	#
+	echo "✅ Published extension successfully!"
 
 # Builds and installs the VSCode extension locally
 [no-exit-message]
@@ -68,34 +88,15 @@ vscode-install DEBUG="false":
 		just build --release
 	fi
 	echo "📦 [2/4] Packing language server..."
-	just vscode-pack "target" {{DEBUG}} > /dev/null
+	just vsix-pack "target" {{DEBUG}} > /dev/null
 	echo "🧰 [3/4] Building extension..."
-	just vscode-build > /dev/null
+	just vsix-build > /dev/null
 	echo "🚀 [4/4] Installing extension..."
 	#
 	EXTENSION=$(find "{{VSCODE}}/bin/" -name "*.vsix")
 	code --install-extension "$EXTENSION" &> /dev/null
 	#
 	echo "✅ Installed extension successfully!"
-
-# Builds and publishes the VSCode extension to the marketplace
-[no-exit-message]
-vscode-publish TARGET_TRIPLE VSCODE_TARGET:
-	#!/usr/bin/env bash
-	set -euo pipefail
-	#
-	echo "🚧 [1/4] Building language server..."
-	just build --release --target {{TARGET_TRIPLE}}
-	echo "📦 [2/4] Packing language server..."
-	just vscode-pack "target/{{TARGET_TRIPLE}}"
-	echo "🧰 [3/4] Building extension..."
-	just vscode-build
-	echo "🚀 [4/4] Publishing extension..."
-	#
-	cd "{{VSCODE}}/"
-	vsce publish --target {{VSCODE_TARGET}}
-	#
-	echo "✅ Published extension successfully!"
 
 # Zips up language server and built extensions into single zip file
 [no-exit-message]

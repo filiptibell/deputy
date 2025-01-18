@@ -103,10 +103,11 @@ jobs:
       - name: Build server
         run: just build --locked --release --target ${{ matrix.cargo-target }}
 
-      - name: Build & publish extension - VSCode
-        run: just vscode-publish ${{ matrix.cargo-target }} ${{ matrix.vscode-target }}
+      - name: Build & publish extension - VSCode + Open VSX
+        run: just vsix-publish ${{ matrix.cargo-target }} ${{ matrix.vscode-target }}
         env:
           VSCE_PAT: ${{ secrets.VSCE_TOKEN }}
+          OVSX_PAT: ${{ secrets.OVSX_TOKEN }}
 
       - name: Create release archive
         run: just zip-release ${{ matrix.cargo-target }}
