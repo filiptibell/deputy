@@ -97,8 +97,8 @@ jobs:
 
       - name: Install other tooling
         run: |
-          bun install -g @vscode/vsce
-          bun pm trust -g @vscode/vsce-sign
+          bun install -g @vscode/vsce ovsx
+          bun pm trust -g --all
 
       - name: Build server
         run: just build --locked --release --target ${{ matrix.cargo-target }}
