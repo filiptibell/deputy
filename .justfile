@@ -78,8 +78,8 @@ vsix-publish TARGET_TRIPLE EXTENSION_TARGET:
 	#
 	echo "🚀 Publishing extension..."
 	cd "{{VSCODE}}/"
-	vsce publish --target {{EXTENSION_TARGET}}
-	ovsx publish --target {{EXTENSION_TARGET}}
+	vsce publish --skip-duplicate --target {{EXTENSION_TARGET}}
+	ovsx publish --skip-duplicate --target {{EXTENSION_TARGET}}
 	echo "✅ Published extension successfully!"
 
 # Builds and installs the VSCode extension locally
