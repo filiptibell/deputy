@@ -12,7 +12,7 @@ mod name;
 mod shared;
 mod tool;
 
-use name::*;
+pub use name::*;
 use shared::*;
 pub use tool::*;
 

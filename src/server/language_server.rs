@@ -1,4 +1,5 @@
 use std::io;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -12,7 +13,7 @@ use tracing::{trace, warn};
 
 use crate::server::conversion::convert_to_utf8;
 use crate::server::{DocumentBuilder, Server};
-use crate::tools::{Tool, Tools};
+use crate::tools::{Tool, ToolName, Tools};
 
 #[tower_lsp::async_trait]
 impl LanguageServer for Server {
@@ -25,7 +26,11 @@ impl LanguageServer for Server {
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        let uri = params.text_document.uri.clone();
+        let uri = &params.text_document.uri;
+        if ToolName::from_uri(uri).is_err() {
+            return;
+        }
+
         let version = params.text_document.version;
         let text = params.text_document.text.clone();
 
@@ -51,7 +56,7 @@ impl LanguageServer for Server {
         waiting.trigger(uri.clone());
 
         // If we have any relevant files, try to read those too right away
-        let relevant_uris = Tools::relevant_file_uris(&uri)
+        let relevant_uris = Tools::relevant_file_uris(uri)
             .into_iter()
             .filter(|u| !documents.contains_key(u))
             .collect::<Vec<_>>();
@@ -97,11 +102,14 @@ impl LanguageServer for Server {
     }
 
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
-        let uri = params.text_document.uri.clone();
+        let uri = &params.text_document.uri;
+        if ToolName::from_uri(uri).is_err() {
+            return;
+        }
 
         let documents = Arc::clone(&self.documents);
         let mut document = documents
-            .get_mut(&uri)
+            .get_mut(uri)
             .expect("Got close event for nonexistent document");
         document.set_opened(false);
 
@@ -109,12 +117,16 @@ impl LanguageServer for Server {
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        let uri = params.text_document.uri.clone();
+        let uri = &params.text_document.uri;
+        if ToolName::from_uri(uri).is_err() {
+            return;
+        }
+
         let version = params.text_document.version;
 
         let documents = Arc::clone(&self.documents);
         let mut document = documents
-            .get_mut(&uri)
+            .get_mut(uri)
             .expect("Got change event for nonexistent document");
 
         document.set_version(version);
@@ -126,7 +138,12 @@ impl LanguageServer for Server {
     }
 
     async fn did_create_files(&self, params: CreateFilesParams) {
-        for create in params.files {
+        let files = params
+            .files
+            .into_iter()
+            .filter(|f| ToolName::from_str(&f.uri).is_ok());
+
+        for create in files {
             let new = Url::parse(create.uri.as_str())
                 .expect("Got invalid file path in create notification");
             // NOTE: We intentionally don't read and insert a document here,
@@ -137,8 +154,12 @@ impl LanguageServer for Server {
     }
 
     async fn did_rename_files(&self, params: RenameFilesParams) {
+        let files = params.files.into_iter().filter(|f| {
+            ToolName::from_str(&f.old_uri).is_ok() || ToolName::from_str(&f.new_uri).is_ok()
+        });
+
         let documents = Arc::clone(&self.documents);
-        for rename in params.files {
+        for rename in files {
             let old = Url::parse(rename.old_uri.as_str())
                 .expect("Got invalid file path in rename notification");
             let new = Url::parse(rename.new_uri.as_str())
@@ -153,8 +174,13 @@ impl LanguageServer for Server {
     }
 
     async fn did_delete_files(&self, params: DeleteFilesParams) {
+        let files = params
+            .files
+            .into_iter()
+            .filter(|f| ToolName::from_str(&f.uri).is_ok());
+
         let documents = Arc::clone(&self.documents);
-        for delete in params.files {
+        for delete in files {
             let old = Url::parse(delete.uri.as_str())
                 .expect("Got invalid file path in delete notification");
             documents.remove(&old);
@@ -164,13 +190,22 @@ impl LanguageServer for Server {
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
         let uri = &params.text_document_position_params.text_document.uri;
+        if ToolName::from_uri(uri).is_err() {
+            return Ok(None);
+        }
+
         self.wait_if_nonexistent_or_timeout(uri).await?;
         self.tools.hover(params).await
     }
 
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
         let uri = &params.text_document_position.text_document.uri;
+        if ToolName::from_uri(uri).is_err() {
+            return Ok(None);
+        }
+
         self.wait_if_nonexistent_or_timeout(uri).await?;
+
         match self.tools.completion(params).await {
             Err(e) => Err(e),
             Ok(r) => Ok(Some(r)),
@@ -186,6 +221,18 @@ impl LanguageServer for Server {
         params: DocumentDiagnosticParams,
     ) -> Result<DocumentDiagnosticReportResult> {
         let uri = &params.text_document.uri;
+        if ToolName::from_uri(uri).is_err() {
+            return Ok(DocumentDiagnosticReportResult::Report(
+                DocumentDiagnosticReport::Full(RelatedFullDocumentDiagnosticReport {
+                    related_documents: None,
+                    full_document_diagnostic_report: FullDocumentDiagnosticReport {
+                        result_id: None,
+                        items: Vec::new(),
+                    },
+                }),
+            ));
+        }
+
         self.wait_if_nonexistent_or_timeout(uri).await?;
         match self.tools.diagnostics(params).await {
             Err(e) => Err(e),
@@ -205,6 +252,11 @@ impl LanguageServer for Server {
         &self,
         params: CodeActionParams,
     ) -> Result<Option<Vec<CodeActionOrCommand>>> {
+        let uri = &params.text_document.uri;
+        if ToolName::from_uri(uri).is_err() {
+            return Ok(None);
+        }
+
         match self.tools.code_action(params).await {
             Err(e) => Err(e),
             Ok(v) => {
