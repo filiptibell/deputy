@@ -180,15 +180,20 @@ pub trait Versioned {
         self.raw_version_string().trim().parse()
     }
 
-    fn extract_latest_version<I, V>(&self, other_versions: I) -> Option<LatestVersion<V>>
+    fn extract_latest_version_filtered<I, V, F>(
+        &self,
+        other_versions: I,
+        filter_fn: F,
+    ) -> Option<LatestVersion<V>>
     where
         I: IntoIterator<Item = V>,
         V: Versioned,
+        F: Fn(&LatestVersion<V>) -> bool,
     {
         let this_version = self.parse_version().ok()?;
         let this_version_req = self.parse_version_req().ok();
 
-        let mut other_versions = other_versions
+        let other_versions = other_versions
             .into_iter()
             .filter_map(|o| match o.parse_version() {
                 Ok(v) => Some((o, v)),
@@ -207,27 +212,47 @@ pub trait Versioned {
             })
             .collect::<Vec<_>>();
 
-        other_versions.sort_by_key(|(_, v)| v.clone());
+        let mut latest_versions = other_versions
+            .into_iter()
+            .map(|(item, item_version)| {
+                let is_exactly_compatible = item_version
+                    .to_string()
+                    .eq_ignore_ascii_case(&this_version.to_string());
+                LatestVersion {
+                    is_semver_compatible: is_exactly_compatible
+                        || this_version_req
+                            .as_ref()
+                            .is_some_and(|req| req.matches(&item_version)),
+                    is_exactly_compatible,
+                    this_version: this_version.clone(),
+                    item_version,
+                    item,
+                }
+            })
+            .collect::<Vec<_>>();
 
-        other_versions.pop().map(|(item, item_version)| {
-            let is_exactly_compatible = item_version
-                .to_string()
-                .eq_ignore_ascii_case(&this_version.to_string());
-            LatestVersion {
-                is_semver_compatible: is_exactly_compatible
-                    || this_version_req.is_some_and(|req| req.matches(&item_version)),
-                is_exactly_compatible,
-                this_version,
-                item_version,
-                item,
-            }
-        })
+        latest_versions.retain(|latest_version| filter_fn(latest_version));
+        latest_versions.sort_by_key(|latest_version| latest_version.item_version.clone());
+        latest_versions.pop()
     }
 
-    fn extract_completion_versions<I, V>(&self, potential_versions: I) -> Vec<CompletionVersion<V>>
+    fn extract_latest_version<I, V>(&self, other_versions: I) -> Option<LatestVersion<V>>
     where
         I: IntoIterator<Item = V>,
         V: Versioned,
+    {
+        self.extract_latest_version_filtered(other_versions, |_| true)
+    }
+
+    fn extract_completion_versions_filtered<I, V, F>(
+        &self,
+        potential_versions: I,
+        filter_fn: F,
+    ) -> Vec<CompletionVersion<V>>
+    where
+        I: IntoIterator<Item = V>,
+        V: Versioned,
+        F: Fn(&V) -> bool,
     {
         let this_version_raw = match self.parse_version_req() {
             Ok(req) => req.minimum_version().to_string(), // Removes prefixes like '^' in a "correct" manner
@@ -252,6 +277,8 @@ pub trait Versioned {
             })
             .collect::<Vec<_>>();
 
+        potential_versions.retain(|v| filter_fn(v));
+
         potential_versions.sort_unstable_by(|a, b| {
             if let Ok(v_a) = a.parse_version() {
                 if let Ok(v_b) = b.parse_version() {
@@ -275,6 +302,14 @@ pub trait Versioned {
                 item,
             })
             .collect()
+    }
+
+    fn extract_completion_versions<I, V>(&self, potential_versions: I) -> Vec<CompletionVersion<V>>
+    where
+        I: IntoIterator<Item = V>,
+        V: Versioned,
+    {
+        self.extract_completion_versions_filtered(potential_versions, |_| true)
     }
 }
 

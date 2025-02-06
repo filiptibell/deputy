@@ -80,6 +80,7 @@ pub async fn get_cargo_completions_version(
         Ok(m) => m,
     };
 
+    let use_precise_edit = !version.unquoted().is_empty();
     let valid_vec = dep
         .extract_completion_versions(metadatas.into_iter())
         .into_iter()
@@ -89,11 +90,16 @@ pub async fn get_cargo_completions_version(
             label: potential_version.item_version_raw.to_string(),
             kind: Some(CompletionItemKind::VALUE),
             sort_text: Some(format!("{:0>5}", index)),
-            text_edit: Some(CompletionTextEdit::Edit(document.create_substring_edit(
-                version.range.start.line,
-                potential_version.this_version_raw,
-                potential_version.item_version_raw,
-            ))),
+            text_edit: if use_precise_edit {
+                Some(CompletionTextEdit::Edit(document.create_substring_edit(
+                    version.range.start.line,
+                    potential_version.this_version_raw,
+                    potential_version.item_version_raw,
+                )))
+            } else {
+                None
+            },
+            deprecated: Some(potential_version.item.yanked),
             ..Default::default()
         })
         .collect::<Vec<_>>();
@@ -113,6 +119,7 @@ pub async fn get_cargo_completions_features(
 
     tracing::debug!("Known features: {known_features:?}");
 
+    let use_precise_edit = !feat.unquoted().is_empty();
     let valid_features = known_features
         .into_iter()
         .filter(|f| f.starts_with(feat.unquoted()))
@@ -121,11 +128,15 @@ pub async fn get_cargo_completions_features(
             label: known_feat.to_string(),
             kind: Some(CompletionItemKind::VALUE),
             sort_text: Some(format!("{:0>5}", index)),
-            text_edit: Some(CompletionTextEdit::Edit(document.create_substring_edit(
-                feat.range.start.line,
-                feat.unquoted(),
-                known_feat.to_string(),
-            ))),
+            text_edit: if use_precise_edit {
+                Some(CompletionTextEdit::Edit(document.create_substring_edit(
+                    feat.range.start.line,
+                    feat.unquoted(),
+                    known_feat.to_string(),
+                )))
+            } else {
+                None
+            },
             ..Default::default()
         })
         .collect::<Vec<_>>();

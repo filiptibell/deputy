@@ -80,9 +80,14 @@ async fn get_cargo_diagnostics_version(
         }]);
     }
 
-    // Try to find the latest non-prerelease version
+    // Try to find the latest non-prerelease version, filtering out
+    // any version that has been yanked - unless we exactly specify it
     let latest_name = dep.name().unquoted().to_string();
-    let Some(latest_version) = version_min.extract_latest_version(metas.iter().cloned()) else {
+    let Some(latest_version) = version_min
+        .extract_latest_version_filtered(metas.iter().cloned(), |v| {
+            !v.item.yanked || v.is_exactly_compatible
+        })
+    else {
         debug!("Failed to get latest crates.io version for '{latest_name}'");
         return Ok(Vec::new());
     };

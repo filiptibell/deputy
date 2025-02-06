@@ -13,6 +13,8 @@ pub struct IndexMetadata {
     pub dependencies: Vec<IndexMetadataDependency>,
     #[serde(default, alias = "feats")]
     pub features: HashMap<String, Vec<String>>,
+    #[serde(default)]
+    pub yanked: bool,
 }
 
 impl Versioned for IndexMetadata {

@@ -52,6 +52,7 @@ pub async fn get_npm_completions_version(
         Ok(m) => m,
     };
 
+    let use_precise_edit = !version.unquoted().is_empty();
     let valid_vec = dep
         .extract_completion_versions(metadata.versions.into_values())
         .into_iter()
@@ -61,11 +62,15 @@ pub async fn get_npm_completions_version(
             label: potential_version.item_version_raw.to_string(),
             kind: Some(CompletionItemKind::VALUE),
             sort_text: Some(format!("{:0>5}", index)),
-            text_edit: Some(CompletionTextEdit::Edit(document.create_substring_edit(
-                version.range.start.line,
-                potential_version.this_version_raw,
-                potential_version.item_version_raw,
-            ))),
+            text_edit: if use_precise_edit {
+                Some(CompletionTextEdit::Edit(document.create_substring_edit(
+                    version.range.start.line,
+                    potential_version.this_version_raw,
+                    potential_version.item_version_raw,
+                )))
+            } else {
+                None
+            },
             ..Default::default()
         })
         .collect::<Vec<_>>();
