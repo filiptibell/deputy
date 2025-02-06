@@ -10,6 +10,11 @@
                     (string) @version
                     (inline_table
                         (pair
+                            (bare_key) @package_key
+                            (string) @package
+                            (#eq? @package_key "package")
+                        )?
+                        (pair
                             (bare_key) @version_key
                             (string) @version
                             (#eq? @version_key "version")
@@ -67,6 +72,11 @@
                     (string) @version
                     (inline_table
                         (pair
+                            (bare_key) @package_key
+                            (string) @package
+                            (#eq? @package_key "package")
+                        )?
+                        (pair
                             (bare_key) @version_key
                             (string) @version
                             (#eq? @version_key "version")
@@ -115,6 +125,11 @@
             (bare_key) @dependency_name
         )
         [
+            (pair
+                (bare_key) @package_key
+                (string) @package
+                (#eq? @package_key "package")
+            )?
         	(pair
                 (bare_key) @version_key
                 (string) @version

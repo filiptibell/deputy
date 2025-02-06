@@ -44,6 +44,11 @@ pub fn query_cargo_toml_dependencies(doc: &TreeSitterDocument) -> Vec<Dependency
                     });
                 }
                 "dependency_name" | "incomplete_dependency_name" => {
+                    if dep_name_node.is_none() {
+                        dep_name_node = Some(Node::string(&capture.node, node_text));
+                    }
+                }
+                "package" => {
                     dep_name_node = Some(Node::string(&capture.node, node_text));
                 }
                 "version" => {
