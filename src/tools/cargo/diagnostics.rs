@@ -12,10 +12,6 @@ use super::crates::models::IndexMetadata;
 use super::util::get_features;
 use super::{Clients, Document};
 
-// TODO: Enable feature diagnostics when we have a way to
-// actually fetch *all* features from the index or the api
-const SHOW_FEATURE_DIAGNOSTICS: bool = false;
-
 pub async fn get_cargo_diagnostics(
     clients: &Clients,
     doc: &Document,
@@ -133,12 +129,13 @@ async fn get_cargo_diagnostics_features(
     let Some(features) = dep.spec().and_then(|s| s.contents.features.as_ref()) else {
         return Ok(Vec::new());
     };
-
-    if !SHOW_FEATURE_DIAGNOSTICS {
+    if features.contents.is_empty() {
         return Ok(Vec::new());
     }
 
-    let known_features = get_features(clients, dep).await;
+    let Some(known_features) = get_features(clients, dep).await else {
+        return Ok(Vec::new());
+    };
 
     let mut diagnostics = Vec::new();
     for feat in features.contents.iter() {

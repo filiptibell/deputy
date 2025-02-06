@@ -107,7 +107,10 @@ pub async fn get_cargo_completions_features(
     dep: &Dependency,
     feat: &Node<String>,
 ) -> Result<CompletionResponse> {
-    let known_features = get_features(clients, dep).await;
+    let Some(known_features) = get_features(clients, dep).await else {
+        return Ok(CompletionResponse::Array(Vec::new()));
+    };
+
     tracing::debug!("Known features: {known_features:?}");
 
     let valid_features = known_features
