@@ -9,26 +9,28 @@ pub async fn get_features(clients: &Clients, dep: &Dependency) -> Option<Vec<Str
     let dver = dep.spec().and_then(|s| s.contents.version.as_ref())?;
     let dreq = VersionReq::parse(dver.unquoted()).ok()?;
 
-    let data = clients
+    let metas = clients
         .crates
-        .get_crate_data(dname)
+        .get_sparse_index_crate_metadatas(dname)
         .await
         .inspect_err(|e| {
             tracing::error!("failed to get crate data for {dname}: {e}");
         })
         .ok()?;
 
-    let features = data.versions.into_iter().find_map(|meta| {
+    let meta = metas.iter().find_map(|meta| {
         let version = meta.parse_version().ok()?;
         if dreq.matches(&version) {
-            Some(meta.features)
+            Some(meta)
         } else {
             None
         }
     })?;
 
-    let mut known_features = features.into_keys().collect::<Vec<_>>();
-    known_features.sort_unstable();
-    known_features.dedup();
-    Some(known_features)
+    Some(
+        meta.all_features()
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect(),
+    )
 }
