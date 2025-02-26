@@ -15,12 +15,14 @@ mod document;
 mod initialize;
 mod language_server;
 mod requests;
+mod settings;
 mod transport;
 mod waiting;
 
 use waiting::*;
 
 pub use document::*;
+pub use settings::*;
 pub use transport::*;
 
 #[derive(Debug, Clone)]
@@ -33,6 +35,7 @@ pub struct ServerInner {
     client: Client,
     clients: Clients,
     documents: Documents,
+    settings: SettingsMap,
     tools: Tools,
     waiting: Waiting,
 }
@@ -72,6 +75,7 @@ impl Server {
             client: client.clone(),
             clients: clients.clone(),
             documents: Arc::clone(&documents),
+            settings: SettingsMap::new(),
             tools: Tools::new(client, clients, documents),
             waiting: Waiting::new(),
         });

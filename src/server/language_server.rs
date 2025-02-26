@@ -12,7 +12,7 @@ use tower_lsp::LanguageServer;
 use tracing::{trace, warn};
 
 use crate::server::conversion::convert_to_utf8;
-use crate::server::{DocumentBuilder, Server};
+use crate::server::{DocumentBuilder, Server, Settings};
 use crate::tools::{Tool, ToolName, Tools};
 
 #[tower_lsp::async_trait]
@@ -23,6 +23,13 @@ impl LanguageServer for Server {
 
     async fn shutdown(&self) -> Result<()> {
         Ok(())
+    }
+
+    async fn did_change_configuration(&self, params: DidChangeConfigurationParams) {
+        if let Ok(settings) = serde_json::from_value::<Settings>(params.settings) {
+            self.settings.update_global_settings(settings);
+            self.maybe_trigger_workspace_diagnostics().await;
+        }
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
@@ -296,4 +303,6 @@ impl Server {
             }
         }
     }
+
+    async fn maybe_trigger_workspace_diagnostics(&self) {}
 }
