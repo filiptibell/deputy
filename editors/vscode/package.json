@@ -63,7 +63,18 @@
                 "command": "tooling-language-server.resetAuthForGitHub",
                 "title": "Tooling Language Server - Reset GitHub Personal Access Token"
             }
-        ]
+        ],
+        "configuration": {
+            "title": "Tooling Language Server",
+            "properties": {
+                "tooling-language-server.diagnostics.workspace": {
+                    "markdownDescription": "Compute diagnostics for the whole workspace",
+                    "type": "boolean",
+                    "default": false,
+                    "scope": "resource"
+                }
+            }
+        }
     },
     "scripts": {
         "vscode:prepublish": "bun run esbuild -- --minify",
