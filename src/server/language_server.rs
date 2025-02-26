@@ -9,7 +9,7 @@ use tokio::time::timeout;
 use tower_lsp::jsonrpc::{Error, ErrorCode, Result};
 use tower_lsp::lsp_types::*;
 use tower_lsp::LanguageServer;
-use tracing::{info, trace, warn};
+use tracing::{error, info, trace, warn};
 
 use crate::server::conversion::convert_to_utf8;
 use crate::server::{DocumentBuilder, Server, Settings};
@@ -43,12 +43,18 @@ impl LanguageServer for Server {
     }
 
     async fn did_change_configuration(&self, params: DidChangeConfigurationParams) {
-        if let Ok(settings) = serde_json::from_value::<Settings>(params.settings) {
-            self.settings.update_global_settings(settings);
-            if self.workspace_diagnostics.is_enabled() {
-                for entry in self.documents.iter() {
-                    let uri = entry.key();
-                    self.workspace_diagnostics.process(uri).await;
+        match serde_json::from_value::<Settings>(params.settings) {
+            Err(e) => {
+                error!("Failed to parse settings: {}", e);
+            }
+            Ok(v) => {
+                info!("Settings updated: {v:#?}");
+                self.settings.update_global_settings(v);
+                if self.workspace_diagnostics.is_enabled() {
+                    for entry in self.documents.iter() {
+                        let uri = entry.key();
+                        self.workspace_diagnostics.process(uri).await;
+                    }
                 }
             }
         }
