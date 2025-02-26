@@ -254,10 +254,9 @@ pub trait Versioned {
         V: Versioned,
         F: Fn(&V) -> bool,
     {
-        let this_version_raw = match self.parse_version_req() {
-            Ok(req) => req.minimum_version().to_string(), // Removes prefixes like '^' in a "correct" manner
-            Err(_) => trim_version_specifiers(self.raw_version_string()), // Tries to still remove prefixes, less correct
-        };
+        // Try to remove prefixes from partial string - this is not necessarily
+        // 100% correct but unfortunately parsing as semver is not always possible
+        let this_version_raw = trim_version_specifiers(self.raw_version_string());
 
         let mut potential_versions = potential_versions
             .into_iter()

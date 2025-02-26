@@ -101,7 +101,14 @@ impl Document {
             },
         })];
 
-        let offset = slice.find(substring).expect("invalid source text");
+        let Some(offset) = slice.find(substring) else {
+            panic!(
+                "Invalid substring edit!\
+                \nLine: {slice}\
+                \nSubstring: {substring}\
+                \nReplacement: {replacement}"
+            )
+        };
         let edit_range = Range {
             start: Position {
                 line: range.start.line,

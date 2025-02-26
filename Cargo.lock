@@ -1828,7 +1828,7 @@ dependencies = [
 
 [[package]]
 name = "tooling-language-server"
-version = "0.4.2"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "async-channel",

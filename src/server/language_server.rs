@@ -31,15 +31,17 @@ impl LanguageServer for Server {
     }
 
     async fn did_change_configuration(&self, params: DidChangeConfigurationParams) {
-        match serde_json::from_value::<Settings>(params.settings) {
+        match serde_json::from_value::<Option<Settings>>(params.settings) {
             Err(e) => {
-                error!("Failed to parse settings: {e}");
+                error!("Failed to parse changed settings: {e}");
             }
             Ok(v) => {
-                info!("Settings updated: {v:#?}");
+                info!("Settings changed: {v:#?}");
 
                 let had_diags = self.settings.is_workspace_diagnostics_enabled();
-                self.settings.update_global_settings(v);
+                if let Some(v) = v {
+                    self.settings.update_global_settings(v);
+                }
                 let has_diags = self.settings.is_workspace_diagnostics_enabled();
 
                 if has_diags != had_diags {
@@ -50,7 +52,9 @@ impl LanguageServer for Server {
                     }
                 }
 
-                self.refresh_workspace_diagnostics_full().await;
+                if has_diags {
+                    self.refresh_workspace_diagnostics_full().await;
+                }
             }
         }
     }
@@ -317,9 +321,21 @@ impl LanguageServer for Server {
         &self,
         _: WorkspaceDiagnosticParams,
     ) -> Result<WorkspaceDiagnosticReportResult> {
-        self.refresh_workspace_diagnostics().await;
+        let diags = self.refresh_workspace_diagnostics().await;
+        let items = diags.into_iter().map(|(uri, version, items)| {
+            WorkspaceDocumentDiagnosticReport::Full(WorkspaceFullDocumentDiagnosticReport {
+                uri,
+                version: Some(version as i64),
+                full_document_diagnostic_report: FullDocumentDiagnosticReport {
+                    result_id: None,
+                    items,
+                },
+            })
+        });
         Ok(WorkspaceDiagnosticReportResult::Report(
-            WorkspaceDiagnosticReport { items: vec![] },
+            WorkspaceDiagnosticReport {
+                items: items.collect(),
+            },
         ))
     }
 }
@@ -348,6 +364,8 @@ impl Server {
     }
 
     async fn refresh_workspace_diagnostics_full(&self) {
+        info!("Performing full workspace diagnostics refresh");
+
         let mut uris = Vec::new();
         let mut stack = vec![];
 
@@ -421,15 +439,16 @@ impl Server {
         self.refresh_workspace_diagnostics().await;
     }
 
-    async fn refresh_workspace_diagnostics(&self) {
+    async fn refresh_workspace_diagnostics(&self) -> Vec<(Url, i32, Vec<Diagnostic>)> {
         let diag_futs = self
             .documents
             .iter()
-            .map(|doc| doc.key().clone())
-            .map(|uri| async move {
-                self.workspace_diagnostics.process(&uri).await;
+            .map(|doc| (doc.key().clone(), doc.value().version()))
+            .map(|(uri, version)| async move {
+                let diags = self.workspace_diagnostics.process(&uri).await;
+                (uri, version, diags)
             });
 
-        join_all(diag_futs).await;
+        join_all(diag_futs).await
     }
 }

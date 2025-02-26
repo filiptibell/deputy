@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## `0.5.0` - February 26th, 2025
 
 ### Added
 
@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed invalid diagnostics and missing completions for [Cargo optional dependencies](https://doc.rust-lang.org/cargo/reference/features.html#optional-dependencies)
+- Fixed language server panicking and not recovering during certain completion requests
 
 ## `0.4.2` - February 6th, 2025
 

@@ -65,7 +65,7 @@ pub async fn get_npm_completions_version(
             text_edit: if use_precise_edit {
                 Some(CompletionTextEdit::Edit(document.create_substring_edit(
                     version.range.start.line,
-                    potential_version.this_version_raw,
+                    version.unquoted(),
                     potential_version.item_version_raw,
                 )))
             } else {

@@ -43,9 +43,9 @@ impl WorkspaceDiagnostics {
         self.is_enabled() && self.documents.contains_key(uri) && ToolName::from_uri(uri).is_ok()
     }
 
-    pub async fn process(&self, uri: &Url) {
+    pub async fn process(&self, uri: &Url) -> Vec<Diagnostic> {
         if !self.can_process(uri) {
-            return;
+            return Vec::new();
         }
 
         let version = self.documents.get(uri).map(|doc| doc.version());
@@ -59,8 +59,11 @@ impl WorkspaceDiagnostics {
 
         if let Ok(diagnostics) = self.tools.diagnostics(params).await {
             self.client
-                .publish_diagnostics(uri.clone(), diagnostics, version)
+                .publish_diagnostics(uri.clone(), diagnostics.clone(), version)
                 .await;
+            diagnostics
+        } else {
+            Vec::new()
         }
     }
 }
