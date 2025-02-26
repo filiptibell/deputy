@@ -22,8 +22,30 @@ impl LanguageServer for Server {
     }
 
     async fn initialized(&self, _: InitializedParams) {
-        if self.workspace_diagnostics.is_supported()
-            && self
+        let initial_settings_result = self
+            .client
+            .configuration(vec![ConfigurationItem {
+                section: Some(String::from("tooling-language-server")),
+                scope_uri: None,
+            }])
+            .await;
+        match initial_settings_result {
+            Ok(mut v) => {
+                if let Some(settings) = v.pop() {
+                    info!("Got initial settings");
+                    self.did_change_configuration(DidChangeConfigurationParams { settings })
+                        .await;
+                } else {
+                    info!("Got empty initial settings");
+                }
+            }
+            Err(e) => {
+                error!("Failed to fetch initial settings: {e}");
+            }
+        }
+
+        if self.workspace_diagnostics.is_supported() {
+            if self
                 .client
                 .register_capability(vec![Registration {
                     id: "diagnostics".to_string(),
@@ -32,9 +54,13 @@ impl LanguageServer for Server {
                 }])
                 .await
                 .is_ok()
-        {
-            self.workspace_diagnostics.set_enabled(true);
-            info!("Workspace diagnostics capability registered");
+            {
+                self.workspace_diagnostics.set_enabled(true);
+                info!("Workspace diagnostics capability registered");
+            }
+            if let Err(e) = self.client.workspace_diagnostic_refresh().await {
+                error!("Failed to request refresh for workspace diagnostics: {e}");
+            }
         }
     }
 
@@ -45,12 +71,27 @@ impl LanguageServer for Server {
     async fn did_change_configuration(&self, params: DidChangeConfigurationParams) {
         match serde_json::from_value::<Settings>(params.settings) {
             Err(e) => {
-                error!("Failed to parse settings: {}", e);
+                error!("Failed to parse settings: {e}");
             }
             Ok(v) => {
                 info!("Settings updated: {v:#?}");
+
+                let had_workspace_diagnostics = self.settings.is_workspace_diagnostics_enabled();
                 self.settings.update_global_settings(v);
-                if self.workspace_diagnostics.is_enabled() {
+                let has_workspace_diagnostics = self.settings.is_workspace_diagnostics_enabled();
+
+                if has_workspace_diagnostics != had_workspace_diagnostics {
+                    if has_workspace_diagnostics {
+                        info!("Workspace diagnostics capability registered");
+                    } else {
+                        info!("Workspace diagnostics capability unregistered");
+                    }
+                    if let Err(e) = self.client.workspace_diagnostic_refresh().await {
+                        error!("Failed to request refresh for workspace diagnostics: {e}");
+                    }
+                }
+
+                if self.workspace_diagnostics.can_process_any() {
                     for entry in self.documents.iter() {
                         let uri = entry.key();
                         self.workspace_diagnostics.process(uri).await;
@@ -133,9 +174,7 @@ impl LanguageServer for Server {
             }
         }
 
-        if self.workspace_diagnostics.is_enabled() {
-            self.workspace_diagnostics.process(uri).await;
-        }
+        self.workspace_diagnostics.process(uri).await;
 
         trace!("File opened: {uri}");
     }
@@ -151,6 +190,8 @@ impl LanguageServer for Server {
             .get_mut(uri)
             .expect("Got close event for nonexistent document");
         document.set_opened(false);
+
+        self.workspace_diagnostics.process(uri).await;
 
         trace!("File closed: {uri}");
     }
@@ -173,9 +214,7 @@ impl LanguageServer for Server {
             document.apply_change(change);
         }
 
-        if self.workspace_diagnostics.is_enabled() {
-            self.workspace_diagnostics.process(uri).await;
-        }
+        self.workspace_diagnostics.process(uri).await;
 
         trace!("File changed: {uri}");
     }
@@ -238,6 +277,7 @@ impl LanguageServer for Server {
         }
 
         self.wait_if_nonexistent_or_timeout(uri).await?;
+
         self.tools.hover(params).await
     }
 
@@ -264,7 +304,7 @@ impl LanguageServer for Server {
         params: DocumentDiagnosticParams,
     ) -> Result<DocumentDiagnosticReportResult> {
         let uri = &params.text_document.uri;
-        if !self.workspace_diagnostics.can_process(uri) || ToolName::from_uri(uri).is_err() {
+        if self.workspace_diagnostics.can_process_any() || ToolName::from_uri(uri).is_err() {
             return Ok(DocumentDiagnosticReportResult::Report(
                 DocumentDiagnosticReport::Full(RelatedFullDocumentDiagnosticReport {
                     related_documents: None,

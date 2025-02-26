@@ -46,12 +46,16 @@ impl WorkspaceDiagnostics {
         self.enabled.load(Ordering::SeqCst)
     }
 
+    pub fn can_process_any(&self) -> bool {
+        self.is_supported() && self.is_enabled() && self.settings.is_workspace_diagnostics_enabled()
+    }
+
     pub fn can_process(&self, uri: &Url) -> bool {
         self.is_supported()
             && self.is_enabled()
-            && ToolName::from_uri(uri).is_ok()
-            && self.settings.is_workspace_diagnostics_enabled(uri)
+            && self.settings.is_workspace_diagnostics_enabled_for(uri)
             && self.documents.contains_key(uri)
+            && ToolName::from_uri(uri).is_ok()
     }
 
     pub async fn process(&self, uri: &Url) {

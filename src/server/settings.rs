@@ -83,7 +83,11 @@ impl SettingsMap {
         self.global.read().unwrap().clone()
     }
 
-    pub fn is_workspace_diagnostics_enabled(&self, uri: &Url) -> bool {
+    pub fn is_workspace_diagnostics_enabled(&self) -> bool {
+        self.get_global_settings().diagnostics.workspace
+    }
+
+    pub fn is_workspace_diagnostics_enabled_for(&self, uri: &Url) -> bool {
         self.get_settings_for_uri(uri).diagnostics.workspace
     }
 
