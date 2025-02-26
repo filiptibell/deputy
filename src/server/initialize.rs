@@ -1,7 +1,7 @@
-use tracing::{info, trace};
+use tracing::{error, info, trace};
 
 use tower_lsp::jsonrpc::Result;
-use tower_lsp::lsp_types::*;
+use tower_lsp::{lsp_types::*, LanguageServer as _};
 
 use crate::server::*;
 
@@ -117,6 +117,31 @@ impl Server {
                 ..ServerCapabilities::default()
             },
         })
+    }
+
+    pub async fn respond_to_initialized(&self, _params: InitializedParams) {
+        let initial_settings_result = self
+            .client
+            .configuration(vec![ConfigurationItem {
+                section: Some(String::from("tooling-language-server")),
+                scope_uri: None,
+            }])
+            .await;
+
+        match initial_settings_result {
+            Ok(mut v) => {
+                if let Some(settings) = v.pop() {
+                    info!("Got initial settings");
+                    self.did_change_configuration(DidChangeConfigurationParams { settings })
+                        .await;
+                } else {
+                    info!("Got empty initial settings");
+                }
+            }
+            Err(e) => {
+                error!("Failed to fetch initial settings: {e}");
+            }
+        }
     }
 }
 

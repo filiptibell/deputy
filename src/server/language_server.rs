@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use futures::future::join_all;
+use ignore::gitignore::Gitignore;
 use tokio::fs;
 use tokio::time::timeout;
 use tower_lsp::jsonrpc::{Error, ErrorCode, Result};
@@ -21,47 +22,8 @@ impl LanguageServer for Server {
         self.respond_to_initalize(params).await
     }
 
-    async fn initialized(&self, _: InitializedParams) {
-        let initial_settings_result = self
-            .client
-            .configuration(vec![ConfigurationItem {
-                section: Some(String::from("tooling-language-server")),
-                scope_uri: None,
-            }])
-            .await;
-        match initial_settings_result {
-            Ok(mut v) => {
-                if let Some(settings) = v.pop() {
-                    info!("Got initial settings");
-                    self.did_change_configuration(DidChangeConfigurationParams { settings })
-                        .await;
-                } else {
-                    info!("Got empty initial settings");
-                }
-            }
-            Err(e) => {
-                error!("Failed to fetch initial settings: {e}");
-            }
-        }
-
-        if self.workspace_diagnostics.is_supported() {
-            if self
-                .client
-                .register_capability(vec![Registration {
-                    id: "diagnostics".to_string(),
-                    method: "textDocument/diagnostic".to_string(),
-                    register_options: None,
-                }])
-                .await
-                .is_ok()
-            {
-                self.workspace_diagnostics.set_enabled(true);
-                info!("Workspace diagnostics capability registered");
-            }
-            if let Err(e) = self.client.workspace_diagnostic_refresh().await {
-                error!("Failed to request refresh for workspace diagnostics: {e}");
-            }
-        }
+    async fn initialized(&self, params: InitializedParams) {
+        self.respond_to_initialized(params).await;
     }
 
     async fn shutdown(&self) -> Result<()> {
@@ -76,27 +38,19 @@ impl LanguageServer for Server {
             Ok(v) => {
                 info!("Settings updated: {v:#?}");
 
-                let had_workspace_diagnostics = self.settings.is_workspace_diagnostics_enabled();
+                let had_diags = self.settings.is_workspace_diagnostics_enabled();
                 self.settings.update_global_settings(v);
-                let has_workspace_diagnostics = self.settings.is_workspace_diagnostics_enabled();
+                let has_diags = self.settings.is_workspace_diagnostics_enabled();
 
-                if has_workspace_diagnostics != had_workspace_diagnostics {
-                    if has_workspace_diagnostics {
-                        info!("Workspace diagnostics capability registered");
+                if has_diags != had_diags {
+                    if has_diags {
+                        info!("Workspace diagnostics enabled");
                     } else {
-                        info!("Workspace diagnostics capability unregistered");
-                    }
-                    if let Err(e) = self.client.workspace_diagnostic_refresh().await {
-                        error!("Failed to request refresh for workspace diagnostics: {e}");
+                        info!("Workspace diagnostics disabled");
                     }
                 }
 
-                if self.workspace_diagnostics.can_process_any() {
-                    for entry in self.documents.iter() {
-                        let uri = entry.key();
-                        self.workspace_diagnostics.process(uri).await;
-                    }
-                }
+                self.refresh_workspace_diagnostics_full().await;
             }
         }
     }
@@ -174,8 +128,6 @@ impl LanguageServer for Server {
             }
         }
 
-        self.workspace_diagnostics.process(uri).await;
-
         trace!("File opened: {uri}");
     }
 
@@ -190,8 +142,6 @@ impl LanguageServer for Server {
             .get_mut(uri)
             .expect("Got close event for nonexistent document");
         document.set_opened(false);
-
-        self.workspace_diagnostics.process(uri).await;
 
         trace!("File closed: {uri}");
     }
@@ -214,7 +164,13 @@ impl LanguageServer for Server {
             document.apply_change(change);
         }
 
-        self.workspace_diagnostics.process(uri).await;
+        if self.workspace_diagnostics.is_enabled() {
+            let uri = uri.clone();
+            let diags = self.workspace_diagnostics.clone();
+            tokio::task::spawn(async move {
+                diags.process(&uri).await;
+            });
+        }
 
         trace!("File changed: {uri}");
     }
@@ -304,7 +260,7 @@ impl LanguageServer for Server {
         params: DocumentDiagnosticParams,
     ) -> Result<DocumentDiagnosticReportResult> {
         let uri = &params.text_document.uri;
-        if self.workspace_diagnostics.can_process_any() || ToolName::from_uri(uri).is_err() {
+        if self.workspace_diagnostics.is_enabled() || ToolName::from_uri(uri).is_err() {
             return Ok(DocumentDiagnosticReportResult::Report(
                 DocumentDiagnosticReport::Full(RelatedFullDocumentDiagnosticReport {
                     related_documents: None,
@@ -359,59 +315,11 @@ impl LanguageServer for Server {
 
     async fn workspace_diagnostic(
         &self,
-        params: WorkspaceDiagnosticParams,
+        _: WorkspaceDiagnosticParams,
     ) -> Result<WorkspaceDiagnosticReportResult> {
-        let uris = self
-            .documents
-            .iter()
-            .filter_map(|entry| {
-                let uri = entry.key();
-                if self.workspace_diagnostics.can_process(uri) {
-                    Some(uri.clone())
-                } else {
-                    None
-                }
-            })
-            .filter_map(|uri| {
-                self.documents
-                    .get(&uri)
-                    .map(|doc| doc.version())
-                    .map(|version| (uri, version, params.identifier.clone()))
-            });
-
-        let futs = uris.map(|(uri, version, identifier)| async move {
-            let params = DocumentDiagnosticParams {
-                text_document: TextDocumentIdentifier { uri: uri.clone() },
-                identifier,
-                previous_result_id: None,
-                work_done_progress_params: WorkDoneProgressParams::default(),
-                partial_result_params: PartialResultParams::default(),
-            };
-
-            if let Ok(diagnostics) = self.tools.diagnostics(params).await {
-                Some(WorkspaceDocumentDiagnosticReport::Full(
-                    WorkspaceFullDocumentDiagnosticReport {
-                        uri,
-                        version: Some(version as i64),
-                        full_document_diagnostic_report: FullDocumentDiagnosticReport {
-                            result_id: None,
-                            items: diagnostics,
-                        },
-                    },
-                ))
-            } else {
-                None
-            }
-        });
-
-        let items = join_all(futs)
-            .await
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>();
-
+        self.refresh_workspace_diagnostics().await;
         Ok(WorkspaceDiagnosticReportResult::Report(
-            WorkspaceDiagnosticReport { items },
+            WorkspaceDiagnosticReport { items: vec![] },
         ))
     }
 }
@@ -437,5 +345,91 @@ impl Server {
                 Err(Error::new(ErrorCode::RequestCancelled))
             }
         }
+    }
+
+    async fn refresh_workspace_diagnostics_full(&self) {
+        let mut uris = Vec::new();
+        let mut stack = vec![];
+
+        if let Ok(Some(folders)) = self.client.workspace_folders().await {
+            for folder in folders {
+                if let Ok(folder_path) = folder.uri.to_file_path() {
+                    stack.push(folder_path);
+                }
+            }
+        }
+
+        while let Some(dir) = stack.pop() {
+            let (ignore, _) = Gitignore::new(dir.join(".gitignore"));
+            if let Ok(mut entries) = fs::read_dir(dir).await {
+                while let Ok(Some(entry)) = entries.next_entry().await {
+                    let path = entry.path();
+                    let is_dir = path.is_dir();
+                    if ignore.matched(&path, is_dir).is_ignore() {
+                        continue;
+                    }
+                    if is_dir {
+                        stack.push(path);
+                    } else if path.is_file() {
+                        if let Ok(uri) = Url::from_file_path(path) {
+                            if ToolName::from_uri(&uri).is_ok() {
+                                uris.push(uri);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let files_futs = uris.into_iter().map(|uri| {
+            let path = uri.to_file_path().unwrap();
+            async move {
+                if let Ok(contents) = fs::read_to_string(&path).await {
+                    Some((uri, path, contents))
+                } else {
+                    None
+                }
+            }
+        });
+
+        let files = join_all(files_futs)
+            .await
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>();
+
+        let documents = Arc::clone(&self.documents);
+        let waiting = self.waiting.clone();
+
+        for (uri, _path, text) in &files {
+            documents
+                .entry(uri.clone())
+                .and_modify(|document| {
+                    document.set_text(text);
+                })
+                .or_insert_with(|| {
+                    DocumentBuilder::new()
+                        .with_uri(uri.clone())
+                        .with_version(0)
+                        .with_text(text)
+                        .with_opened()
+                        .build()
+                });
+            waiting.trigger(uri.clone());
+        }
+
+        self.refresh_workspace_diagnostics().await;
+    }
+
+    async fn refresh_workspace_diagnostics(&self) {
+        let diag_futs = self
+            .documents
+            .iter()
+            .map(|doc| doc.key().clone())
+            .map(|uri| async move {
+                self.workspace_diagnostics.process(&uri).await;
+            });
+
+        join_all(diag_futs).await;
     }
 }
