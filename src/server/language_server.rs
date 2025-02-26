@@ -310,6 +310,64 @@ impl LanguageServer for Server {
     async fn code_action_resolve(&self, action: CodeAction) -> Result<CodeAction> {
         self.tools.code_action_resolve(action).await
     }
+
+    async fn workspace_diagnostic(
+        &self,
+        params: WorkspaceDiagnosticParams,
+    ) -> Result<WorkspaceDiagnosticReportResult> {
+        let uris = self
+            .documents
+            .iter()
+            .filter_map(|entry| {
+                let uri = entry.key();
+                if self.workspace_diagnostics.can_process(uri) {
+                    Some(uri.clone())
+                } else {
+                    None
+                }
+            })
+            .filter_map(|uri| {
+                self.documents
+                    .get(&uri)
+                    .map(|doc| doc.version())
+                    .map(|version| (uri, version, params.identifier.clone()))
+            });
+
+        let futs = uris.map(|(uri, version, identifier)| async move {
+            let params = DocumentDiagnosticParams {
+                text_document: TextDocumentIdentifier { uri: uri.clone() },
+                identifier,
+                previous_result_id: None,
+                work_done_progress_params: WorkDoneProgressParams::default(),
+                partial_result_params: PartialResultParams::default(),
+            };
+
+            if let Ok(diagnostics) = self.tools.diagnostics(params).await {
+                Some(WorkspaceDocumentDiagnosticReport::Full(
+                    WorkspaceFullDocumentDiagnosticReport {
+                        uri,
+                        version: Some(version as i64),
+                        full_document_diagnostic_report: FullDocumentDiagnosticReport {
+                            result_id: None,
+                            items: diagnostics,
+                        },
+                    },
+                ))
+            } else {
+                None
+            }
+        });
+
+        let items = join_all(futs)
+            .await
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>();
+
+        Ok(WorkspaceDiagnosticReportResult::Report(
+            WorkspaceDiagnosticReport { items },
+        ))
+    }
 }
 
 impl Server {
