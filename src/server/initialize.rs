@@ -24,7 +24,14 @@ impl Server {
     pub async fn respond_to_initalize(&self, params: InitializeParams) -> Result<InitializeResult> {
         trace!("Initializing server with params: {params:#?}");
 
-        log_client_info(&params);
+        // Check if workspace-level diagnostics (push-based) are supported
+        let supports_workspace_diagnostics = params
+            .capabilities
+            .text_document
+            .as_ref()
+            .and_then(|td| td.diagnostic.as_ref())
+            .map(|diag| diag.dynamic_registration.unwrap_or(false))
+            .unwrap_or(false);
 
         // Create completion provider parameters
         let completion_options = CompletionOptions {
@@ -49,7 +56,7 @@ impl Server {
             },
             diagnostic_options: DiagnosticOptions {
                 inter_file_dependencies: true,
-                workspace_diagnostics: false,
+                workspace_diagnostics: supports_workspace_diagnostics,
                 ..Default::default()
             },
             ..Default::default()
@@ -71,6 +78,8 @@ impl Server {
                 })
                 .collect(),
         };
+
+        log_client_info(&params, supports_workspace_diagnostics);
 
         // Respond with negotiated encoding, server info, capabilities
         Ok(InitializeResult {
@@ -109,7 +118,7 @@ impl Server {
     }
 }
 
-fn log_client_info(params: &InitializeParams) {
+fn log_client_info(params: &InitializeParams, supports_workspace_diagnostics: bool) {
     let num_folders = params
         .workspace_folders
         .as_deref()
@@ -134,4 +143,13 @@ fn log_client_info(params: &InitializeParams) {
             );
         }
     }
+
+    info!(
+        "Client workspace diagnostics support: {}",
+        if supports_workspace_diagnostics {
+            "enabled"
+        } else {
+            "disabled"
+        }
+    );
 }
