@@ -79,6 +79,8 @@ impl Server {
                 .collect(),
         };
 
+        self.workspace_diagnostics
+            .set_supported(supports_workspace_diagnostics);
         log_client_info(&params, supports_workspace_diagnostics);
 
         // Respond with negotiated encoding, server info, capabilities

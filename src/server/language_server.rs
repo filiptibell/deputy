@@ -9,7 +9,7 @@ use tokio::time::timeout;
 use tower_lsp::jsonrpc::{Error, ErrorCode, Result};
 use tower_lsp::lsp_types::*;
 use tower_lsp::LanguageServer;
-use tracing::{trace, warn};
+use tracing::{info, trace, warn};
 
 use crate::server::conversion::convert_to_utf8;
 use crate::server::{DocumentBuilder, Server, Settings};
@@ -21,6 +21,23 @@ impl LanguageServer for Server {
         self.respond_to_initalize(params).await
     }
 
+    async fn initialized(&self, _: InitializedParams) {
+        if self.workspace_diagnostics.is_supported()
+            && self
+                .client
+                .register_capability(vec![Registration {
+                    id: "diagnostics".to_string(),
+                    method: "textDocument/diagnostic".to_string(),
+                    register_options: None,
+                }])
+                .await
+                .is_ok()
+        {
+            self.workspace_diagnostics.set_enabled(true);
+            info!("Workspace diagnostics capability registered");
+        }
+    }
+
     async fn shutdown(&self) -> Result<()> {
         Ok(())
     }
@@ -28,7 +45,12 @@ impl LanguageServer for Server {
     async fn did_change_configuration(&self, params: DidChangeConfigurationParams) {
         if let Ok(settings) = serde_json::from_value::<Settings>(params.settings) {
             self.settings.update_global_settings(settings);
-            self.maybe_trigger_workspace_diagnostics().await;
+            if self.workspace_diagnostics.is_enabled() {
+                for entry in self.documents.iter() {
+                    let uri = entry.key();
+                    self.workspace_diagnostics.process(uri).await;
+                }
+            }
         }
     }
 
@@ -105,6 +127,10 @@ impl LanguageServer for Server {
             }
         }
 
+        if self.workspace_diagnostics.is_enabled() {
+            self.workspace_diagnostics.process(uri).await;
+        }
+
         trace!("File opened: {uri}");
     }
 
@@ -139,6 +165,10 @@ impl LanguageServer for Server {
         document.set_version(version);
         for change in params.content_changes {
             document.apply_change(change);
+        }
+
+        if self.workspace_diagnostics.is_enabled() {
+            self.workspace_diagnostics.process(uri).await;
         }
 
         trace!("File changed: {uri}");
@@ -228,7 +258,7 @@ impl LanguageServer for Server {
         params: DocumentDiagnosticParams,
     ) -> Result<DocumentDiagnosticReportResult> {
         let uri = &params.text_document.uri;
-        if ToolName::from_uri(uri).is_err() {
+        if !self.workspace_diagnostics.can_process(uri) || ToolName::from_uri(uri).is_err() {
             return Ok(DocumentDiagnosticReportResult::Report(
                 DocumentDiagnosticReport::Full(RelatedFullDocumentDiagnosticReport {
                     related_documents: None,
@@ -241,6 +271,7 @@ impl LanguageServer for Server {
         }
 
         self.wait_if_nonexistent_or_timeout(uri).await?;
+
         match self.tools.diagnostics(params).await {
             Err(e) => Err(e),
             Ok(v) => Ok(DocumentDiagnosticReportResult::Report(
@@ -303,6 +334,4 @@ impl Server {
             }
         }
     }
-
-    async fn maybe_trigger_workspace_diagnostics(&self) {}
 }

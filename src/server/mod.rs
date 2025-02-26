@@ -18,8 +18,10 @@ mod requests;
 mod settings;
 mod transport;
 mod waiting;
+mod workspace_diagnostics;
 
 use waiting::*;
+use workspace_diagnostics::*;
 
 pub use document::*;
 pub use settings::*;
@@ -38,6 +40,7 @@ pub struct ServerInner {
     settings: SettingsMap,
     tools: Tools,
     waiting: Waiting,
+    workspace_diagnostics: WorkspaceDiagnostics,
 }
 
 pub struct Server {
@@ -66,18 +69,22 @@ impl Server {
     fn with_client(mut self, client: Client) -> Self {
         let clients = Clients::new();
         let documents = Arc::new(DashMap::new());
+        let settings = SettingsMap::new();
 
         if let Some(token) = &self.args.github_token {
             clients.github.set_auth_token(token);
         }
 
+        let tools = Tools::new(client.clone(), clients.clone(), Arc::clone(&documents));
+
         self.inner.replace(ServerInner {
             client: client.clone(),
             clients: clients.clone(),
             documents: Arc::clone(&documents),
-            settings: SettingsMap::new(),
-            tools: Tools::new(client, clients, documents),
+            settings: settings.clone(),
+            tools: tools.clone(),
             waiting: Waiting::new(),
+            workspace_diagnostics: WorkspaceDiagnostics::new(client, documents, settings, tools),
         });
 
         self.watch_rate_limit();
