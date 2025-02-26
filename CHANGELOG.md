@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added support for workspace diagnostics - this is the default mode in Zed, and can be enabled in other editors by setting the `tooling-language-server.diagnostics.workspace` setting to `true`.
+
 ### Changed
 
 - Improved diagnostics performance when using many [Cargo features](https://doc.rust-lang.org/cargo/reference/features.html)
