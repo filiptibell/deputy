@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Removed
+
+- Removed support for the Zap language from this extension - it did not really fit into this project, and is now a completely separate extension, which can be found [here](https://github.com/filiptibell/zap-language)
+
 ## `0.5.0` - March 12th, 2025
 
 ### Changed

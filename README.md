@@ -59,12 +59,6 @@ The language server can be installed as an extension from:
 
 <img src="assets/screenshots/cargo-screenshot-completions.png" alt="Completions" height="50%" width="50%" />
 
-## Additional Language Support
-
-Additionally, the language server provides syntax highlighting for:
-
-- [Zap](https://github.com/red-blox/zap)
-
 ## Development
 
 The VSCode extension can be compiled and installed locally:
