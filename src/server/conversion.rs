@@ -1,10 +1,10 @@
-use std::io::{Error as IoError, ErrorKind as IoErrorKind, Result as IoResult};
+use std::io::{Error as IoError, Result as IoResult};
 use std::path::Path;
 
 pub async fn convert_to_utf8(file_path: &Path, contents: &[u8]) -> IoResult<String> {
     convert_to_utf8_inner(file_path, contents)
         .await
-        .map_err(|e| IoError::new(IoErrorKind::Other, e))
+        .map_err(IoError::other)
 }
 
 async fn convert_to_utf8_inner(file_path: &Path, contents: &[u8]) -> Result<String, String> {
