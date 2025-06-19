@@ -50,9 +50,21 @@ impl Server for ToolingLanguageServer {
     }
 
     fn server_document_matchers() -> Vec<DocumentMatcher> {
-        vec![DocumentMatcher::new("Zap Document")
-            .with_url_globs(["*.zap"])
-            .with_lang_strings(["Zap"])]
+        let matchers = [
+            ("Cargo", "Cargo.toml", tree_sitter_toml_ng::LANGUAGE),
+            ("NPM", "package.json", tree_sitter_json::LANGUAGE),
+            ("Rokit", "rokit.toml", tree_sitter_toml_ng::LANGUAGE),
+            ("Wally", "wally.toml", tree_sitter_toml_ng::LANGUAGE),
+        ];
+
+        matchers
+            .into_iter()
+            .map(|(name, filename, lang)| {
+                DocumentMatcher::new(name)
+                    .with_url_globs([filename.to_string()])
+                    .with_lang_grammar(lang.into())
+            })
+            .collect()
     }
 
     async fn hover(&self, state: ServerState, params: HoverParams) -> ServerResult<Option<Hover>> {

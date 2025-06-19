@@ -45,7 +45,7 @@ impl Tools {
         pos: Position,
         node: Node<'_>,
     ) -> ServerResult<Option<Hover>> {
-        let Some(tool) = Tool::from_url(doc.url()) else {
+        let Some(tool) = Tool::from_document(doc) else {
             return Ok(None);
         };
 
@@ -63,7 +63,7 @@ impl Tools {
         pos: Position,
         node: Node<'_>,
     ) -> ServerResult<Option<CompletionResponse>> {
-        let Some(tool) = Tool::from_url(doc.url()) else {
+        let Some(tool) = Tool::from_document(doc) else {
             return Ok(None);
         };
 
@@ -80,7 +80,7 @@ impl Tools {
         doc: &Document,
         params: DocumentDiagnosticParams,
     ) -> ServerResult<Vec<Diagnostic>> {
-        let Some(tool) = Tool::from_url(doc.url()) else {
+        let Some(tool) = Tool::from_document(doc) else {
             return Ok(Vec::new());
         };
 
@@ -97,7 +97,7 @@ impl Tools {
         doc: &Document,
         params: CodeActionParams,
     ) -> ServerResult<Vec<CodeActionOrCommand>> {
-        if Tool::from_url(doc.url()).is_none() {
+        if Tool::from_document(doc).is_none() {
             return Ok(Vec::new());
         }
 
@@ -117,7 +117,7 @@ impl Tools {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Tool {
+pub enum Tool {
     Cargo,
     Npm,
     Rokit,
@@ -125,14 +125,12 @@ enum Tool {
 }
 
 impl Tool {
-    fn from_url(url: &Url) -> Option<Self> {
-        let file_path = url.to_file_path().ok()?;
-        let file_name = file_path.file_name()?.to_str()?;
-        match file_name.trim() {
-            "Cargo.toml" => Some(Tool::Cargo),
-            "package.json" => Some(Tool::Npm),
-            "rokit.toml" => Some(Tool::Rokit),
-            "wally.toml" => Some(Tool::Wally),
+    fn from_document(doc: &Document) -> Option<Self> {
+        match doc.matched_name()?.trim() {
+            s if s.eq_ignore_ascii_case("cargo") => Some(Tool::Cargo),
+            s if s.eq_ignore_ascii_case("npm") => Some(Tool::Npm),
+            s if s.eq_ignore_ascii_case("rokit") => Some(Tool::Rokit),
+            s if s.eq_ignore_ascii_case("wally") => Some(Tool::Wally),
             _ => None,
         }
     }
