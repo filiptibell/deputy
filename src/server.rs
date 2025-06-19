@@ -59,17 +59,33 @@ impl Server for ToolingLanguageServer {
 
     fn server_document_matchers() -> Vec<DocumentMatcher> {
         let matchers = [
-            ("Cargo", "Cargo.toml", tree_sitter_toml_ng::LANGUAGE),
-            ("NPM", "package.json", tree_sitter_json::LANGUAGE),
-            ("Rokit", "rokit.toml", tree_sitter_toml_ng::LANGUAGE),
-            ("Wally", "wally.toml", tree_sitter_toml_ng::LANGUAGE),
+            (
+                "Cargo",
+                ["**/Cargo.toml", "Cargo.toml"],
+                tree_sitter_toml_ng::LANGUAGE,
+            ),
+            (
+                "NPM",
+                ["**/package.json", "package.json"],
+                tree_sitter_json::LANGUAGE,
+            ),
+            (
+                "Rokit",
+                ["**/rokit.toml", "rokit.toml"],
+                tree_sitter_toml_ng::LANGUAGE,
+            ),
+            (
+                "Wally",
+                ["**/wally.toml", "wally.toml"],
+                tree_sitter_toml_ng::LANGUAGE,
+            ),
         ];
 
         matchers
             .into_iter()
-            .map(|(name, filename, lang)| {
+            .map(|(name, globs, lang)| {
                 DocumentMatcher::new(name)
-                    .with_url_globs([filename.to_string()])
+                    .with_url_globs(globs)
                     .with_lang_grammar(lang.into())
             })
             .collect()
@@ -83,7 +99,12 @@ impl Server for ToolingLanguageServer {
             return Ok(None);
         };
         let Some(node) = doc.node_at_position_named(pos) else {
-            tracing::debug!("Missing node for hover at {}:{}", pos.line, pos.character);
+            tracing::debug!(
+                "Missing node for hover at {}:{} (document matcher: {})",
+                pos.line,
+                pos.character,
+                doc.matched_name().unwrap_or("None")
+            );
             return Ok(None);
         };
 
@@ -105,9 +126,10 @@ impl Server for ToolingLanguageServer {
         };
         let Some(node) = doc.node_at_position_named(pos) else {
             tracing::debug!(
-                "Missing node for completion at {}:{}",
+                "Missing node for completion at {}:{} (document matcher: {})",
                 pos.line,
-                pos.character
+                pos.character,
+                doc.matched_name().unwrap_or("None")
             );
             return Ok(None);
         };
