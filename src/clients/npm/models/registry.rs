@@ -31,11 +31,17 @@ pub struct RegistryMetadataVersion {
     pub author: Option<RegistryMetadataHumanVariant>,
     #[serde(default)]
     pub maintainers: Vec<RegistryMetadataHumanVariant>,
+    #[serde(default)]
+    pub deprecated: Option<String>,
 }
 
 impl Versioned for RegistryMetadataVersion {
     fn raw_version_string(&self) -> String {
         self.version.to_string()
+    }
+
+    fn deprecated(&self) -> bool {
+        self.deprecated.is_some()
     }
 }
 

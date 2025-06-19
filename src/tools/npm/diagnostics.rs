@@ -45,12 +45,26 @@ pub async fn get_npm_diagnostics(
         }
     };
 
-    // Check if any version meeting the one specified exists
-    if !meta.versions.iter().any(|(_, v)| {
+    let mut has_versions = false;
+    let mut deprecation_reason = None;
+    for version in meta.versions.values().filter(|v| {
         v.version
             .parse_version()
             .is_ok_and(|v| version_req.matches(&v))
     }) {
+        has_versions = true;
+        let Some(reason) = version.deprecated.as_deref() else {
+            deprecation_reason = None;
+            break;
+        };
+
+        if deprecation_reason.is_none() {
+            deprecation_reason = Some(reason);
+        }
+    }
+
+    // Check if any version meeting the one specified exists
+    if !has_versions {
         return Ok(vec![Diagnostic {
             source: Some(String::from("NPM")),
             range: dep_version.range,
@@ -59,6 +73,17 @@ pub async fn get_npm_diagnostics(
                 dep.name().unquoted()
             ),
             severity: Some(DiagnosticSeverity::ERROR),
+            ..Default::default()
+        }]);
+    }
+
+    if let Some(deprecation_reason) = deprecation_reason {
+        return Ok(vec![Diagnostic {
+            source: Some(String::from("NPM")),
+            range: dep_version.range,
+            message: format!("Version `{version}` is deprecated: {deprecation_reason}"),
+            severity: Some(DiagnosticSeverity::WARNING),
+            tags: Some(vec![DiagnosticTag::DEPRECATED]),
             ..Default::default()
         }]);
     }

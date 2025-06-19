@@ -180,6 +180,10 @@ pub trait Versioned {
         self.raw_version_string().trim().parse()
     }
 
+    fn deprecated(&self) -> bool {
+        false
+    }
+
     fn extract_latest_version_filtered<I, V, F>(
         &self,
         other_versions: I,
@@ -195,6 +199,7 @@ pub trait Versioned {
 
         let other_versions = other_versions
             .into_iter()
+            .filter(|v| !v.deprecated())
             .filter_map(|o| match o.parse_version() {
                 Ok(v) => Some((o, v)),
                 Err(_) => None,
@@ -260,6 +265,7 @@ pub trait Versioned {
 
         let mut potential_versions = potential_versions
             .into_iter()
+            .filter(|v| !v.deprecated())
             .filter_map(|item| {
                 if this_version_raw.is_empty() {
                     return Some(item);
