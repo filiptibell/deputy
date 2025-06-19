@@ -1,19 +1,22 @@
 use semver::VersionReq;
-use tower_lsp::jsonrpc::Result;
-use tower_lsp::lsp_types::*;
+
+use async_language_server::{
+    lsp_types::{Diagnostic, DiagnosticSeverity},
+    server::{Document, ServerResult},
+};
 
 use crate::parser::SimpleDependency;
-use crate::util::Versioned;
+use crate::util::{VersionReqExt, Versioned};
 
 use super::super::shared::*;
-use super::{Clients, Document, VersionReqExt};
+use super::Clients;
 
 pub async fn get_wally_diagnostics(
     clients: &Clients,
     doc: &Document,
     index_url: &str,
     tool: &SimpleDependency,
-) -> Result<Vec<Diagnostic>> {
+) -> ServerResult<Vec<Diagnostic>> {
     let parsed = tool.parsed_spec();
 
     // Check for any missing fields
@@ -121,7 +124,7 @@ pub async fn get_wally_diagnostics(
 
         let metadata = CodeActionMetadata::LatestVersion {
             edit_range: parsed.version.range,
-            source_uri: doc.uri().clone(),
+            source_uri: doc.url().clone(),
             source_text: parsed.version.quoted().to_string(),
             version_current: parsed_version.to_string(),
             version_latest: latest_version_string.to_string(),
@@ -139,7 +142,7 @@ pub async fn get_wally_diagnostics(
             severity: Some(DiagnosticSeverity::INFORMATION),
             data: Some(
                 ResolveContext {
-                    uri: doc.uri().clone(),
+                    uri: doc.url().clone(),
                     value: metadata,
                 }
                 .into(),

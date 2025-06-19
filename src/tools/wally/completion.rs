@@ -1,26 +1,27 @@
-use tower_lsp::jsonrpc::Result;
-use tower_lsp::lsp_types::*;
+use async_language_server::{
+    lsp_types::{CompletionItem, CompletionItemKind, CompletionResponse},
+    server::{Document, ServerResult},
+};
 
-use crate::clients::*;
 use crate::parser::SimpleDependency;
-use crate::server::*;
+use crate::tools::shared::filter_starts_with;
+use crate::util::Versioned;
 
-use super::shared::*;
-use super::Versioned;
+use super::Clients;
 
 const MAXIMUM_PACKAGES_SHOWN: usize = 64;
 
 pub async fn get_wally_completions_spec_author(
     clients: &Clients,
-    document: &Document,
+    _document: &Document,
     index_url: &str,
     dep: &SimpleDependency,
-) -> Result<CompletionResponse> {
+) -> ServerResult<Option<CompletionResponse>> {
     let dep = dep.parsed_spec();
     let author = &dep.author;
 
     let package_scopes = match clients.wally.get_index_scopes(index_url).await {
-        Err(_) => return Ok(CompletionResponse::Array(Vec::new())),
+        Err(_) => return Ok(None),
         Ok(m) => m,
     };
 
@@ -31,27 +32,24 @@ pub async fn get_wally_completions_spec_author(
         .map(|package| CompletionItem {
             label: package.to_string(),
             kind: Some(CompletionItemKind::ENUM),
-            text_edit: Some(CompletionTextEdit::Edit(
-                document.create_edit(author.range, package.to_string()),
-            )),
             commit_characters: Some(vec![String::from("/")]),
             ..Default::default()
         })
         .collect::<Vec<_>>();
-    Ok(CompletionResponse::Array(items))
+    Ok(Some(CompletionResponse::Array(items)))
 }
 
 pub async fn get_wally_completions_spec_name(
     clients: &Clients,
-    document: &Document,
+    _document: &Document,
     index_url: &str,
     dep: &SimpleDependency,
-) -> Result<CompletionResponse> {
+) -> ServerResult<Option<CompletionResponse>> {
     let dep = dep.parsed_spec();
     let author = &dep.author;
 
     let Some(name) = dep.name.as_ref() else {
-        return Ok(CompletionResponse::Array(Vec::new()));
+        return Ok(None);
     };
 
     let package_names = match clients
@@ -59,7 +57,7 @@ pub async fn get_wally_completions_spec_name(
         .get_index_packages(index_url, author.unquoted())
         .await
     {
-        Err(_) => return Ok(CompletionResponse::Array(Vec::new())),
+        Err(_) => return Ok(None),
         Ok(m) => m,
     };
 
@@ -70,30 +68,27 @@ pub async fn get_wally_completions_spec_name(
         .map(|package| CompletionItem {
             label: package.to_string(),
             kind: Some(CompletionItemKind::ENUM_MEMBER),
-            text_edit: Some(CompletionTextEdit::Edit(
-                document.create_edit(name.range, package.to_string()),
-            )),
             commit_characters: Some(vec![String::from("@")]),
             ..Default::default()
         })
         .collect::<Vec<_>>();
-    Ok(CompletionResponse::Array(items))
+    Ok(Some(CompletionResponse::Array(items)))
 }
 
 pub async fn get_wally_completions_spec_version(
     clients: &Clients,
-    document: &Document,
+    _document: &Document,
     index_url: &str,
     dep: &SimpleDependency,
-) -> Result<CompletionResponse> {
+) -> ServerResult<Option<CompletionResponse>> {
     let dep = dep.parsed_spec();
     let author = &dep.author;
 
     let Some(name) = dep.name.as_ref() else {
-        return Ok(CompletionResponse::Array(Vec::new()));
+        return Ok(None);
     };
     let Some(version) = dep.version.as_ref() else {
-        return Ok(CompletionResponse::Array(Vec::new()));
+        return Ok(None);
     };
 
     let metadatas = match clients
@@ -101,7 +96,7 @@ pub async fn get_wally_completions_spec_version(
         .get_index_metadatas(index_url, author.unquoted(), name.unquoted())
         .await
     {
-        Err(_) => return Ok(CompletionResponse::Array(Vec::new())),
+        Err(_) => return Ok(None),
         Ok(m) => m,
     };
 
@@ -115,12 +110,9 @@ pub async fn get_wally_completions_spec_version(
             label: potential_version.item_version_raw.to_string(),
             kind: Some(CompletionItemKind::VALUE),
             sort_text: Some(format!("{:0>5}", index)),
-            text_edit: Some(CompletionTextEdit::Edit(
-                document.create_edit(version.range, potential_version.item_version_raw),
-            )),
             ..Default::default()
         })
         .collect::<Vec<_>>();
 
-    Ok(CompletionResponse::Array(valid_vec))
+    Ok(Some(CompletionResponse::Array(valid_vec)))
 }

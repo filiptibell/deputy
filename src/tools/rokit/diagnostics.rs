@@ -1,16 +1,20 @@
-use tower_lsp::jsonrpc::Result;
-use tower_lsp::lsp_types::*;
+use async_language_server::{
+    lsp_types::{Diagnostic, DiagnosticSeverity},
+    server::{Document, ServerResult},
+};
 
 use crate::parser::SimpleDependency;
 use crate::util::Versioned;
 
 use super::super::shared::*;
-use super::{Clients, Document, LspUriExt};
+use super::Clients;
 
 fn diag_source_for_doc(doc: &Document) -> String {
     if doc
-        .uri()
-        .file_name()
+        .url()
+        .to_file_path()
+        .ok()
+        .and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_string()))
         .is_some_and(|n| n.eq_ignore_ascii_case("aftman.toml"))
     {
         String::from("Aftman")
@@ -23,7 +27,7 @@ pub async fn get_rokit_diagnostics(
     clients: &Clients,
     doc: &Document,
     tool: &SimpleDependency,
-) -> Result<Vec<Diagnostic>> {
+) -> ServerResult<Vec<Diagnostic>> {
     let parsed = tool.parsed_spec();
 
     // Check for any missing fields
@@ -126,7 +130,7 @@ pub async fn get_rokit_diagnostics(
 
         let metadata = CodeActionMetadata::LatestVersion {
             edit_range: parsed.version.range,
-            source_uri: doc.uri().clone(),
+            source_uri: doc.url().clone(),
             source_text: parsed.version.quoted().to_string(),
             version_current: parsed_version.to_string(),
             version_latest: latest_version_string.to_string(),
@@ -144,7 +148,7 @@ pub async fn get_rokit_diagnostics(
             severity: Some(DiagnosticSeverity::INFORMATION),
             data: Some(
                 ResolveContext {
-                    uri: doc.uri().clone(),
+                    uri: doc.url().clone(),
                     value: metadata,
                 }
                 .into(),

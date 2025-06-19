@@ -1,7 +1,7 @@
 mod requests;
-mod uri;
-mod versions;
+mod version;
+mod version_req;
 
 pub use requests::*;
-pub use uri::*;
-pub use versions::*;
+pub use version::*;
+pub use version_req::*;

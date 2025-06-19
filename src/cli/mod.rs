@@ -2,10 +2,8 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 
 mod serve;
-mod tracing;
 
-use serve::*;
-use tracing::*;
+use self::serve::ServeCommand;
 
 #[derive(Debug, Clone, Subcommand)]
 pub enum CliSubcommand {
@@ -25,8 +23,6 @@ impl Cli {
     }
 
     pub async fn run(self) -> Result<()> {
-        setup_tracing();
-
         match self.subcommand {
             CliSubcommand::Serve(cmd) => cmd.run().await,
         }

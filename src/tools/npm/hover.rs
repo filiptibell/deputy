@@ -1,6 +1,9 @@
-use tower_lsp::jsonrpc::Result;
-use tower_lsp::lsp_types::*;
 use tracing::trace;
+
+use async_language_server::{
+    lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind},
+    server::{Document, ServerResult},
+};
 
 use crate::{
     parser::Dependency,
@@ -8,13 +11,13 @@ use crate::{
     util::{VersionReqExt, Versioned},
 };
 
-use super::{Clients, Document};
+use super::Clients;
 
 pub async fn get_npm_hover(
     clients: &Clients,
     _doc: &Document,
     dep: &Dependency,
-) -> Result<Option<Hover>> {
+) -> ServerResult<Option<Hover>> {
     let Ok(version_req) = dep.parse_version_req() else {
         return Ok(None);
     };

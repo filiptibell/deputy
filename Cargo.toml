@@ -37,7 +37,7 @@ serde = "1.0"
 serde_json = "1.0"
 toml = "0.8"
 
-tree-sitter = "0.24"
+tree-sitter = "0.25"
 tree-sitter-json = "0.24"
 tree-sitter-toml-ng = "0.7"
 tree-sitter-language = "0.1"
@@ -50,14 +50,10 @@ tracing = "0.1"
 tracing-panic = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
-[dependencies.tower-lsp]
-version = "0.20"
-default-features = false
-features = ["runtime-tokio", "proposed"]
-
-[dependencies.lsp-document]
-git = "https://github.com/artempyanykh/rust-lsp-document"
-rev = "d08ce4d2e36b073611d0db17e5a2b41a70d8daa4"
+[dependencies.async-language-server]
+git = "https://github.com/filiptibell/async-language-server"
+rev = "80ce3afcd3e0914fa5c6fff55d4d253e167ff561"
+features = ["tracing", "tree-sitter"]
 
 [dependencies.reqwest]
 version = "0.12"

@@ -1,20 +1,21 @@
-use tower_lsp::jsonrpc::Result;
-use tower_lsp::lsp_types::*;
 use tracing::trace;
 
-use crate::{
-    parser::SimpleDependency,
-    tools::{wally::WALLY_DEFAULT_REGISTRY, MarkdownBuilder},
+use async_language_server::{
+    lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind},
+    server::{Document, ServerResult},
 };
 
-use super::{Clients, Document};
+use crate::{parser::SimpleDependency, tools::MarkdownBuilder};
+
+use super::constants::WALLY_DEFAULT_REGISTRY;
+use super::Clients;
 
 pub async fn get_wally_hover(
     clients: &Clients,
     _doc: &Document,
     index_url: &str,
     tool: &SimpleDependency,
-) -> Result<Option<Hover>> {
+) -> ServerResult<Option<Hover>> {
     let Some(spec) = tool.parsed_spec().into_full() else {
         return Ok(None);
     };

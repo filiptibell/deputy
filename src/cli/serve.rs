@@ -1,8 +1,10 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::Parser;
 use tracing::debug;
 
-use crate::server::{Server, ServerArguments, Transport};
+use async_language_server::server::{serve, Transport};
+
+use crate::server::ToolingLanguageServer;
 
 #[derive(Debug, Clone, Parser)]
 pub struct ServeCommand {
@@ -10,8 +12,6 @@ pub struct ServeCommand {
     pub socket: Option<u16>,
     #[arg(long)]
     pub stdio: bool,
-    #[arg(long, env)]
-    pub github_token: Option<String>,
 }
 
 impl ServeCommand {
@@ -24,21 +24,13 @@ impl ServeCommand {
             None
         };
 
-        let args = ServerArguments {
-            transport: transport.unwrap_or_default(),
-            github_token: self.github_token,
-        };
+        let transport = transport.unwrap_or_default();
+        let server = ToolingLanguageServer::new();
 
-        debug!(
-            "Parsed arguments\n\ttransport: {}\n\tgithub_token: {}",
-            args.transport,
-            if args.github_token.is_some() {
-                "Some(_)"
-            } else {
-                "None"
-            },
-        );
+        debug!("Parsed arguments\n\ttransport: {transport}");
 
-        Server::new(args).serve().await
+        serve(transport, server)
+            .await
+            .context("encountered fatal error - language server shutting down")
     }
 }

@@ -1,17 +1,19 @@
-use tower_lsp::jsonrpc::Result;
-use tower_lsp::lsp_types::*;
+use async_language_server::{
+    lsp_types::{Diagnostic, DiagnosticSeverity, DiagnosticTag},
+    server::{Document, ServerResult},
+};
 
 use crate::parser::Dependency;
 use crate::util::{VersionReqExt, Versioned};
 
 use super::super::shared::*;
-use super::{Clients, Document};
+use super::Clients;
 
 pub async fn get_npm_diagnostics(
     clients: &Clients,
     doc: &Document,
     dep: &Dependency,
-) -> Result<Vec<Diagnostic>> {
+) -> ServerResult<Vec<Diagnostic>> {
     let Some(dep_version) = dep.spec().and_then(|s| s.contents.version.as_ref()) else {
         return Ok(Vec::new());
     };
@@ -100,7 +102,7 @@ pub async fn get_npm_diagnostics(
 
         let metadata = CodeActionMetadata::LatestVersion {
             edit_range: dep_version.range,
-            source_uri: doc.uri().clone(),
+            source_uri: doc.url().clone(),
             source_text: dep_version.quoted().to_string(),
             version_current: version.to_string(),
             version_latest: latest_version_string.to_string(),
@@ -117,7 +119,7 @@ pub async fn get_npm_diagnostics(
             severity: Some(DiagnosticSeverity::INFORMATION),
             data: Some(
                 ResolveContext {
-                    uri: doc.uri().clone(),
+                    uri: doc.url().clone(),
                     value: metadata,
                 }
                 .into(),

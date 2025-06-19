@@ -1,8 +1,10 @@
 use semver::VersionReq;
-
-use tower_lsp::jsonrpc::Result;
-use tower_lsp::lsp_types::*;
 use tracing::debug;
+
+use async_language_server::{
+    lsp_types::{Diagnostic, DiagnosticSeverity},
+    server::{Document, ServerResult},
+};
 
 use crate::parser::Dependency;
 use crate::util::{VersionReqExt, Versioned};
@@ -10,13 +12,13 @@ use crate::util::{VersionReqExt, Versioned};
 use super::super::shared::*;
 use super::crates::models::IndexMetadata;
 use super::util::get_features;
-use super::{Clients, Document};
+use super::Clients;
 
 pub async fn get_cargo_diagnostics(
     clients: &Clients,
     doc: &Document,
     dep: &Dependency,
-) -> Result<Vec<Diagnostic>> {
+) -> ServerResult<Vec<Diagnostic>> {
     let metas = match clients
         .crates
         .get_sparse_index_crate_metadatas(dep.name().unquoted())
@@ -52,7 +54,7 @@ async fn get_cargo_diagnostics_version(
     doc: &Document,
     dep: &Dependency,
     metas: &[IndexMetadata],
-) -> Result<Vec<Diagnostic>> {
+) -> ServerResult<Vec<Diagnostic>> {
     let Some(spec_version) = dep.spec().and_then(|s| s.contents.version.as_ref()) else {
         return Ok(Vec::new());
     };
@@ -97,7 +99,7 @@ async fn get_cargo_diagnostics_version(
 
         let metadata = CodeActionMetadata::LatestVersion {
             edit_range: spec_version.range,
-            source_uri: doc.uri().clone(),
+            source_uri: doc.url().clone(),
             source_text: spec_version.quoted().to_string(),
             version_current: version_min.to_string(),
             version_latest: latest_version_string.to_string(),
@@ -113,7 +115,7 @@ async fn get_cargo_diagnostics_version(
             severity: Some(DiagnosticSeverity::INFORMATION),
             data: Some(
                 ResolveContext {
-                    uri: doc.uri().clone(),
+                    uri: doc.url().clone(),
                     value: metadata,
                 }
                 .into(),
@@ -130,7 +132,7 @@ async fn get_cargo_diagnostics_features(
     _doc: &Document,
     dep: &Dependency,
     _metas: &[IndexMetadata],
-) -> Result<Vec<Diagnostic>> {
+) -> ServerResult<Vec<Diagnostic>> {
     let Some(features) = dep.spec().and_then(|s| s.contents.features.as_ref()) else {
         return Ok(Vec::new());
     };

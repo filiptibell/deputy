@@ -1,6 +1,6 @@
+use async_language_server::lsp_types::Url;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{Error as JsonError, Value as JsonValue};
-use tower_lsp::lsp_types::*;
 
 /**
     A partial resolve context.

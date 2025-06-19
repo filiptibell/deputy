@@ -1,7 +1,7 @@
 use std::collections::{HashSet, VecDeque};
 
+use async_language_server::lsp_types::Url;
 use reqwest::StatusCode;
-use tower_lsp::lsp_types::Url;
 use tracing::info;
 
 use super::models::*;

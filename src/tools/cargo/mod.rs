@@ -1,12 +1,13 @@
 use futures::future::try_join_all;
-use tower_lsp::jsonrpc::Result;
-use tower_lsp::lsp_types::*;
-use tower_lsp::Client;
 use tracing::debug;
+
+use async_language_server::{
+    lsp_types::{CompletionResponse, Diagnostic, DocumentDiagnosticParams, Hover},
+    server::{Document, ServerResult},
+};
 
 use crate::parser::query_cargo_toml_dependencies;
 use crate::parser::Dependency;
-use crate::server::*;
 use crate::util::*;
 
 use super::*;
@@ -23,94 +24,70 @@ use hover::*;
 
 #[derive(Debug, Clone)]
 pub struct Cargo {
-    _client: Client,
     clients: Clients,
-    documents: Documents,
 }
 
 impl Cargo {
-    pub(super) fn new(client: Client, clients: Clients, documents: Documents) -> Self {
-        Self {
-            _client: client,
-            clients,
-            documents,
-        }
+    pub(super) fn new(clients: Clients) -> Self {
+        Self { clients }
     }
 
-    fn get_document(&self, uri: &Url) -> Option<Document> {
-        if uri
-            .file_name()
-            .as_deref()
-            .is_some_and(|f| f.eq_ignore_ascii_case("Cargo.toml"))
-        {
-            self.documents.get(uri).map(|r| r.clone())
-        } else {
-            None
-        }
-    }
-}
-
-#[tower_lsp::async_trait]
-impl Tool for Cargo {
-    async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
-        let uri = params.text_document_position_params.text_document.uri;
-        let pos = params.text_document_position_params.position;
-        let Some(doc) = self.get_document(&uri) else {
-            return Ok(None);
-        };
-
+    pub(super) async fn hover(
+        &self,
+        doc: &Document,
+        pos: Position,
+        _node: Node<'_>,
+    ) -> ServerResult<Option<Hover>> {
         // Find the dependency that is hovered over
-        let dependencies = query_cargo_toml_dependencies(doc.inner());
+        let dependencies = query_cargo_toml_dependencies(doc);
         let Some(found) = Dependency::find_at_pos(&dependencies, pos) else {
             return Ok(None);
         };
 
         // Fetch some extra info and return the hover
         debug!("Hovering: {found:?}");
-        get_cargo_hover(&self.clients, &doc, found).await
+        get_cargo_hover(&self.clients, doc, found).await
     }
 
-    async fn completion(&self, params: CompletionParams) -> Result<CompletionResponse> {
-        let uri = params.text_document_position.text_document.uri;
-        let pos = params.text_document_position.position;
-        let Some(doc) = self.get_document(&uri) else {
-            return Ok(CompletionResponse::Array(Vec::new()));
-        };
-
+    pub(super) async fn completion(
+        &self,
+        doc: &Document,
+        pos: Position,
+        _node: Node<'_>,
+    ) -> ServerResult<Option<CompletionResponse>> {
         // Find the dependency that is being completed
-        let dependencies = query_cargo_toml_dependencies(doc.inner());
+        let dependencies = query_cargo_toml_dependencies(doc);
         let Some(found) = Dependency::find_at_pos(&dependencies, pos) else {
-            return Ok(CompletionResponse::Array(Vec::new()));
+            return Ok(None);
         };
 
         // Check what we're completing - name or version
         if found.name().contains(pos) {
             debug!("Completing name: {found:?}");
-            return get_cargo_completions_name(&self.clients, &doc, found).await;
+            return get_cargo_completions_name(&self.clients, doc, found).await;
         } else if let Some(s) = found.spec().filter(|s| s.contains(pos)) {
             if s.contents.version.as_ref().is_some_and(|v| v.contains(pos)) {
                 debug!("Completing version: {found:?}");
-                return get_cargo_completions_version(&self.clients, &doc, found).await;
+                return get_cargo_completions_version(&self.clients, doc, found).await;
             } else if let Some(f) = s.contents.features.as_ref().filter(|f| f.contains(pos)) {
                 debug!("Completing features: {found:?}");
                 if let Some(f) = f.contents.iter().find(|f| f.contains(pos)) {
                     debug!("Completing feature: {f:?}");
-                    return get_cargo_completions_features(&self.clients, &doc, found, f).await;
+                    return get_cargo_completions_features(&self.clients, doc, found, f).await;
                 }
             }
         }
 
-        Ok(CompletionResponse::Array(Vec::new()))
+        Ok(None)
     }
 
-    async fn diagnostics(&self, params: DocumentDiagnosticParams) -> Result<Vec<Diagnostic>> {
-        let uri = params.text_document.uri;
-        let Some(doc) = self.get_document(&uri) else {
-            return Ok(Vec::new());
-        };
-
+    pub(super) async fn diagnostics(
+        &self,
+        doc: &Document,
+        _params: DocumentDiagnosticParams,
+    ) -> ServerResult<Vec<Diagnostic>> {
         // Find all dependencies
-        let dependencies = query_cargo_toml_dependencies(doc.inner());
+        let dependencies = query_cargo_toml_dependencies(doc);
         if dependencies.is_empty() {
             return Ok(Vec::new());
         }
@@ -120,24 +97,10 @@ impl Tool for Cargo {
         let results = try_join_all(
             dependencies
                 .iter()
-                .map(|dep| get_cargo_diagnostics(&self.clients, &doc, dep)),
+                .map(|dep| get_cargo_diagnostics(&self.clients, doc, dep)),
         )
         .await?;
 
         Ok(results.into_iter().flatten().collect())
-    }
-
-    async fn code_action(&self, params: CodeActionParams) -> Result<Vec<CodeActionOrCommand>> {
-        let mut actions = Vec::new();
-        for diag in params.context.diagnostics {
-            if let Some(Ok(action)) = diag
-                .data
-                .as_ref()
-                .map(ResolveContext::<CodeActionMetadata>::try_from)
-            {
-                actions.push(action.into_inner().into_code_action(diag.clone()))
-            }
-        }
-        Ok(actions)
     }
 }

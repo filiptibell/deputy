@@ -5,14 +5,7 @@ use tree_sitter_language::LanguageFn;
 use url::Url;
 
 pub const JSON_FILE_NAMES: &[&str] = &["package.json"];
-pub const TOML_FILE_NAMES: &[&str] = &[
-    "aftman.toml",
-    "Cargo.toml",
-    "Cargo.lock",
-    "wally.toml",
-    "wally.lock",
-    "rokit.toml",
-];
+pub const TOML_FILE_NAMES: &[&str] = &["aftman.toml", "Cargo.toml", "rokit.toml", "wally.toml"];
 
 /**
     Tree-sitter language for a given file.

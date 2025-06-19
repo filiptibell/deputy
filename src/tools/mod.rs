@@ -1,34 +1,25 @@
-use tower_lsp::jsonrpc::Result;
-use tower_lsp::lsp_types::*;
-use tower_lsp::Client;
-use tracing::warn;
+use async_language_server::{
+    lsp_types::{
+        CodeActionOrCommand, CodeActionParams, CompletionResponse, Diagnostic,
+        DocumentDiagnosticParams, Hover, Position, Url,
+    },
+    server::{Document, ServerResult},
+};
+use tree_sitter::Node;
 
 use crate::clients::*;
-use crate::server::*;
-
-// Tools modules
-
-mod name;
-mod shared;
-mod tool;
-
-pub use name::*;
-use shared::*;
-pub use tool::*;
-
-// Individual tools
 
 mod cargo;
 mod npm;
 mod rokit;
+mod shared;
 mod wally;
 
 use cargo::*;
 use npm::*;
 use rokit::*;
+use shared::*;
 use wally::*;
-
-// Tools manager
 
 #[derive(Debug, Clone)]
 pub struct Tools {
@@ -39,88 +30,110 @@ pub struct Tools {
 }
 
 impl Tools {
-    pub fn new(client: Client, clients: Clients, documents: Documents) -> Self {
+    pub fn new(clients: Clients) -> Self {
         Self {
-            cargo: Cargo::new(client.clone(), clients.clone(), documents.clone()),
-            npm: Npm::new(client.clone(), clients.clone(), documents.clone()),
-            rokit: Rokit::new(client.clone(), clients.clone(), documents.clone()),
-            wally: Wally::new(client.clone(), clients.clone(), documents.clone()),
+            cargo: Cargo::new(clients.clone()),
+            npm: Npm::new(clients.clone()),
+            rokit: Rokit::new(clients.clone()),
+            wally: Wally::new(clients.clone()),
         }
     }
 
-    pub fn file_globs() -> Vec<&'static str> {
-        ToolName::all().into_iter().map(|t| t.file_glob()).collect()
+    pub async fn hover(
+        &self,
+        doc: &Document,
+        pos: Position,
+        node: Node<'_>,
+    ) -> ServerResult<Option<Hover>> {
+        let Some(tool) = Tool::from_url(doc.url()) else {
+            return Ok(None);
+        };
+
+        match tool {
+            Tool::Cargo => self.cargo.hover(doc, pos, node).await,
+            Tool::Npm => self.npm.hover(doc, pos, node).await,
+            Tool::Rokit => self.rokit.hover(doc, pos, node).await,
+            Tool::Wally => self.wally.hover(doc, pos, node).await,
+        }
     }
 
-    pub fn relevant_file_uris(uri: &Url) -> Vec<Url> {
-        ToolName::all()
-            .into_iter()
-            .flat_map(|t| t.relevant_file_uris(uri))
-            .collect()
+    pub async fn completion(
+        &self,
+        doc: &Document,
+        pos: Position,
+        node: Node<'_>,
+    ) -> ServerResult<Option<CompletionResponse>> {
+        let Some(tool) = Tool::from_url(doc.url()) else {
+            return Ok(None);
+        };
+
+        match tool {
+            Tool::Cargo => self.cargo.completion(doc, pos, node).await,
+            Tool::Npm => self.npm.completion(doc, pos, node).await,
+            Tool::Rokit => self.rokit.completion(doc, pos, node).await,
+            Tool::Wally => self.wally.completion(doc, pos, node).await,
+        }
     }
 
-    fn tool_for_uri(&self, uri: &Url) -> Option<&dyn Tool> {
-        match ToolName::from_uri(uri) {
-            Ok(ToolName::Aftman) => Some(&self.rokit),
-            Ok(ToolName::Cargo) => Some(&self.cargo),
-            Ok(ToolName::Npm) => Some(&self.npm),
-            Ok(ToolName::Rokit) => Some(&self.rokit),
-            Ok(ToolName::Wally) => Some(&self.wally),
-            Err(e) => {
-                warn!("Failed to parse tool name from uri '{e}'");
-                None
+    pub async fn diagnostics(
+        &self,
+        doc: &Document,
+        params: DocumentDiagnosticParams,
+    ) -> ServerResult<Vec<Diagnostic>> {
+        let Some(tool) = Tool::from_url(doc.url()) else {
+            return Ok(Vec::new());
+        };
+
+        match tool {
+            Tool::Cargo => self.cargo.diagnostics(doc, params).await,
+            Tool::Npm => self.npm.diagnostics(doc, params).await,
+            Tool::Rokit => self.rokit.diagnostics(doc, params).await,
+            Tool::Wally => self.wally.diagnostics(doc, params).await,
+        }
+    }
+
+    pub async fn code_action(
+        &self,
+        doc: &Document,
+        params: CodeActionParams,
+    ) -> ServerResult<Vec<CodeActionOrCommand>> {
+        if Tool::from_url(doc.url()).is_none() {
+            return Ok(Vec::new());
+        }
+
+        let mut actions = Vec::new();
+        for diag in params.context.diagnostics {
+            if let Some(Ok(action)) = diag
+                .data
+                .as_ref()
+                .map(ResolveContext::<CodeActionMetadata>::try_from)
+            {
+                actions.push(action.into_inner().into_code_action(diag.clone()))
             }
         }
+
+        Ok(actions)
     }
 }
 
-#[tower_lsp::async_trait]
-impl Tool for Tools {
-    async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
-        match self.tool_for_uri(&params.text_document_position_params.text_document.uri) {
-            Some(tool) => tool.hover(params).await,
-            None => Ok(None),
-        }
-    }
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Tool {
+    Cargo,
+    Npm,
+    Rokit,
+    Wally,
+}
 
-    async fn completion(&self, params: CompletionParams) -> Result<CompletionResponse> {
-        match self.tool_for_uri(&params.text_document_position.text_document.uri) {
-            Some(tool) => tool.completion(params).await,
-            None => Ok(CompletionResponse::Array(Vec::new())),
-        }
-    }
-
-    async fn completion_resolve(&self, item: CompletionItem) -> Result<CompletionItem> {
-        match item.data.as_ref().map(ResolveContextPartial::try_from) {
-            Some(Ok(context)) => match self.tool_for_uri(&context.uri) {
-                Some(tool) => tool.completion_resolve(item).await,
-                None => Ok(item),
-            },
-            _ => Ok(item),
-        }
-    }
-
-    async fn diagnostics(&self, params: DocumentDiagnosticParams) -> Result<Vec<Diagnostic>> {
-        match self.tool_for_uri(&params.text_document.uri) {
-            Some(tool) => tool.diagnostics(params).await,
-            None => Ok(Vec::new()),
-        }
-    }
-
-    async fn code_action(&self, params: CodeActionParams) -> Result<Vec<CodeActionOrCommand>> {
-        match self.tool_for_uri(&params.text_document.uri) {
-            Some(tool) => tool.code_action(params).await,
-            None => Ok(Vec::new()),
-        }
-    }
-
-    async fn code_action_resolve(&self, action: CodeAction) -> Result<CodeAction> {
-        match action.data.as_ref().map(ResolveContextPartial::try_from) {
-            Some(Ok(context)) => match self.tool_for_uri(&context.uri) {
-                Some(tool) => tool.code_action_resolve(action).await,
-                None => Ok(action),
-            },
-            _ => Ok(action),
+impl Tool {
+    fn from_url(url: &Url) -> Option<Self> {
+        let file_path = url.to_file_path().ok()?;
+        let file_name = file_path.file_name()?.to_str()?;
+        match file_name.trim() {
+            "Cargo.toml" => Some(Tool::Cargo),
+            "package.json" => Some(Tool::Npm),
+            "rokit.toml" => Some(Tool::Rokit),
+            "wally.toml" => Some(Tool::Wally),
+            _ => None,
         }
     }
 }

@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 
-use tower_lsp::lsp_types::{Position, Range};
+use async_language_server::lsp_types::{Position, Range};
 use tree_sitter::Point;
 
 pub fn point_to_position(point: Point) -> Position {

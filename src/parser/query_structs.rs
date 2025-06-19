@@ -1,6 +1,6 @@
 use std::{cmp::Ordering, str::FromStr};
 
-use tower_lsp::lsp_types::{Position, Range};
+use async_language_server::lsp_types::{Position, Range};
 
 use crate::util::Versioned;
 

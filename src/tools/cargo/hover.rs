@@ -1,16 +1,19 @@
-use tower_lsp::jsonrpc::Result;
-use tower_lsp::lsp_types::*;
 use tracing::trace;
+
+use async_language_server::{
+    lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind},
+    server::{Document, ServerResult},
+};
 
 use crate::{parser::Dependency, tools::MarkdownBuilder};
 
-use super::{Clients, Document};
+use super::Clients;
 
 pub async fn get_cargo_hover(
     clients: &Clients,
     _doc: &Document,
     dep: &Dependency,
-) -> Result<Option<Hover>> {
+) -> ServerResult<Option<Hover>> {
     let Some(version) = dep.spec().and_then(|s| s.contents.version.as_ref()) else {
         return Ok(None);
     };
