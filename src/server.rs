@@ -1,7 +1,10 @@
 use async_language_server::{
     lsp_types::{
-        ClientCapabilities, CompletionOptions, CompletionParams, CompletionResponse, Hover,
-        HoverParams, HoverProviderCapability, ServerCapabilities, ServerInfo,
+        ClientCapabilities, CodeActionParams, CodeActionResponse, CompletionOptions,
+        CompletionParams, CompletionResponse, DiagnosticOptions, DiagnosticServerCapabilities,
+        DocumentDiagnosticParams, DocumentDiagnosticReport, DocumentDiagnosticReportResult,
+        FullDocumentDiagnosticReport, Hover, HoverParams, HoverProviderCapability,
+        RelatedFullDocumentDiagnosticReport, ServerCapabilities, ServerInfo,
     },
     server::{DocumentMatcher, Server, ServerResult, ServerState},
 };
@@ -45,6 +48,11 @@ impl Server for ToolingLanguageServer {
                 trigger_characters: Some(completion_trigger_characters()),
                 ..Default::default()
             }),
+            diagnostic_provider: Some(DiagnosticServerCapabilities::Options(DiagnosticOptions {
+                inter_file_dependencies: false,
+                workspace_diagnostics: false,
+                ..Default::default()
+            })),
             ..Default::default()
         })
     }
@@ -111,6 +119,39 @@ impl Server for ToolingLanguageServer {
         );
 
         self.tools.completion(&doc, pos, node).await
+    }
+
+    async fn document_diagnostics(
+        &self,
+        state: ServerState,
+        params: DocumentDiagnosticParams,
+    ) -> ServerResult<DocumentDiagnosticReportResult> {
+        let items = match state.document(&params.text_document.uri) {
+            Some(doc) => self.tools.diagnostics(&doc, params).await?,
+            None => Vec::new(),
+        };
+
+        Ok(DocumentDiagnosticReportResult::Report(
+            DocumentDiagnosticReport::Full(RelatedFullDocumentDiagnosticReport {
+                related_documents: None,
+                full_document_diagnostic_report: FullDocumentDiagnosticReport {
+                    result_id: None,
+                    items,
+                },
+            }),
+        ))
+    }
+
+    async fn code_action(
+        &self,
+        state: ServerState,
+        params: CodeActionParams,
+    ) -> ServerResult<Option<CodeActionResponse>> {
+        if let Some(doc) = state.document(&params.text_document.uri) {
+            self.tools.code_action(&doc, params).await.map(Some)
+        } else {
+            Ok(None)
+        }
     }
 }
 

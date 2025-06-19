@@ -1,7 +1,7 @@
 use async_language_server::{
     lsp_types::{
         CodeActionOrCommand, CodeActionParams, CompletionResponse, Diagnostic,
-        DocumentDiagnosticParams, Hover, Position, Url,
+        DocumentDiagnosticParams, Hover, Position,
     },
     server::{Document, ServerResult},
 };

@@ -52,7 +52,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [dependencies.async-language-server]
 git = "https://github.com/filiptibell/async-language-server"
-rev = "f6260249b383b5253bbc20f681035b50a8426384"
+rev = "3c56d192b6d18c40e2a5c39479641752283914bf"
 features = ["tracing", "tree-sitter"]
 
 [dependencies.reqwest]
