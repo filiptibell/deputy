@@ -4,8 +4,6 @@ use tree_sitter::QueryCursor;
 
 use async_language_server::server::Document;
 
-use crate::parser::query_utils::{range_extend, range_from_node};
-
 use super::super::query_structs::{
     Dependency, DependencyKind, DependencySource, DependencySpec, Node,
 };

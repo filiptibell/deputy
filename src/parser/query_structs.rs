@@ -1,10 +1,12 @@
 use std::{cmp::Ordering, str::FromStr};
 
-use async_language_server::lsp_types::{Position, Range};
+use async_language_server::{
+    lsp_types::{Position, Range},
+    tree_sitter_utils::ts_range_to_lsp_range,
+};
 
+use crate::parser::query_utils::{range_contains, range_extend, range_for_substring};
 use crate::util::Versioned;
-
-use super::query_utils::{range_contains, range_extend, range_for_substring, range_from_node};
 
 /**
     A node in the tree-sitter parse tree.
@@ -17,7 +19,7 @@ pub struct Node<T> {
 
 impl<T> Node<T> {
     pub fn new(node: &tree_sitter::Node<'_>, contents: T) -> Self {
-        let range = range_from_node(node);
+        let range = ts_range_to_lsp_range(node.range());
         Self { contents, range }
     }
 
