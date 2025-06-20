@@ -3,36 +3,38 @@ use tracing::trace;
 use async_language_server::{
     lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind},
     server::{Document, ServerResult},
+    tree_sitter_utils::ts_range_to_lsp_range,
 };
+use tree_sitter::Node;
 
-use crate::{parser::SimpleDependency, tools::MarkdownBuilder};
+use crate::{parser::rokit, tools::MarkdownBuilder};
 
 use super::Clients;
 
 pub async fn get_rokit_hover(
     clients: &Clients,
-    _doc: &Document,
-    tool: &SimpleDependency,
+    doc: &Document,
+    node: Node<'_>,
 ) -> ServerResult<Option<Hover>> {
-    let Some(spec) = tool.parsed_spec().into_full() else {
+    let Some(dep) = rokit::parse_dependency(node) else {
+        return Ok(None);
+    };
+
+    let (Some(owner), Some(repository), Some(version)) = dep.spec_ranges(doc).text(doc) else {
         return Ok(None);
     };
 
     // Add basic hover information with version and name
-    trace!(
-        "Hovering: {} version {}",
-        spec.name.unquoted(),
-        spec.version.unquoted()
-    );
+    trace!("Hovering: {owner} version {version}");
     let mut md = MarkdownBuilder::new();
-    md.h2(spec.name.unquoted());
-    md.version(spec.version.unquoted());
+    md.h2(repository);
+    md.version(version);
 
     // Try to fetch additional information from the index - description, links
     trace!("Fetching repository metrics from GitHub");
     if let Ok(repository) = clients
         .github
-        .get_repository_metrics(spec.author.unquoted(), spec.name.unquoted())
+        .get_repository_metrics(owner, repository)
         .await
     {
         // Add description, if available
@@ -47,23 +49,15 @@ pub async fn get_rokit_hover(
     md.h3("Links");
     md.a(
         "Repository",
-        format!(
-            "https://github.com/{}/{}",
-            spec.author.unquoted(),
-            spec.name.unquoted()
-        ),
+        format!("https://github.com/{owner}/{repository}"),
     );
     md.a(
         "Latest Release",
-        format!(
-            "https://github.com/{}/{}/releases/latest",
-            spec.author.unquoted(),
-            spec.name.unquoted()
-        ),
+        format!("https://github.com/{owner}/{repository}/releases/latest"),
     );
 
     Ok(Some(Hover {
-        range: Some(tool.range()),
+        range: Some(ts_range_to_lsp_range(node.range())),
         contents: HoverContents::Markup(MarkupContent {
             kind: MarkupKind::Markdown,
             value: md.build(),

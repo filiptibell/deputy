@@ -1,9 +1,11 @@
 use async_language_server::{
     lsp_types::{Diagnostic, DiagnosticSeverity},
     server::{Document, ServerResult},
+    tree_sitter_utils::ts_range_to_lsp_range,
 };
+use tree_sitter::Node;
 
-use crate::parser::SimpleDependency;
+use crate::parser::rokit;
 use crate::util::Versioned;
 
 use super::super::shared::*;
@@ -26,22 +28,19 @@ fn diag_source_for_doc(doc: &Document) -> String {
 pub async fn get_rokit_diagnostics(
     clients: &Clients,
     doc: &Document,
-    tool: &SimpleDependency,
+    node: Node<'_>,
 ) -> ServerResult<Vec<Diagnostic>> {
-    let parsed = tool.parsed_spec();
+    let Some(dep) = rokit::parse_dependency(node) else {
+        return Ok(Vec::new());
+    };
 
     // Check for any missing fields
-    let missing_author = parsed.author.unquoted().is_empty();
-    let missing_name = parsed.name.as_ref().is_none_or(|r| r.unquoted().is_empty());
-    let missing_version = parsed
-        .version
-        .as_ref()
-        .is_none_or(|v| v.unquoted().is_empty());
-    let missing_diag = if missing_author {
+    let ranges = dep.spec_ranges(doc);
+    let missing_diag = if ranges.owner.is_none() {
         Some("Missing tool author")
-    } else if missing_name {
+    } else if ranges.repository.is_none() {
         Some("Missing tool name")
-    } else if missing_version {
+    } else if ranges.version.is_none() {
         Some("Missing tool version")
     } else {
         None
@@ -51,19 +50,22 @@ pub async fn get_rokit_diagnostics(
     if let Some(diag) = missing_diag {
         return Ok(vec![Diagnostic {
             source: Some(diag_source_for_doc(doc)),
-            range: tool.spec.range,
+            range: ts_range_to_lsp_range(dep.spec.range()),
             message: diag.to_string(),
             severity: Some(DiagnosticSeverity::WARNING), // Most likely during typing, don't emit a hard error
             ..Default::default()
         }]);
     }
 
+    let (Some(owner), Some(repository), Some(version)) = ranges.text(doc) else {
+        return Ok(Vec::new());
+    };
+
     // Fetch releases and make sure there is at least one
-    let parsed = parsed.into_full().expect("nothing was missing");
-    let parsed_version = parsed.version.unquoted().trim_start_matches('v');
+    let parsed_version = version.trim_start_matches('v');
     let releases = match clients
         .github
-        .get_repository_releases(parsed.author.unquoted(), parsed.name.unquoted())
+        .get_repository_releases(owner, repository)
         .await
     {
         Ok(v) => v,
@@ -71,12 +73,8 @@ pub async fn get_rokit_diagnostics(
             if e.is_not_found_error() {
                 return Ok(vec![Diagnostic {
                     source: Some(diag_source_for_doc(doc)),
-                    range: parsed.range(),
-                    message: format!(
-                        "No tool exists for `{}/{}`",
-                        parsed.author.unquoted(),
-                        parsed.name.unquoted(),
-                    ),
+                    range: ts_range_to_lsp_range(dep.spec.range()),
+                    message: format!("No tool exists for `{owner}/{repository}`"),
                     severity: Some(DiagnosticSeverity::ERROR),
                     ..Default::default()
                 }]);
@@ -88,12 +86,8 @@ pub async fn get_rokit_diagnostics(
     if releases.is_empty() {
         return Ok(vec![Diagnostic {
             source: Some(diag_source_for_doc(doc)),
-            range: parsed.range(),
-            message: format!(
-                "No releases exist for the tool `{}/{}`",
-                parsed.author.unquoted(),
-                parsed.name.unquoted(),
-            ),
+            range: ts_range_to_lsp_range(dep.spec.range()),
+            message: format!("No releases exist for the tool `{owner}/{repository}`"),
             severity: Some(DiagnosticSeverity::ERROR),
             ..Default::default()
         }]);
@@ -108,11 +102,9 @@ pub async fn get_rokit_diagnostics(
     }) {
         return Ok(vec![Diagnostic {
             source: Some(diag_source_for_doc(doc)),
-            range: parsed.range(),
+            range: ts_range_to_lsp_range(dep.spec.range()),
             message: format!(
-                "Version `{parsed_version}` does not exist for the tool `{}/{}`",
-                parsed.author.unquoted(),
-                parsed.name.unquoted(),
+                "Version `{parsed_version}` does not exist for the tool `{owner}/{repository}`"
             ),
             severity: Some(DiagnosticSeverity::ERROR),
             ..Default::default()
@@ -129,21 +121,20 @@ pub async fn get_rokit_diagnostics(
         let latest_version_string = latest_version.item_version.to_string();
 
         let metadata = CodeActionMetadata::LatestVersion {
-            edit_range: parsed.version.range,
+            edit_range: ts_range_to_lsp_range(ranges.version.unwrap()),
             source_uri: doc.url().clone(),
-            source_text: parsed.version.quoted().to_string(),
+            source_text: version.to_string(),
             version_current: parsed_version.to_string(),
             version_latest: latest_version_string.to_string(),
         };
 
         return Ok(vec![Diagnostic {
             source: Some(diag_source_for_doc(doc)),
-            range: parsed.range(),
+            range: ts_range_to_lsp_range(dep.spec.range()),
             message: format!(
                 "A newer version of `{}/{}` is available.\
                 \nThe latest version is `{latest_version_string}`",
-                parsed.author.unquoted(),
-                parsed.name.unquoted()
+                owner, repository
             ),
             severity: Some(DiagnosticSeverity::INFORMATION),
             data: Some(
