@@ -9,5 +9,5 @@ pub mod rokit;
 pub mod utils;
 pub mod wally;
 
-pub use self::query_fns::{query_cargo_toml_dependencies, query_package_json_dependencies};
-pub use self::query_structs::{Dependency, DependencyKind, DependencySource, DependencySpec, Node};
+pub use self::query_fns::query_package_json_dependencies;
+pub use self::query_structs::Dependency;
