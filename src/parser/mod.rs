@@ -3,7 +3,9 @@ mod query_structs;
 mod query_utils;
 
 mod shared;
+mod utils;
 
+pub mod cargo;
 pub mod rokit;
 pub mod wally;
 
