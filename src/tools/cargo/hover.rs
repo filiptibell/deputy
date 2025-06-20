@@ -3,35 +3,38 @@ use tracing::trace;
 use async_language_server::{
     lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind},
     server::{Document, ServerResult},
+    tree_sitter::Node,
+    tree_sitter_utils::ts_range_to_lsp_range,
 };
 
-use crate::{parser::Dependency, tools::MarkdownBuilder};
+use crate::parser::cargo;
+use crate::tools::MarkdownBuilder;
 
 use super::Clients;
 
 pub async fn get_cargo_hover(
     clients: &Clients,
-    _doc: &Document,
-    dep: &Dependency,
+    doc: &Document,
+    node: Node<'_>,
 ) -> ServerResult<Option<Hover>> {
-    let Some(version) = dep.spec().and_then(|s| s.contents.version.as_ref()) else {
+    let Some(dep) = cargo::parse_dependency(doc, node) else {
         return Ok(None);
     };
 
-    let dependency_name = dep.name().unquoted();
-    let dependency_version = version.unquoted();
+    let dependency_name = doc.node_text(dep.name);
+    let dependency_version = doc.node_text(dep.version);
 
     // Add basic hover information with version and name
     trace!("Hovering: {dependency_name} version {dependency_version}");
     let mut md = MarkdownBuilder::new();
-    md.h2(dependency_name);
+    md.h2(&dependency_name);
     md.version(dependency_version);
 
     // Try to fetch additional information from the index - description, links
     trace!("Fetching crate data from crates.io");
     if let Ok(crate_data) = clients
         .crates
-        .get_crate_data(dependency_name)
+        .get_crate_data(&dependency_name)
         .await
         .map(|c| c.inner)
     {
@@ -74,7 +77,7 @@ pub async fn get_cargo_hover(
     }
 
     Ok(Some(Hover {
-        range: Some(dep.range()),
+        range: Some(ts_range_to_lsp_range(node.range())),
         contents: HoverContents::Markup(MarkupContent {
             kind: MarkupKind::Markdown,
             value: md.build(),

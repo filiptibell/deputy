@@ -6,6 +6,7 @@ use async_language_server::{
     server::{Document, ServerResult},
 };
 
+use crate::parser::cargo;
 use crate::parser::query_cargo_toml_dependencies;
 use crate::parser::Dependency;
 use crate::util::*;
@@ -38,15 +39,13 @@ impl Cargo {
         pos: Position,
         _node: Node<'_>,
     ) -> ServerResult<Option<Hover>> {
-        // Find the dependency that is hovered over
-        let dependencies = query_cargo_toml_dependencies(doc);
-        let Some(found) = Dependency::find_at_pos(&dependencies, pos) else {
+        let Some(dep) = cargo::find_dependency_at(doc, pos) else {
             return Ok(None);
         };
 
-        // Fetch some extra info and return the hover
-        debug!("Hovering: {found:?}");
-        get_cargo_hover(&self.clients, doc, found).await
+        debug!("Hovering: {dep:?}");
+
+        get_cargo_hover(&self.clients, doc, dep).await
     }
 
     pub(super) async fn completion(

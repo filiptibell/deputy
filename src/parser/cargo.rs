@@ -1,10 +1,8 @@
-use std::str::FromStr;
+use std::{collections::HashMap, str::FromStr};
 
 use async_language_server::{
-    lsp_types::Position,
-    server::Document,
-    tree_sitter::Node as TsNode,
-    tree_sitter_utils::{find_ancestor, find_child},
+    lsp_types::Position, server::Document, tree_sitter::Node as TsNode,
+    tree_sitter_utils::find_ancestor,
 };
 
 use super::utils::table_key_parts;
@@ -116,15 +114,15 @@ pub fn find_all_dependencies(doc: &Document) -> Vec<TsNode> {
 pub fn find_dependency_at(doc: &Document, pos: Position) -> Option<TsNode> {
     let node = doc.node_at_position(pos)?; // either the key or value
 
-    if let Some(pair) = find_ancestor(node, |a| a.kind() == "pair") {
+    if let Some(table) = find_ancestor(node, |a| check_dependencies_table_single(doc, a).is_some())
+    {
+        // [dependencies.name] or [workspace.dependencies.name] etc
+        Some(table)
+    } else if let Some(pair) = find_ancestor(node, |a| a.kind() == "pair") {
         // dependency-name = "spec" or dependency-name = { version = "a.b.c" }
         let table = find_ancestor(node, |a| a.kind() == "table")?;
         check_dependencies_table_multi(doc, table)?;
         Some(pair)
-    } else if let Some(table) = find_ancestor(node, |a| a.kind() == "table") {
-        // [dependencies.name] or [workspace.dependencies.name] etc
-        check_dependencies_table_single(doc, node)?;
-        Some(table)
     } else {
         None
     }
@@ -135,42 +133,70 @@ pub fn parse_dependency<'tree>(
     pair_or_table: TsNode<'tree>,
 ) -> Option<CargoDependency<'tree>> {
     if pair_or_table.kind() == "pair" {
-        let name = pair_or_table.named_child(0)?;
+        let mut name = pair_or_table.named_child(0)?;
         let value = pair_or_table.named_child(1)?;
 
         // version is either `name = "version"` or `name = { version = "version" }`
-        let version = if value.kind() == "string" {
-            value
+        let mut version = None;
+        let mut features = None;
+        let mut package = None;
+        if value.kind() == "string" {
+            version = Some(value);
         } else if value.kind() == "inline_table" {
-            let version_pair = find_child(value, |pair| {
-                let is_pair = pair.kind() == "pair";
-                let is_version = pair
-                    .named_child(0)
-                    .is_some_and(|c| doc.node_text(c) == "version");
-                is_pair && is_version
-            })?;
-            version_pair.named_child(1)?
-        } else {
-            return None;
+            let mut pairs = HashMap::new();
+            let mut cursor = value.walk();
+            for child in value.children(&mut cursor) {
+                if child.kind() == "pair" {
+                    let key = child.named_child(0)?;
+                    let value = child.named_child(1)?;
+                    pairs.insert(doc.node_text(key), value);
+                }
+            }
+            version = pairs.remove("version");
+            features = pairs.remove("features");
+            package = pairs.remove("package");
         };
 
-        Some(CargoDependency { name, version })
+        // aliased_serde = { package = "serde" }
+        if let Some(package) = package {
+            name = package;
+        }
+
+        Some(CargoDependency {
+            name,
+            version: version?,
+            features,
+        })
     } else if pair_or_table.kind() == "table" {
         // alias is last part in [dependencies."abcdef"."ghijkl".name]
+        let key = pair_or_table.named_child(0)?;
+        let mut name = key.named_children(&mut key.walk()).last()?;
+
+        let mut pairs = HashMap::new();
         let mut cursor = pair_or_table.walk();
-        let name = pair_or_table.named_children(&mut cursor).last()?;
+        for child in pair_or_table.children(&mut cursor) {
+            if child.kind() == "pair" {
+                let key = child.named_child(0)?;
+                let value = child.named_child(1)?;
+                pairs.insert(doc.node_text(key), value);
+            }
+        }
 
-        // version is always `version = "version"`
-        let version_pair = find_child(pair_or_table, |pair| {
-            let is_pair = pair.kind() == "pair";
-            let is_version = pair
-                .named_child(0)
-                .is_some_and(|c| doc.node_text(c) == "version");
-            is_pair && is_version
-        })?;
-        let version = version_pair.named_child(1)?;
+        let version = pairs.remove("version");
+        let features = pairs.remove("features");
+        let package = pairs.remove("package");
 
-        Some(CargoDependency { name, version })
+        // [dependencies.aliased_serde]
+        // package = "serde"
+        if let Some(package) = package {
+            name = package;
+        }
+
+        Some(CargoDependency {
+            name,
+            version: version?,
+            features,
+        })
     } else {
         None
     }
@@ -181,4 +207,20 @@ pub fn parse_dependency<'tree>(
 pub struct CargoDependency<'tree> {
     pub name: TsNode<'tree>,
     pub version: TsNode<'tree>,
+    pub features: Option<TsNode<'tree>>,
+}
+
+impl CargoDependency<'_> {
+    pub fn feature_nodes(&self) -> Vec<TsNode<'_>> {
+        let mut nodes = Vec::new();
+        if let Some(features) = self.features {
+            let mut cursor = features.walk();
+            for child in features.children(&mut cursor) {
+                if child.kind() == "string" {
+                    nodes.push(child);
+                }
+            }
+        }
+        nodes
+    }
 }
