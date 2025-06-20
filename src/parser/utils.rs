@@ -1,6 +1,6 @@
 use async_language_server::{server::Document, tree_sitter::Node as TsNode};
 
-fn unquote(text: impl AsRef<str>) -> String {
+pub fn unquote(text: impl AsRef<str>) -> String {
     let text = text.as_ref();
     if (text.starts_with('\'') && text.ends_with('\''))
         || (text.starts_with('"') && text.ends_with('"'))

@@ -3,10 +3,10 @@ mod query_structs;
 mod query_utils;
 
 mod shared;
-mod utils;
 
 pub mod cargo;
 pub mod rokit;
+pub mod utils;
 pub mod wally;
 
 pub use self::query_fns::{query_cargo_toml_dependencies, query_package_json_dependencies};

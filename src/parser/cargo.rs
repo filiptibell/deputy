@@ -5,7 +5,7 @@ use async_language_server::{
     tree_sitter_utils::find_ancestor,
 };
 
-use super::utils::table_key_parts;
+use super::utils::{table_key_parts, unquote};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DependencyKind {
@@ -211,6 +211,12 @@ pub struct CargoDependency<'tree> {
 }
 
 impl CargoDependency<'_> {
+    pub fn text(&self, doc: &Document) -> (String, String) {
+        let name = doc.node_text(self.name);
+        let version = doc.node_text(self.version);
+        (unquote(name), unquote(version))
+    }
+
     pub fn feature_nodes(&self) -> Vec<TsNode<'_>> {
         let mut nodes = Vec::new();
         if let Some(features) = self.features {

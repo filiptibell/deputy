@@ -21,8 +21,7 @@ pub async fn get_cargo_hover(
         return Ok(None);
     };
 
-    let dependency_name = doc.node_text(dep.name);
-    let dependency_version = doc.node_text(dep.version);
+    let (dependency_name, dependency_version) = dep.text(doc);
 
     // Add basic hover information with version and name
     trace!("Hovering: {dependency_name} version {dependency_version}");

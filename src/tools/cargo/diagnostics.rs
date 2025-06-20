@@ -4,9 +4,14 @@ use tracing::debug;
 use async_language_server::{
     lsp_types::{Diagnostic, DiagnosticSeverity},
     server::{Document, ServerResult},
+    tree_sitter::Node,
+    tree_sitter_utils::ts_range_to_lsp_range,
 };
 
-use crate::parser::Dependency;
+use crate::parser::{
+    cargo::{self, CargoDependency},
+    utils::unquote,
+};
 use crate::util::{VersionReqExt, Versioned};
 
 use super::super::shared::*;
@@ -17,23 +22,22 @@ use super::Clients;
 pub async fn get_cargo_diagnostics(
     clients: &Clients,
     doc: &Document,
-    dep: &Dependency,
+    node: Node<'_>,
 ) -> ServerResult<Vec<Diagnostic>> {
-    let metas = match clients
-        .crates
-        .get_sparse_index_crate_metadatas(dep.name().unquoted())
-        .await
-    {
+    let Some(dep) = cargo::parse_dependency(doc, node) else {
+        return Ok(Vec::new());
+    };
+
+    let (name, _version) = dep.text(doc);
+
+    let metas = match clients.crates.get_sparse_index_crate_metadatas(&name).await {
         Ok(v) => v,
         Err(e) => {
             if e.is_not_found_error() {
                 return Ok(vec![Diagnostic {
                     source: Some(String::from("Cargo")),
-                    range: dep.name().range,
-                    message: format!(
-                        "No package exists with the name `{}`",
-                        dep.name().unquoted()
-                    ),
+                    range: ts_range_to_lsp_range(dep.name.range()),
+                    message: format!("No package exists with the name `{name}`"),
                     severity: Some(DiagnosticSeverity::ERROR),
                     ..Default::default()
                 }]);
@@ -44,21 +48,20 @@ pub async fn get_cargo_diagnostics(
     };
 
     let mut diagnostics = Vec::new();
-    diagnostics.extend(get_cargo_diagnostics_version(clients, doc, dep, &metas).await?);
-    diagnostics.extend(get_cargo_diagnostics_features(clients, doc, dep, &metas).await?);
+    diagnostics.extend(get_cargo_diagnostics_version(clients, doc, &dep, &metas).await?);
+    diagnostics.extend(get_cargo_diagnostics_features(clients, doc, &dep, &metas).await?);
     Ok(diagnostics)
 }
 
 async fn get_cargo_diagnostics_version(
     _clients: &Clients,
     doc: &Document,
-    dep: &Dependency,
+    dep: &CargoDependency<'_>,
     metas: &[IndexMetadata],
 ) -> ServerResult<Vec<Diagnostic>> {
-    let Some(spec_version) = dep.spec().and_then(|s| s.contents.version.as_ref()) else {
-        return Ok(Vec::new());
-    };
-    let Ok(version_req) = VersionReq::parse(spec_version.unquoted()) else {
+    let (name, version) = dep.text(doc);
+
+    let Ok(version_req) = VersionReq::parse(&version) else {
         return Ok(Vec::new());
     };
     let version_min = version_req.minimum_version();
@@ -72,11 +75,8 @@ async fn get_cargo_diagnostics_version(
     }) {
         return Ok(vec![Diagnostic {
             source: Some(String::from("Cargo")),
-            range: spec_version.range,
-            message: format!(
-                "No version exists that matches requirement `{}`",
-                spec_version.unquoted()
-            ),
+            range: ts_range_to_lsp_range(dep.version.range()),
+            message: format!("No version exists that matches requirement `{version}`"),
             severity: Some(DiagnosticSeverity::ERROR),
             ..Default::default()
         }]);
@@ -84,7 +84,7 @@ async fn get_cargo_diagnostics_version(
 
     // Try to find the latest non-prerelease version, filtering out
     // any version that has been yanked - unless we exactly specify it
-    let latest_name = dep.name().unquoted().to_string();
+    let latest_name = name.to_string();
     let Some(latest_version) = version_min
         .extract_latest_version_filtered(metas.iter().cloned(), |v| {
             !v.item.yanked || v.is_exactly_compatible
@@ -98,16 +98,16 @@ async fn get_cargo_diagnostics_version(
         let latest_version_string = latest_version.item_version.to_string();
 
         let metadata = CodeActionMetadata::LatestVersion {
-            edit_range: spec_version.range,
+            edit_range: ts_range_to_lsp_range(dep.version.range()),
             source_uri: doc.url().clone(),
-            source_text: spec_version.quoted().to_string(),
+            source_text: version.to_string(),
             version_current: version_min.to_string(),
             version_latest: latest_version_string.to_string(),
         };
 
         return Ok(vec![Diagnostic {
             source: Some(String::from("Cargo")),
-            range: spec_version.range,
+            range: ts_range_to_lsp_range(dep.version.range()),
             message: format!(
                 "A newer version of `{latest_name}` is available.\
                 \nThe latest version is `{latest_version_string}`"
@@ -129,35 +129,28 @@ async fn get_cargo_diagnostics_version(
 
 async fn get_cargo_diagnostics_features(
     clients: &Clients,
-    _doc: &Document,
-    dep: &Dependency,
+    doc: &Document,
+    dep: &CargoDependency<'_>,
     _metas: &[IndexMetadata],
 ) -> ServerResult<Vec<Diagnostic>> {
-    let Some(features) = dep.spec().and_then(|s| s.contents.features.as_ref()) else {
-        return Ok(Vec::new());
-    };
-    if features.contents.is_empty() {
-        return Ok(Vec::new());
-    }
+    let (name, version) = dep.text(doc);
 
-    let Some(known_features) = get_features(clients, dep).await else {
+    let Some(known_features) = get_features(clients, &name, &version).await else {
         return Ok(Vec::new());
     };
 
     let mut diagnostics = Vec::new();
-    for feat in features.contents.iter() {
-        if !known_features.contains(&feat.unquoted().to_string()) {
+    for feat_node in dep.feature_nodes() {
+        let feat = unquote(doc.node_text(feat_node));
+        if !known_features.contains(&feat.to_string()) {
             diagnostics.push(Diagnostic {
                 source: Some(String::from("Cargo")),
-                range: feat.range,
-                message: match did_you_mean(feat.unquoted(), known_features.as_slice()) {
+                range: ts_range_to_lsp_range(feat_node.range()),
+                message: match did_you_mean(&feat, known_features.as_slice()) {
                     Some(suggestion) => {
-                        format!(
-                            "Unknown feature `{}` - did you mean `{suggestion}`?",
-                            feat.unquoted()
-                        )
+                        format!("Unknown feature `{feat}` - did you mean `{suggestion}`?")
                     }
-                    None => format!("Unknown feature `{}`", feat.unquoted()),
+                    None => format!("Unknown feature `{feat}`"),
                 },
                 severity: Some(DiagnosticSeverity::ERROR),
                 ..Default::default()

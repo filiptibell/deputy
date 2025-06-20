@@ -1,13 +1,11 @@
 use semver::VersionReq;
 
-use crate::{parser::Dependency, util::Versioned};
+use crate::util::Versioned;
 
 use super::Clients;
 
-pub async fn get_features(clients: &Clients, dep: &Dependency) -> Option<Vec<String>> {
-    let dname = dep.name().unquoted();
-    let dver = dep.spec().and_then(|s| s.contents.version.as_ref())?;
-    let dreq = VersionReq::parse(dver.unquoted()).ok()?;
+pub async fn get_features(clients: &Clients, dname: &str, dver: &str) -> Option<Vec<String>> {
+    let dreq = VersionReq::parse(dver).ok()?;
 
     let metas = clients
         .crates

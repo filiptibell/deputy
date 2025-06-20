@@ -103,7 +103,11 @@ pub async fn get_cargo_completions_features(
     dep: &Dependency,
     feat: &Node<String>,
 ) -> ServerResult<Option<CompletionResponse>> {
-    let Some(known_features) = get_features(clients, dep).await else {
+    let name = dep.name().contents.as_str();
+    let Some(version) = dep.spec().and_then(|s| s.contents.version.as_ref()) else {
+        return Ok(None);
+    };
+    let Some(known_features) = get_features(clients, name, version.contents.as_str()).await else {
         return Ok(None);
     };
 

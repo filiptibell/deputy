@@ -86,17 +86,17 @@ impl Cargo {
         _params: DocumentDiagnosticParams,
     ) -> ServerResult<Vec<Diagnostic>> {
         // Find all dependencies
-        let dependencies = query_cargo_toml_dependencies(doc);
+        let dependencies = cargo::find_all_dependencies(doc);
         if dependencies.is_empty() {
             return Ok(Vec::new());
         }
 
         // Fetch all diagnostics concurrently
-        debug!("Fetching cargo diagnostics for dependencies");
+        debug!("Fetching rokit diagnostics for dependencies");
         let results = try_join_all(
             dependencies
-                .iter()
-                .map(|dep| get_cargo_diagnostics(&self.clients, doc, dep)),
+                .into_iter()
+                .map(|node| get_cargo_diagnostics(&self.clients, doc, node)),
         )
         .await?;
 
