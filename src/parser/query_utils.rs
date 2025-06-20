@@ -15,20 +15,6 @@ pub fn range_extend(left: Range, right: Range) -> Range {
     }
 }
 
-pub fn range_for_substring(original_range: Range, original_string: &str, substring: &str) -> Range {
-    let offset = original_string.find(substring).unwrap() as u32;
-    Range {
-        start: Position {
-            line: original_range.start.line,
-            character: original_range.start.character + offset,
-        },
-        end: Position {
-            line: original_range.start.line,
-            character: original_range.start.character + offset + substring.len() as u32,
-        },
-    }
-}
-
 type NodeAndString<'a> = (Node<'a>, &'a str);
 
 pub fn extract_key_child<'a>(doc: &'a Document, node: Node<'a>) -> Option<NodeAndString<'a>> {

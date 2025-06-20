@@ -1,3 +1,5 @@
+use std::io::{BufRead, BufReader};
+
 use futures::future::try_join_all;
 use tracing::debug;
 
@@ -6,8 +8,7 @@ use async_language_server::{
     server::{Document, ServerResult},
 };
 
-use crate::parser::query_wally_toml_dependencies;
-use crate::parser::SimpleDependency;
+use crate::parser::wally;
 
 use super::*;
 
@@ -37,18 +38,15 @@ impl Wally {
         pos: Position,
         _node: Node<'_>,
     ) -> ServerResult<Option<Hover>> {
-        let text = doc.text_contents();
-        let index_url = extract_wally_index_url(text.as_str());
-
-        // Find the dependency that is hovered over
-        let dependencies = query_wally_toml_dependencies(doc);
-        let Some(found) = SimpleDependency::find_at_pos(&dependencies, pos) else {
+        let Some(dep) = wally::find_dependency_at(doc, pos) else {
             return Ok(None);
         };
 
-        // Fetch some extra info and return the hover
-        debug!("Hovering: {found:?}");
-        get_wally_hover(&self.clients, doc, index_url, found).await
+        let index_url = extract_wally_index_url(doc);
+
+        debug!("Hovering: {dep:?}");
+
+        get_wally_hover(&self.clients, doc, index_url.as_str(), dep).await
     }
 
     pub(super) async fn completion(
@@ -57,31 +55,15 @@ impl Wally {
         pos: Position,
         _node: Node<'_>,
     ) -> ServerResult<Option<CompletionResponse>> {
-        let text = doc.text_contents();
-        let index_url = extract_wally_index_url(text.as_str());
-
-        // Find the dependency that is being completed
-        let dependencies = query_wally_toml_dependencies(doc);
-        let Some(found) = SimpleDependency::find_at_pos(&dependencies, pos) else {
+        let Some(dep) = wally::find_dependency_at(doc, pos) else {
             return Ok(None);
         };
 
-        // Check what we're completing - author, name, or version
-        let parsed = found.parsed_spec();
-        if parsed.version.as_ref().is_some_and(|v| v.contains(pos)) {
-            debug!("Completing version: {found:?}");
-            return get_wally_completions_spec_version(&self.clients, doc, index_url, found).await;
-        } else if parsed.name.is_some_and(|n| n.contains(pos)) {
-            debug!("Completing name: {found:?}");
-            return get_wally_completions_spec_name(&self.clients, doc, index_url, found).await;
-        } else if parsed.author.contains(pos)
-            || (parsed.author.unquoted().is_empty() && found.spec.contains(pos))
-        {
-            debug!("Completing author: {found:?}");
-            return get_wally_completions_spec_author(&self.clients, doc, index_url, found).await;
-        }
+        let index_url = extract_wally_index_url(doc);
 
-        Ok(None)
+        debug!("Fetching completions: {dep:?}");
+
+        get_wally_completions(&self.clients, doc, pos, index_url.as_str(), dep).await
     }
 
     pub(super) async fn diagnostics(
@@ -89,21 +71,20 @@ impl Wally {
         doc: &Document,
         _params: DocumentDiagnosticParams,
     ) -> ServerResult<Vec<Diagnostic>> {
-        let text = doc.text_contents();
-        let index_url = extract_wally_index_url(text.as_str());
-
         // Find all dependencies
-        let dependencies = query_wally_toml_dependencies(doc);
+        let dependencies = wally::find_all_dependencies(doc);
         if dependencies.is_empty() {
             return Ok(Vec::new());
         }
+
+        let index_url = extract_wally_index_url(doc);
 
         // Fetch all diagnostics concurrently
         debug!("Fetching wally diagnostics for dependencies");
         let results = try_join_all(
             dependencies
-                .iter()
-                .map(|tool| get_wally_diagnostics(&self.clients, doc, index_url, tool)),
+                .into_iter()
+                .map(|node| get_wally_diagnostics(&self.clients, doc, index_url.as_str(), node)),
         )
         .await?;
 
@@ -111,19 +92,23 @@ impl Wally {
     }
 }
 
-fn extract_wally_index_url(doc_contents: &str) -> &str {
-    doc_contents
-        .lines()
-        .find_map(|line| {
-            line.split_once('=')
-                .filter(|(key, _)| key.trim() == "registry")
-                .map(|(_, value)| {
-                    value
-                        .trim()
-                        .trim_start_matches(['\'', '\"'])
-                        .trim_end_matches(['\'', '\"'])
-                        .trim_end_matches(".git")
-                })
-        })
-        .unwrap_or(WALLY_DEFAULT_REGISTRY)
+fn extract_wally_index_url(doc: &Document) -> String {
+    let mut reader = BufReader::new(doc.text_reader());
+
+    let mut line = String::new();
+    while reader.read_line(&mut line).is_ok() {
+        if let Some((key, value)) = line.split_once('=') {
+            if key.trim() == "registry" {
+                return value
+                    .trim()
+                    .trim_start_matches(['\'', '\"'])
+                    .trim_end_matches(['\'', '\"'])
+                    .trim_end_matches(".git")
+                    .to_string();
+            }
+        }
+        line.clear();
+    }
+
+    WALLY_DEFAULT_REGISTRY.to_string()
 }

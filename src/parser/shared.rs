@@ -6,7 +6,22 @@ use async_language_server::{
     tree_sitter_utils::{find_ancestor, find_child},
 };
 
-pub fn find_all_dependencies(doc: &Document) -> Vec<TsNode> {
+#[derive(Debug, Clone, Copy)]
+pub enum TableNames {
+    Rokit,
+    Wally,
+}
+
+fn check_table_name(table_names: TableNames, key: &str) -> bool {
+    match table_names {
+        TableNames::Rokit => key == "tools",
+        TableNames::Wally => {
+            ["dependencies", "dev-dependencies", "server-dependencies"].contains(&key)
+        }
+    }
+}
+
+pub(super) fn find_all_dependencies(doc: &Document, table_names: TableNames) -> Vec<TsNode> {
     let Some(root) = doc.node_at_root() else {
         return Vec::new();
     };
@@ -19,7 +34,7 @@ pub fn find_all_dependencies(doc: &Document) -> Vec<TsNode> {
             continue;
         };
 
-        if doc.node_text(key) != "tools" {
+        if !check_table_name(table_names, doc.node_text(key).as_str()) {
             continue;
         }
 
@@ -34,13 +49,17 @@ pub fn find_all_dependencies(doc: &Document) -> Vec<TsNode> {
     deps
 }
 
-pub fn find_dependency_at(doc: &Document, pos: Position) -> Option<TsNode> {
+pub(super) fn find_dependency_at(
+    doc: &Document,
+    pos: Position,
+    table_names: TableNames,
+) -> Option<TsNode> {
     let node = doc.node_at_position(pos)?; // either the key or value
     let pair = find_ancestor(node, |a| a.kind() == "pair")?; // tool-name = "spec"
 
     let table = find_ancestor(node, |a| a.kind() == "table")?;
     let key = find_child(table, |c| c.kind() == "bare_key")?;
-    if doc.node_text(key) != "tools" {
+    if !check_table_name(table_names, doc.node_text(key).as_str()) {
         return None;
     }
 

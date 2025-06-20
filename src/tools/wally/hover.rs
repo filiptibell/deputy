@@ -3,42 +3,44 @@ use tracing::trace;
 use async_language_server::{
     lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind},
     server::{Document, ServerResult},
+    tree_sitter::Node,
+    tree_sitter_utils::ts_range_to_lsp_range,
 };
 
-use crate::{parser::SimpleDependency, tools::MarkdownBuilder};
+use crate::{parser::wally, tools::MarkdownBuilder};
 
 use super::constants::WALLY_DEFAULT_REGISTRY;
 use super::Clients;
 
 pub async fn get_wally_hover(
     clients: &Clients,
-    _doc: &Document,
+    doc: &Document,
     index_url: &str,
-    tool: &SimpleDependency,
+    node: Node<'_>,
 ) -> ServerResult<Option<Hover>> {
-    let Some(spec) = tool.parsed_spec().into_full() else {
+    let Some(dep) = wally::parse_dependency(node) else {
+        return Ok(None);
+    };
+
+    let (Some(owner), Some(repository), Some(version)) = dep.spec_ranges(doc).text(doc) else {
         return Ok(None);
     };
 
     // Add basic hover information with version and name
-    trace!(
-        "Hovering: {} version {}",
-        spec.name.unquoted(),
-        spec.version.unquoted()
-    );
+    trace!("Hovering: {owner} version {version}");
     let mut md = MarkdownBuilder::new();
 
     // Try to fetch additional information from the index - description, links
     trace!("Fetching index metadatas from Wally API");
     if let Ok(mut metadatas) = clients
         .wally
-        .get_index_metadatas(index_url, spec.author.unquoted(), spec.name.unquoted())
+        .get_index_metadatas(index_url, owner, repository)
         .await
     {
         metadatas.reverse(); // Latest last, so we can pop
         if let Some(metadata) = metadatas.pop() {
             md.h2(&metadata.package.name);
-            md.version(spec.version.unquoted());
+            md.version(version);
 
             // Add description, if available
             if let Some(desc) = &metadata.package.description {
@@ -53,9 +55,8 @@ pub async fn get_wally_hover(
                 .eq_ignore_ascii_case(WALLY_DEFAULT_REGISTRY)
                 .then(|| {
                     format!(
-                        "https://wally.run/package/{}?version={}",
+                        "https://wally.run/package/{}?version={version}",
                         metadata.package.name,
-                        spec.version.unquoted()
                     )
                 });
             if wally_run.is_some()
@@ -75,16 +76,16 @@ pub async fn get_wally_hover(
                 }
             }
         } else {
-            md.h2(spec.name.unquoted());
-            md.version(spec.version.unquoted());
+            md.h2(repository);
+            md.version(version);
         }
     } else {
-        md.h2(spec.name.unquoted());
-        md.version(spec.version.unquoted());
+        md.h2(repository);
+        md.version(version);
     }
 
     Ok(Some(Hover {
-        range: Some(tool.range()),
+        range: Some(ts_range_to_lsp_range(node.range())),
         contents: HoverContents::Markup(MarkupContent {
             kind: MarkupKind::Markdown,
             value: md.build(),

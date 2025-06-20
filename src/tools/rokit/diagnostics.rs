@@ -132,9 +132,8 @@ pub async fn get_rokit_diagnostics(
             source: Some(diag_source_for_doc(doc)),
             range: ts_range_to_lsp_range(dep.spec.range()),
             message: format!(
-                "A newer version of `{}/{}` is available.\
+                "A newer version of `{owner}/{repository}` is available.\
                 \nThe latest version is `{latest_version_string}`",
-                owner, repository
             ),
             severity: Some(DiagnosticSeverity::INFORMATION),
             data: Some(
