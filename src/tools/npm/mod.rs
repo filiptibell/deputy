@@ -6,6 +6,7 @@ use async_language_server::{
     server::{Document, ServerResult},
 };
 
+use crate::parser::npm;
 use crate::parser::query_package_json_dependencies;
 use crate::parser::Dependency;
 
@@ -79,7 +80,7 @@ impl Npm {
         _params: DocumentDiagnosticParams,
     ) -> ServerResult<Vec<Diagnostic>> {
         // Find all dependencies
-        let dependencies = query_package_json_dependencies(doc);
+        let dependencies = npm::find_all_dependencies(doc);
         if dependencies.is_empty() {
             return Ok(Vec::new());
         }
@@ -88,8 +89,8 @@ impl Npm {
         debug!("Fetching npm diagnostics for dependencies");
         let results = try_join_all(
             dependencies
-                .iter()
-                .map(|dep| get_npm_diagnostics(&self.clients, doc, dep)),
+                .into_iter()
+                .map(|node| get_npm_diagnostics(&self.clients, doc, node)),
         )
         .await?;
 

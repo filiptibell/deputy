@@ -1,9 +1,11 @@
 use async_language_server::{
     lsp_types::{Diagnostic, DiagnosticSeverity, DiagnosticTag},
     server::{Document, ServerResult},
+    tree_sitter::Node,
+    tree_sitter_utils::ts_range_to_lsp_range,
 };
 
-use crate::parser::Dependency;
+use crate::parser::npm;
 use crate::util::{VersionReqExt, Versioned};
 
 use super::super::shared::*;
@@ -12,32 +14,31 @@ use super::Clients;
 pub async fn get_npm_diagnostics(
     clients: &Clients,
     doc: &Document,
-    dep: &Dependency,
+    node: Node<'_>,
 ) -> ServerResult<Vec<Diagnostic>> {
-    let Some(dep_version) = dep.spec().and_then(|s| s.contents.version.as_ref()) else {
+    let Some(dep) = npm::parse_dependency(node) else {
         return Ok(Vec::new());
     };
-    let Ok(version_req) = dep.parse_version_req() else {
+
+    let (name, spec) = dep.text(doc);
+    if spec.starts_with("file:") || spec.starts_with("github:") || spec.starts_with("git+") {
+        return Ok(Vec::new()); // Ignore these spec formats, for now
+    }
+
+    let Ok(version_req) = spec.parse_version_req() else {
         return Ok(Vec::new());
     };
     let version = version_req.minimum_version();
 
     // Fetch versions and make sure there is at least one
-    let meta = match clients
-        .npm
-        .get_registry_metadata(dep.name().unquoted())
-        .await
-    {
+    let meta = match clients.npm.get_registry_metadata(&name).await {
         Ok(v) => v,
         Err(e) => {
             if e.is_not_found_error() {
                 return Ok(vec![Diagnostic {
                     source: Some(String::from("NPM")),
-                    range: dep.name().range,
-                    message: format!(
-                        "No package exists with the name `{}`",
-                        dep.name().unquoted()
-                    ),
+                    range: ts_range_to_lsp_range(dep.name.range()),
+                    message: format!("No package exists with the name `{}`", name),
                     severity: Some(DiagnosticSeverity::ERROR),
                     ..Default::default()
                 }]);
@@ -69,11 +70,8 @@ pub async fn get_npm_diagnostics(
     if !has_versions {
         return Ok(vec![Diagnostic {
             source: Some(String::from("NPM")),
-            range: dep_version.range,
-            message: format!(
-                "Version `{version}` does not exist for the package `{}`",
-                dep.name().unquoted()
-            ),
+            range: ts_range_to_lsp_range(dep.spec.range()),
+            message: format!("Version `{version}` does not exist for the package `{name}`"),
             severity: Some(DiagnosticSeverity::ERROR),
             ..Default::default()
         }]);
@@ -82,7 +80,7 @@ pub async fn get_npm_diagnostics(
     if let Some(deprecation_reason) = deprecation_reason {
         return Ok(vec![Diagnostic {
             source: Some(String::from("NPM")),
-            range: dep_version.range,
+            range: ts_range_to_lsp_range(dep.spec.range()),
             message: format!("Version `{version}` is deprecated: {deprecation_reason}"),
             severity: Some(DiagnosticSeverity::WARNING),
             tags: Some(vec![DiagnosticTag::DEPRECATED]),
@@ -101,20 +99,19 @@ pub async fn get_npm_diagnostics(
         let latest_version_string = latest_version.item_version.to_string();
 
         let metadata = CodeActionMetadata::LatestVersion {
-            edit_range: dep_version.range,
+            edit_range: ts_range_to_lsp_range(dep.spec.range()),
             source_uri: doc.url().clone(),
-            source_text: dep_version.quoted().to_string(),
+            source_text: spec.to_string(),
             version_current: version.to_string(),
             version_latest: latest_version_string.to_string(),
         };
 
         return Ok(vec![Diagnostic {
             source: Some(String::from("NPM")),
-            range: dep_version.range,
+            range: ts_range_to_lsp_range(dep.spec.range()),
             message: format!(
-                "A newer version of `{}` is available.\
+                "A newer version of `{name}` is available.\
                 \nThe latest version is `{latest_version_string}`",
-                dep.name().unquoted()
             ),
             severity: Some(DiagnosticSeverity::INFORMATION),
             data: Some(
