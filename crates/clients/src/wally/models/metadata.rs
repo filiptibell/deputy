@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::Deserialize;
 
-use shared::Versioned;
+use versioning::Versioned;
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct Metadata {

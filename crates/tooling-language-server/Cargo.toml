@@ -16,7 +16,6 @@ workspace = true
 anyhow = "1.0"
 dashmap = "6.1"
 ignore = "0.4"
-semver = "1.0"
 strsim = "0.11"
 thiserror = "2.0"
 url = "2.4"

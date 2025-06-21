@@ -6,7 +6,7 @@ use async_language_server::{
 };
 
 use parser::rokit;
-use shared::Versioned;
+use versioning::Versioned;
 
 use crate::shared::{CodeActionMetadata, ResolveContext};
 

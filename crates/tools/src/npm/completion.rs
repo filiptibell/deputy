@@ -11,7 +11,7 @@ use async_language_server::{
 use tracing::debug;
 
 use parser::npm;
-use shared::Versioned;
+use versioning::Versioned;
 
 use super::Clients;
 use super::constants::top_npm_packages_prefixed;

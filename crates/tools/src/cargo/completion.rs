@@ -14,7 +14,7 @@ use async_language_server::{
 use clients::Clients;
 use parser::cargo;
 use parser::utils::unquote;
-use shared::Versioned;
+use versioning::Versioned;
 
 use crate::cargo::constants::CratesIoPackage;
 use crate::cargo::util::get_features;

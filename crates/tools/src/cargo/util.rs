@@ -1,6 +1,4 @@
-use semver::VersionReq;
-
-use shared::Versioned;
+use versioning::{VersionReq, Versioned};
 
 use super::Clients;
 

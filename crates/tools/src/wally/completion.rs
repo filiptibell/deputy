@@ -10,7 +10,7 @@ use async_language_server::{
 use tracing::debug;
 
 use parser::wally;
-use shared::Versioned;
+use versioning::Versioned;
 
 use crate::shared::filter_starts_with;
 

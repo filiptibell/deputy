@@ -1,4 +1,3 @@
-use semver::VersionReq;
 use tracing::debug;
 
 use async_language_server::{
@@ -9,7 +8,7 @@ use async_language_server::{
     tree_sitter_utils::ts_range_to_lsp_range,
 };
 
-use shared::{VersionReqExt, Versioned};
+use versioning::{VersionReq, VersionReqExt, Versioned};
 
 use clients::crates::models::IndexMetadata;
 use parser::{

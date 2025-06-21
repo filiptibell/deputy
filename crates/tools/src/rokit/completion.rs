@@ -10,7 +10,7 @@ use async_language_server::{
 use tracing::debug;
 
 use parser::rokit;
-use shared::Versioned;
+use versioning::Versioned;
 
 use super::Clients;
 use super::constants::{top_rokit_tool_authors_prefixed, top_rokit_tool_names_prefixed};

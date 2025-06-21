@@ -1,5 +1,3 @@
-use semver::VersionReq;
-
 use async_language_server::{
     lsp_types::{Diagnostic, DiagnosticSeverity},
     server::{Document, ServerResult},
@@ -8,7 +6,7 @@ use async_language_server::{
 };
 
 use parser::wally;
-use shared::{VersionReqExt, Versioned};
+use versioning::{VersionReq, VersionReqExt, Versioned};
 
 use crate::shared::{CodeActionMetadata, ResolveContext};
 

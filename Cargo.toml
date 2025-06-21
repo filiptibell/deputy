@@ -4,9 +4,9 @@ default-members = ["crates/tooling-language-server"]
 members = [
 	"crates/clients",
 	"crates/parser",
-	"crates/shared",
 	"crates/tooling-language-server",
 	"crates/tools",
+	"crates/versioning",
 ]
 
 [profile.release]

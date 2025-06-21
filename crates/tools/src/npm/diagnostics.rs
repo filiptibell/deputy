@@ -7,7 +7,7 @@ use async_language_server::{
 };
 
 use parser::npm;
-use shared::{VersionReqExt, Versioned};
+use versioning::{VersionReqExt, Versioned};
 
 use crate::shared::{CodeActionMetadata, ResolveContext};
 

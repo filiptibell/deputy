@@ -1,12 +1,12 @@
 [package]
-name = "shared"
+name = "versioning"
 version = { workspace = true }
 edition = { workspace = true }
 license = { workspace = true }
 publish = { workspace = true }
 
 [lib]
-name = "shared"
+name = "versioning"
 path = "src/lib.rs"
 
 [lints]
