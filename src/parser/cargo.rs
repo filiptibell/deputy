@@ -1,8 +1,10 @@
 use std::{collections::HashMap, str::FromStr};
 
 use async_language_server::{
-    lsp_types::Position, server::Document, tree_sitter::Node as TsNode,
-    tree_sitter_utils::find_ancestor,
+    lsp_types::Position,
+    server::Document,
+    tree_sitter::Node as TsNode,
+    tree_sitter_utils::{find_ancestor, find_child, ts_range_contains_lsp_position},
 };
 
 use super::utils::{table_key_parts, unquote};
@@ -118,11 +120,13 @@ pub fn find_dependency_at(doc: &Document, pos: Position) -> Option<TsNode> {
     {
         // [dependencies.name] or [workspace.dependencies.name] etc
         Some(table)
-    } else if let Some(pair) = find_ancestor(node, |a| a.kind() == "pair") {
+    } else if let Some(table) =
+        find_ancestor(node, |a| check_dependencies_table_multi(doc, a).is_some())
+    {
         // dependency-name = "spec" or dependency-name = { version = "a.b.c" }
-        let table = find_ancestor(node, |a| a.kind() == "table")?;
-        check_dependencies_table_multi(doc, table)?;
-        Some(pair)
+        find_child(table, |c| {
+            c.kind() == "pair" && ts_range_contains_lsp_position(c.range(), pos)
+        })
     } else {
         None
     }

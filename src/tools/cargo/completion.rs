@@ -165,8 +165,6 @@ async fn complete_features(
     feat: &str,
     range: Range,
 ) -> ServerResult<Option<CompletionResponse>> {
-    // FIXME: Not working yet
-
     let Some(known_features) = get_features(clients, name, version).await else {
         return Ok(None);
     };
