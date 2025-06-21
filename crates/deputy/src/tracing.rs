@@ -1,4 +1,4 @@
-use std::io::{stderr, IsTerminal};
+use std::io::{IsTerminal, stderr};
 
 use tracing_subscriber::filter::{EnvFilter, LevelFilter};
 

@@ -3,8 +3,8 @@
 use std::{collections::HashMap, str::FromStr, sync::LazyLock};
 
 use reqwest::{
-    header::{HeaderName, HeaderValue, USER_AGENT},
     Client, Method,
+    header::{HeaderName, HeaderValue, USER_AGENT},
 };
 use tracing::trace;
 use url::Url;
