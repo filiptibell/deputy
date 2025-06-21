@@ -1,8 +1,6 @@
 <!-- markdownlint-disable MD033 -->
 <!-- markdownlint-disable MD041 -->
 
-<h1 align="center">Deputy</h1>
-
 <div align="center">
   <a href="https://github.com/filiptibell/deputy/actions">
   <img src="https://shields.io/endpoint?url=https://badges.readysetplay.io/workflow/filiptibell/deputy/ci.yaml" alt="CI status" />
@@ -11,11 +9,13 @@
     <img src="https://shields.io/endpoint?url=https://badges.readysetplay.io/workflow/filiptibell/deputy/release.yaml" alt="Release status" />
   </a>
   <a href="https://github.com/filiptibell/deputy/blob/main/LICENSE.txt">
-    <img src="https://img.shields.io/github/license/filiptibell/deputy.svg?label=License&color=informational" alt="Language server license" />
+    <img src="https://img.shields.io/github/license/filiptibell/deputy.svg?label=License&color=informational" alt="License" />
   </a>
 </div>
 
 <br/>
+
+# Deputy
 
 A language server for your dependencies.
 

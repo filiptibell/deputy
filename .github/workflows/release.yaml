@@ -15,20 +15,16 @@ jobs:
     name: Init
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.get_version.outputs.version }}
+      version: ${{ steps.get_version.outputs.value }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Get version
+      - name: Get version from manifest
         id: get_version
         run: |
-          VERSION=$(cargo info --color never --quiet --offline deputy | grep "^version:" | cut -d' ' -f2)
-          echo "Found version '$VERSION' for package"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          PACKAGE_VERSION=$(./scripts/get-version.sh)
+          echo "value=${PACKAGE_VERSION}" >> $GITHUB_OUTPUT
 
   build:
     needs: ["init"]
@@ -47,12 +43,6 @@ jobs:
             artifact-name: deputy-${{ needs.init.outputs.version }}-linux-x86_64
             cargo-target: x86_64-unknown-linux-gnu
             vscode-target: linux-x64
-
-          - name: Linux aarch64
-            runner-os: ubuntu-latest
-            artifact-name: deputy-${{ needs.init.outputs.version }}-linux-aarch64
-            cargo-target: aarch64-unknown-linux-gnu
-            vscode-target: linux-arm64
 
           - name: macOS x86_64
             runner-os: macos-13
@@ -77,9 +67,6 @@ jobs:
         with:
           targets: ${{ matrix.cargo-target }}
 
-      - name: Install Just
-        uses: extractions/setup-just@v1
-
       - name: Install Node
         uses: actions/setup-node@v3
         with:
@@ -88,26 +75,14 @@ jobs:
       - name: Install Bun
         uses: oven-sh/setup-bun@v1
 
-      - name: Install build tooling (aarch64-unknown-linux-gnu)
-        if: matrix.cargo-target == 'aarch64-unknown-linux-gnu'
+      - name: Build binary
         run: |
-          sudo apt-get update -y
-          sudo apt-get install -y musl-tools clang llvm
-          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-
-      - name: Install other tooling
-        run: |
-          bun install -g @vscode/vsce ovsx
-          bun pm trust -g --all
-
-      - name: Build server
-        run: just build --locked --release --target ${{ matrix.cargo-target }}
-
-      - name: Build VSIX extension
-        run: just vsix-build ${{ matrix.cargo-target }}
+          cargo build \
+          --locked --all-features \
+          --release --target ${{ matrix.cargo-target }}
 
       - name: Create release archive
-        run: just zip-release ${{ matrix.cargo-target }}
+        run: ./scripts/zip-release.sh ${{ matrix.cargo-target }}
 
       - name: Upload release artifact
         uses: actions/upload-artifact@v4
@@ -115,22 +90,25 @@ jobs:
           name: ${{ matrix.artifact-name }}
           path: release.zip
 
+      - name: Install VSIX dependencies
+        working-directory: ./editors/vscode
+        run: bun install && bun pm trust --all
+
       - name: Publish VSIX extension
-        run: just vsix-publish ${{ matrix.cargo-target }} ${{ matrix.vscode-target }}
+        working-directory: ./editors/vscode
+        run: bun run extension-publish
         env:
+          VSCODE_TARGET: ${{ matrix.vscode-target }}
           VSCE_PAT: ${{ secrets.VSCE_TOKEN }}
           OVSX_PAT: ${{ secrets.OVSX_TOKEN }}
 
-  release-github:
-    name: Release (GitHub)
+  release:
+    name: Release
     runs-on: ubuntu-latest
     needs: ["init", "build"]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Install Just
-        uses: extractions/setup-just@v1
 
       - name: Download releases
         uses: actions/download-artifact@v4
@@ -138,7 +116,7 @@ jobs:
           path: ./releases
 
       - name: Unpack releases
-        run: just unpack-releases "./releases"
+        run: ./scripts/unpack-releases.sh "./releases"
 
       - name: Create release
         uses: softprops/action-gh-release@v2
