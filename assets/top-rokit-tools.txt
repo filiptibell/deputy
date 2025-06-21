@@ -1,5 +1,6 @@
 1Axen:blink
 argon-rbx:argon
+astral-sh:ruff,rye,ty,uv
 biomejs:biome
 blake-mealey:mantle
 BurntSurshi:ripgrep
