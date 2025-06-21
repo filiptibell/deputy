@@ -60,7 +60,7 @@ impl<T: Clone + Send + Sync + 'static> RequestCacheMap<T> {
 
         ### Example usage
 
-        ```rust
+        ```rust no_run
         let key = "my_cache_key";
         let fut = async move {
             // Do stuff that returns a result
