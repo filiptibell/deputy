@@ -53,19 +53,26 @@
         "esbuild": "esbuild ./src/extension.js --bundle --outfile=out/extension.js --external:vscode --platform=node --target=node16.13 --sourcemap",
         "esbuild-watch": "bun run esbuild -- --watch",
         "compile": "tsc -p ./ && bun run esbuild",
-        "watch": "tsc -p ./ && bun run esbuild-watch"
+        "watch": "tsc -p ./ && bun run esbuild-watch",
+        "extension-package": "rm -rf './bin' && mkdir -p './bin' && vsce package --out './bin/' --skip-license",
+        "extension-install": "bun run extension-package && code --install-extension ./bin/*.vsix",
+        "extension-publish": "bun run extension-package && vsce publish --skip-duplicate --target $VSCODE_TARGET && ovsx publish --skip-duplicate --target $VSCODE_TARGET"
     },
     "devDependencies": {
-        "@types/mocha": "^10.0.1",
         "@types/node": "^22.0",
         "@types/vscode": "^1.81.0",
+        "@vscode/vsce": "^3.4.1",
         "esbuild": "^0.24.2",
-        "glob": "^11.0.0",
-        "mocha": "^11.1.0",
-        "typescript": "^5.7.2"
+        "typescript": "^5.7.2",
+        "ovsx": "^0.10.4"
     },
     "dependencies": {
         "axios": "^1.5.0",
         "vscode-languageclient": "^9.0.1"
-    }
+    },
+    "trustedDependencies": [
+        "@vscode/vsce-sign",
+        "esbuild",
+        "keytar"
+    ]
 }
