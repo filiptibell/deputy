@@ -159,7 +159,7 @@ pub fn parse_dependency<'tree>(
             version = pairs.remove("version");
             features = pairs.remove("features");
             package = pairs.remove("package");
-        };
+        }
 
         // aliased_serde = { package = "serde" }
         if let Some(package) = package {

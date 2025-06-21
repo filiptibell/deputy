@@ -22,7 +22,7 @@ impl ResponseError {
 
 impl fmt::Debug for ResponseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Ok(s) = String::from_utf8(self.bytes.to_vec()) {
+        if let Ok(s) = String::from_utf8(self.bytes.clone()) {
             f.debug_struct("ResponseError")
                 .field("status", &self.status)
                 .field("bytes", &s)
@@ -38,7 +38,7 @@ impl fmt::Debug for ResponseError {
 
 impl fmt::Display for ResponseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Ok(s) = String::from_utf8(self.bytes.to_vec()) {
+        if let Ok(s) = String::from_utf8(self.bytes.clone()) {
             write!(f, "{} - {s}", self.status)
         } else {
             write!(f, "{} - N/A", self.status)

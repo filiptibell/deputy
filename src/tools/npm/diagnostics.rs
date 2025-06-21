@@ -7,9 +7,9 @@ use async_language_server::{
 };
 
 use crate::parser::npm;
+use crate::tools::{CodeActionMetadata, ResolveContext};
 use crate::util::{VersionReqExt, Versioned};
 
-use super::super::shared::*;
 use super::Clients;
 
 pub async fn get_npm_diagnostics(
@@ -39,13 +39,12 @@ pub async fn get_npm_diagnostics(
                 return Ok(vec![Diagnostic {
                     source: Some(String::from("NPM")),
                     range: ts_range_to_lsp_range(dep.name.range()),
-                    message: format!("No package exists with the name `{}`", name),
+                    message: format!("No package exists with the name `{name}`"),
                     severity: Some(DiagnosticSeverity::ERROR),
                     ..Default::default()
                 }]);
-            } else {
-                return Ok(Vec::new());
             }
+            return Ok(Vec::new());
         }
     };
 

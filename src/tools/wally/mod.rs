@@ -4,23 +4,24 @@ use futures::future::try_join_all;
 use tracing::debug;
 
 use async_language_server::{
-    lsp_types::{CompletionResponse, Diagnostic, DocumentDiagnosticParams, Hover},
+    lsp_types::{CompletionResponse, Diagnostic, DocumentDiagnosticParams, Hover, Position},
     server::{Document, ServerResult},
+    tree_sitter::Node,
 };
 
 use crate::parser::wally;
 
-use super::*;
+use super::Clients;
 
 mod completion;
 mod constants;
 mod diagnostics;
 mod hover;
 
-use completion::*;
-use constants::*;
-use diagnostics::*;
-use hover::*;
+use completion::get_wally_completions;
+use constants::WALLY_DEFAULT_REGISTRY;
+use diagnostics::get_wally_diagnostics;
+use hover::get_wally_hover;
 
 #[derive(Debug, Clone)]
 pub struct Wally {

@@ -8,9 +8,9 @@ use async_language_server::{
 };
 
 use crate::parser::wally;
+use crate::tools::{CodeActionMetadata, ResolveContext};
 use crate::util::{VersionReqExt, Versioned};
 
-use super::super::shared::*;
 use super::Clients;
 
 pub async fn get_wally_diagnostics(
@@ -71,9 +71,8 @@ pub async fn get_wally_diagnostics(
                     severity: Some(DiagnosticSeverity::ERROR),
                     ..Default::default()
                 }]);
-            } else {
-                return Ok(Vec::new());
             }
+            return Ok(Vec::new());
         }
     };
     if metadatas.is_empty() {

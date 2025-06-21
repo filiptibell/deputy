@@ -2,14 +2,14 @@ use futures::future::try_join_all;
 use tracing::debug;
 
 use async_language_server::{
-    lsp_types::{CompletionResponse, Diagnostic, DocumentDiagnosticParams, Hover},
+    lsp_types::{CompletionResponse, Diagnostic, DocumentDiagnosticParams, Hover, Position},
     server::{Document, ServerResult},
+    tree_sitter::Node,
 };
 
+use crate::clients::Clients;
 use crate::parser::cargo;
-use crate::util::*;
-
-use super::*;
+use crate::util::Versioned;
 
 mod completion;
 mod constants;
@@ -17,9 +17,9 @@ mod diagnostics;
 mod hover;
 mod util;
 
-use completion::*;
-use diagnostics::*;
-use hover::*;
+use completion::get_cargo_completions;
+use diagnostics::get_cargo_diagnostics;
+use hover::get_cargo_hover;
 
 #[derive(Debug, Clone)]
 pub struct Cargo {

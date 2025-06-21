@@ -1,9 +1,9 @@
 use tracing::error;
 
-use crate::util::*;
+use crate::util::{Request, RequestResult};
 
 mod cache;
-use cache::*;
+use cache::NpmCache;
 
 mod consts;
 mod requests;
@@ -26,7 +26,7 @@ impl NpmClient {
         Request::get(url).send().await
     }
 
-    fn emit_result<T>(&self, result: &RequestResult<T>) {
+    fn emit_result<T>(result: &RequestResult<T>) {
         if let Err(e) = &result {
             error!("NPM error: {e}");
         }

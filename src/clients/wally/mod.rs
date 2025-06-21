@@ -1,8 +1,8 @@
-use super::github::*;
-use crate::util::*;
+use super::github::GithubClient;
+use crate::util::{RequestError, RequestResult, ResponseError};
 
 mod cache;
-use cache::*;
+use cache::WallyCache;
 
 mod requests;
 
@@ -10,14 +10,14 @@ pub mod models;
 
 #[derive(Debug, Clone)]
 pub struct WallyClient {
-    _cache: WallyCache,
+    cache: WallyCache,
     github: GithubClient,
 }
 
 impl WallyClient {
     pub fn new(github: GithubClient) -> Self {
         Self {
-            _cache: WallyCache::new(),
+            cache: WallyCache::new(),
             github,
         }
     }

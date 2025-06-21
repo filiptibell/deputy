@@ -10,10 +10,10 @@ use async_channel::{unbounded, Receiver, Sender};
 use tokio::time::sleep;
 use tracing::error;
 
-use crate::util::*;
+use crate::util::{Request, RequestError, RequestResult};
 
 mod cache;
-use cache::*;
+use cache::CratesCache;
 
 mod consts;
 mod requests;
@@ -43,7 +43,7 @@ impl CratesClient {
         Request::get(url).send().await
     }
 
-    fn emit_result<T>(&self, result: &RequestResult<T>) {
+    fn emit_result<T>(result: &RequestResult<T>) {
         if let Err(e) = &result {
             error!("Crates error: {e}");
         }

@@ -7,7 +7,7 @@ use async_language_server::{
     tree_sitter::Node,
 };
 
-use crate::clients::*;
+use crate::clients::Clients;
 
 mod cargo;
 mod npm;
@@ -15,11 +15,11 @@ mod rokit;
 mod shared;
 mod wally;
 
-use cargo::*;
-use npm::*;
-use rokit::*;
-use shared::*;
-use wally::*;
+use cargo::Cargo;
+use npm::Npm;
+use rokit::Rokit;
+use shared::{CodeActionMetadata, CompletionMap, MarkdownBuilder, ResolveContext};
+use wally::Wally;
 
 #[derive(Debug, Clone)]
 pub struct Tools {
@@ -30,7 +30,7 @@ pub struct Tools {
 }
 
 impl Tools {
-    pub fn new(clients: Clients) -> Self {
+    pub fn new(clients: &Clients) -> Self {
         Self {
             cargo: Cargo::new(clients.clone()),
             npm: Npm::new(clients.clone()),
@@ -92,6 +92,8 @@ impl Tools {
         }
     }
 
+    #[allow(clippy::unused_self)]
+    #[allow(clippy::unused_async)]
     pub async fn code_action(
         &self,
         doc: &Document,
@@ -108,7 +110,7 @@ impl Tools {
                 .as_ref()
                 .map(ResolveContext::<CodeActionMetadata>::try_from)
             {
-                actions.push(action.into_inner().into_code_action(diag.clone()))
+                actions.push(action.into_inner().into_code_action(diag.clone()));
             }
         }
 

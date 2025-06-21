@@ -76,7 +76,7 @@ pub fn find_dependency_at(doc: &Document, pos: Position) -> Option<TsNode> {
     Some(pair)
 }
 
-pub fn parse_dependency<'tree>(pair: TsNode<'tree>) -> Option<NpmDependency<'tree>> {
+pub fn parse_dependency(pair: TsNode) -> Option<NpmDependency> {
     Some(NpmDependency {
         name: pair.child_by_field_name("key")?,
         spec: pair.child_by_field_name("value")?,

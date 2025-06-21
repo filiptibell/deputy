@@ -8,6 +8,7 @@ use async_language_server::{
 };
 
 use crate::{
+    clients::npm::models::RegistryMetadataRepositoryVariant,
     parser::npm,
     tools::MarkdownBuilder,
     util::{VersionReqExt, Versioned},
@@ -57,7 +58,7 @@ pub async fn get_npm_hover(
         // Add links to repo and homepage
         md.br();
         md.h3("Links");
-        if let Some(repo) = repo.and_then(|r| r.url()) {
+        if let Some(repo) = repo.and_then(RegistryMetadataRepositoryVariant::url) {
             md.a("Repository", repo);
         }
         if let Some(page) = page {

@@ -5,7 +5,7 @@ where
     I: IntoIterator<Item = S2>,
 {
     let current: String = current.into();
-    let options: Vec<String> = options.into_iter().map(|s| s.into()).collect();
+    let options: Vec<String> = options.into_iter().map(Into::into).collect();
 
     let (best_score, best_option) = options
         .iter()

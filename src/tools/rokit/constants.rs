@@ -1,6 +1,6 @@
 use std::sync::{Arc, OnceLock};
 
-use super::CompletionMap;
+use crate::tools::shared::CompletionMap;
 
 /**
     A statically stored author of Rokit-compatible tools.

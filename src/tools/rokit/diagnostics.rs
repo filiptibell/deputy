@@ -6,9 +6,9 @@ use async_language_server::{
 };
 
 use crate::parser::rokit;
+use crate::tools::{CodeActionMetadata, ResolveContext};
 use crate::util::Versioned;
 
-use super::super::shared::*;
 use super::Clients;
 
 fn diag_source_for_doc(doc: &Document) -> String {
@@ -78,9 +78,8 @@ pub async fn get_rokit_diagnostics(
                     severity: Some(DiagnosticSeverity::ERROR),
                     ..Default::default()
                 }]);
-            } else {
-                return Ok(Vec::new());
             }
+            return Ok(Vec::new());
         }
     };
     if releases.is_empty() {

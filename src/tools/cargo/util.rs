@@ -28,7 +28,7 @@ pub async fn get_features(clients: &Clients, dname: &str, dver: &str) -> Option<
     Some(
         meta.all_features()
             .into_iter()
-            .map(|s| s.to_string())
+            .map(ToString::to_string)
             .collect(),
     )
 }

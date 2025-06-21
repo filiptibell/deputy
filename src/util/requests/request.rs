@@ -70,7 +70,8 @@ impl Request {
 
     pub fn with_headers(mut self, pairs: &[(&str, &str)]) -> Self {
         for (name, value) in pairs {
-            self.headers.insert(name.to_string(), value.to_string());
+            self.headers
+                .insert((*name).to_string(), (*value).to_string());
         }
         self
     }

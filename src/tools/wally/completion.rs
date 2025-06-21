@@ -164,7 +164,7 @@ async fn complete_version(
         .map(|(index, potential_version)| CompletionItem {
             label: potential_version.item_version_raw.to_string(),
             kind: Some(CompletionItemKind::VALUE),
-            sort_text: Some(format!("{:0>5}", index)),
+            sort_text: Some(format!("{index:0>5}")),
             text_edit: Some(CompletionTextEdit::Edit(TextEdit {
                 new_text: potential_version.item_version_raw.to_string(),
                 range,

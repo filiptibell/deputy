@@ -49,13 +49,11 @@ impl<T: Clone + AsRef<str> + 'static> CompletionMap<T> {
             self.double_char
                 .get(&first_char)
                 .and_then(|m| m.get(&second_char))
-                .map(|v| v.as_ref())
-                .unwrap_or(Self::EMPTY)
+                .map_or(Self::EMPTY, |v| v.as_ref())
         } else {
             self.single_char
                 .get(&first_char)
-                .map(|v| v.as_ref())
-                .unwrap_or(Self::EMPTY)
+                .map_or(Self::EMPTY, |v| v.as_ref())
         }
     }
 

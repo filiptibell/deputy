@@ -1,6 +1,6 @@
-use crate::util::*;
+use crate::util::{RequestCacheMap, RequestResult};
 
-use super::models::*;
+use super::models::{CrateDataMulti, CrateDataSingle, IndexMetadata};
 
 #[derive(Debug, Clone)]
 pub(super) struct CratesCache {

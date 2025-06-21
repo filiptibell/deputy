@@ -33,6 +33,7 @@ impl MarkdownBuilder {
         self.p(format!("- [{}]({})", text.into(), link.into()));
     }
 
+    #[allow(clippy::needless_pass_by_value)]
     pub fn version(&mut self, version: impl ToString) {
         self.p(format!("Version **{}**", version.to_string()));
     }

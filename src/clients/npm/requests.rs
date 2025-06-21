@@ -1,8 +1,8 @@
 use tracing::debug;
 
-use super::consts::*;
-use super::models::*;
-use super::*;
+use super::consts::BASE_URL_REGISTRY;
+use super::models::RegistryMetadata;
+use super::{NpmClient, RequestResult};
 
 impl NpmClient {
     pub async fn get_registry_metadata(&self, name: &str) -> RequestResult<RegistryMetadata> {
@@ -16,10 +16,10 @@ impl NpmClient {
             // we can catch and emit all errors at once
             let inner = async {
                 let bytes = self.request_get(&registry_url).await?;
-                let text = String::from_utf8(bytes.to_vec())?;
+                let text = String::from_utf8(bytes.clone())?;
 
                 let mut meta = RegistryMetadata::try_from_json(&text)?;
-                for (key, value) in meta.versions.iter_mut() {
+                for (key, value) in &mut meta.versions {
                     value.version.clone_from(key);
                 }
 
@@ -27,7 +27,7 @@ impl NpmClient {
             }
             .await;
 
-            self.emit_result(&inner);
+            NpmClient::emit_result(&inner);
 
             inner
         };

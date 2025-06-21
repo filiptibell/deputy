@@ -53,8 +53,7 @@ pub async fn get_rokit_completions(
                 owner.unwrap_or_default(),
                 repository.unwrap_or_default(),
                 ts_range_to_lsp_range(range),
-            )
-            .await;
+            );
         }
     }
 
@@ -62,7 +61,7 @@ pub async fn get_rokit_completions(
     if let Some(range) = ranges.owner {
         if ts_range_contains_lsp_position(range, pos) {
             debug!("Completing author: {dep:?}");
-            return complete_owner(owner.unwrap_or_default(), ts_range_to_lsp_range(range)).await;
+            return complete_owner(owner.unwrap_or_default(), ts_range_to_lsp_range(range));
         }
     }
 
@@ -70,7 +69,7 @@ pub async fn get_rokit_completions(
     Ok(None)
 }
 
-async fn complete_owner(author: &str, range: Range) -> ServerResult<Option<CompletionResponse>> {
+fn complete_owner(author: &str, range: Range) -> ServerResult<Option<CompletionResponse>> {
     let items = top_rokit_tool_authors_prefixed(author, MAXIMUM_TOOLS_SHOWN)
         .into_iter()
         .map(|item| CompletionItem {
@@ -87,7 +86,7 @@ async fn complete_owner(author: &str, range: Range) -> ServerResult<Option<Compl
     Ok(Some(CompletionResponse::Array(items)))
 }
 
-async fn complete_repository(
+fn complete_repository(
     author: &str,
     name: &str,
     range: Range,
@@ -128,7 +127,7 @@ async fn complete_version(
         .map(|(index, potential_version)| CompletionItem {
             label: potential_version.item_version_raw.to_string(),
             kind: Some(CompletionItemKind::VALUE),
-            sort_text: Some(format!("{:0>5}", index)),
+            sort_text: Some(format!("{index:0>5}")),
             text_edit: Some(CompletionTextEdit::Edit(TextEdit {
                 new_text: potential_version.item_version_raw.to_string(),
                 range,

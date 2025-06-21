@@ -2,22 +2,23 @@ use futures::future::try_join_all;
 use tracing::debug;
 
 use async_language_server::{
-    lsp_types::{CompletionResponse, Diagnostic, DocumentDiagnosticParams, Hover},
+    lsp_types::{CompletionResponse, Diagnostic, DocumentDiagnosticParams, Hover, Position},
     server::{Document, ServerResult},
+    tree_sitter::Node,
 };
 
 use crate::parser::npm;
 
-use super::*;
+use super::{Clients, CompletionMap};
 
 mod completion;
 mod constants;
 mod diagnostics;
 mod hover;
 
-use completion::*;
-use diagnostics::*;
-use hover::*;
+use completion::get_npm_completions;
+use diagnostics::get_npm_diagnostics;
+use hover::get_npm_hover;
 
 #[derive(Debug, Clone)]
 pub struct Npm {

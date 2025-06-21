@@ -1,6 +1,6 @@
 use semver::{Error, Version, VersionReq};
 
-fn trim_version_specifiers(s: String) -> String {
+fn trim_version_specifiers(s: &str) -> String {
     s.trim_start_matches('^')
         .trim_start_matches('>')
         .trim_start_matches('<')
@@ -137,7 +137,7 @@ pub trait Versioned {
     {
         // Try to remove prefixes from partial string - this is not necessarily
         // 100% correct but unfortunately parsing as semver is not always possible
-        let this_version_raw = trim_version_specifiers(self.raw_version_string());
+        let this_version_raw = trim_version_specifiers(&self.raw_version_string());
 
         let mut potential_versions = potential_versions
             .into_iter()
@@ -208,12 +208,12 @@ impl Versioned for String {
 
 impl Versioned for &String {
     fn raw_version_string(&self) -> String {
-        self.to_string()
+        (*self).to_string()
     }
 }
 
 impl Versioned for &str {
     fn raw_version_string(&self) -> String {
-        self.to_string()
+        (*self).to_string()
     }
 }

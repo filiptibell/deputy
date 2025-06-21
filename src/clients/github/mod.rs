@@ -5,12 +5,12 @@ use std::sync::{
 
 use tracing::error;
 
-use crate::util::*;
+use crate::util::{Request, RequestResult};
 
 mod cache;
-use cache::*;
+use cache::GithubCache;
 
-use self::consts::*;
+use self::consts::{GITHUB_API_VERSION_NAME, GITHUB_API_VERSION_VALUE};
 
 mod consts;
 mod requests;

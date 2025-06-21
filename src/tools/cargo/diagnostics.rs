@@ -9,14 +9,17 @@ use async_language_server::{
     tree_sitter_utils::ts_range_to_lsp_range,
 };
 
-use crate::parser::{
-    cargo::{self, CargoDependency},
-    utils::unquote,
-};
+use crate::tools::shared::did_you_mean;
+use crate::tools::{CodeActionMetadata, ResolveContext};
 use crate::util::{VersionReqExt, Versioned};
+use crate::{
+    clients::crates::models::IndexMetadata,
+    parser::{
+        cargo::{self, CargoDependency},
+        utils::unquote,
+    },
+};
 
-use super::super::shared::*;
-use super::crates::models::IndexMetadata;
 use super::util::get_features;
 use super::Clients;
 
@@ -42,19 +45,18 @@ pub async fn get_cargo_diagnostics(
                     severity: Some(DiagnosticSeverity::ERROR),
                     ..Default::default()
                 }]);
-            } else {
-                return Ok(Vec::new());
             }
+            return Ok(Vec::new());
         }
     };
 
     let mut diagnostics = Vec::new();
-    diagnostics.extend(get_cargo_diagnostics_version(clients, doc, &dep, &metas).await?);
+    diagnostics.extend(get_cargo_diagnostics_version(clients, doc, &dep, &metas)?);
     diagnostics.extend(get_cargo_diagnostics_features(clients, doc, &dep, &metas).await?);
     Ok(diagnostics)
 }
 
-async fn get_cargo_diagnostics_version(
+fn get_cargo_diagnostics_version(
     _clients: &Clients,
     doc: &Document,
     dep: &CargoDependency<'_>,

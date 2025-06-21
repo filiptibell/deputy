@@ -48,14 +48,14 @@ pub async fn get_npm_completions(
     // Try to complete names
     if ts_range_contains_lsp_position(dep.name.range(), pos) {
         debug!("Completing name: {dep:?}");
-        return complete_name(name.as_str(), ts_range_to_lsp_range(dep.name.range())).await;
+        return complete_name(name.as_str(), ts_range_to_lsp_range(dep.name.range()));
     }
 
     // No completions yet - probably empty spec
     Ok(None)
 }
 
-async fn complete_name(name: &str, range: Range) -> ServerResult<Option<CompletionResponse>> {
+fn complete_name(name: &str, range: Range) -> ServerResult<Option<CompletionResponse>> {
     let packages = top_npm_packages_prefixed(name, MAXIMUM_PACKAGES_SHOWN)
         .into_iter()
         .cloned()
@@ -95,7 +95,7 @@ async fn complete_spec(
         .map(|(index, potential_version)| CompletionItem {
             label: potential_version.item_version_raw.to_string(),
             kind: Some(CompletionItemKind::VALUE),
-            sort_text: Some(format!("{:0>5}", index)),
+            sort_text: Some(format!("{index:0>5}")),
             text_edit: Some(CompletionTextEdit::Edit(TextEdit {
                 new_text: potential_version.item_version_raw.to_string(),
                 range: range.shrink(1, 1),

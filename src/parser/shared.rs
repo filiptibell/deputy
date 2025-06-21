@@ -66,7 +66,7 @@ pub(super) fn find_dependency_at(
     Some(pair)
 }
 
-pub fn parse_dependency<'tree>(pair: TsNode<'tree>) -> Option<TriDependency<'tree>> {
+pub fn parse_dependency(pair: TsNode) -> Option<TriDependency> {
     Some(TriDependency {
         alias: find_child(pair, |c| c.kind() == "bare_key")?,
         spec: find_child(pair, |c| c.kind() == "string")?,

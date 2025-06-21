@@ -22,7 +22,7 @@ pub struct ToolingLanguageServer {
 impl ToolingLanguageServer {
     pub fn new() -> Self {
         let clients = Clients::new();
-        let tools = Tools::new(clients.clone());
+        let tools = Tools::new(&clients);
         Self { clients, tools }
     }
 }

@@ -79,7 +79,7 @@ impl Metadata {
 }
 
 impl MetadataRealm {
-    pub const fn name(&self) -> &'static str {
+    pub const fn name(self) -> &'static str {
         match self {
             Self::Dev => "dev",
             Self::Server => "server",
@@ -87,7 +87,7 @@ impl MetadataRealm {
         }
     }
 
-    pub const fn section_name(&self) -> &'static str {
+    pub const fn section_name(self) -> &'static str {
         match self {
             Self::Dev => "dev-dependencies",
             Self::Server => "server-dependencies",
@@ -95,8 +95,8 @@ impl MetadataRealm {
         }
     }
 
-    pub const fn get_suggested_realm(&self, found_realm: Self) -> Option<Self> {
-        use MetadataRealm::*;
+    pub const fn get_suggested_realm(self, found_realm: Self) -> Option<Self> {
+        use MetadataRealm::{Dev, Server, Shared};
 
         match (found_realm, self) {
             // Suggest server when placed in shared

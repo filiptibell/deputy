@@ -1,7 +1,8 @@
-use crate::util::*;
+use crate::util::{RequestCacheMap, RequestResult};
 
-use super::models::*;
+use super::models::{GitTreeRoot, RepositoryMetrics, RepositoryRelease};
 
+#[allow(clippy::struct_field_names)]
 #[derive(Debug, Clone)]
 pub(super) struct GithubCache {
     pub repository_metrics: RequestCacheMap<RequestResult<RepositoryMetrics>>,

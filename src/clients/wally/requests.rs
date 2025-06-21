@@ -4,8 +4,8 @@ use async_language_server::lsp_types::Url;
 use reqwest::StatusCode;
 use tracing::info;
 
-use super::models::*;
-use super::*;
+use super::models::{IndexConfig, Metadata};
+use super::{RequestError, RequestResult, ResponseError, WallyClient};
 
 const DEFAULT_INDEX_BRANCH: &str = "main";
 
@@ -25,7 +25,7 @@ impl WallyClient {
             Ok(config)
         };
 
-        self._cache
+        self.cache
             .index_configs
             .with_caching(format!("{owner}/{repo}"), fut)
             .await
@@ -148,7 +148,7 @@ impl WallyClient {
             match res {
                 Err(_) => {}
                 Ok(bytes) => {
-                    let text = String::from_utf8(bytes.to_vec())?;
+                    let text = String::from_utf8(bytes.clone())?;
                     let mut metas = Metadata::try_from_lines(text.lines().collect())?;
 
                     metas.reverse(); // NOTE: We should sort by most recent version first

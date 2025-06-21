@@ -2,22 +2,22 @@ use futures::future::try_join_all;
 use tracing::debug;
 
 use async_language_server::{
-    lsp_types::{CompletionResponse, Diagnostic, DocumentDiagnosticParams, Hover},
+    lsp_types::{CompletionResponse, Diagnostic, DocumentDiagnosticParams, Hover, Position},
     server::{Document, ServerResult},
+    tree_sitter::Node,
 };
 
+use crate::clients::Clients;
 use crate::parser::rokit;
-
-use super::*;
 
 mod completion;
 mod constants;
 mod diagnostics;
 mod hover;
 
-use completion::*;
-use diagnostics::*;
-use hover::*;
+use completion::get_rokit_completions;
+use diagnostics::get_rokit_diagnostics;
+use hover::get_rokit_hover;
 
 #[derive(Debug, Clone)]
 pub struct Rokit {

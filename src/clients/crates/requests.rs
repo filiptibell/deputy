@@ -1,8 +1,10 @@
 use tracing::debug;
 
-use super::consts::*;
-use super::models::*;
-use super::*;
+use super::consts::{
+    BASE_URL_CRATES, BASE_URL_INDEX, QUERY_STRING_CRATE_MULTI, QUERY_STRING_CRATE_SINGLE,
+};
+use super::models::{CrateDataMulti, CrateDataSingle, IndexMetadata};
+use super::{CratesClient, RequestError, RequestResult};
 
 impl CratesClient {
     pub async fn get_sparse_index_crate_metadatas(
@@ -29,7 +31,7 @@ impl CratesClient {
             // we can catch and emit all errors at once
             let mut inner = async {
                 let bytes = self.request_get(&index_url).await?;
-                let text = String::from_utf8(bytes.to_vec())?;
+                let text = String::from_utf8(bytes.clone())?;
                 Ok(IndexMetadata::try_from_lines(text.lines().collect())?)
             }
             .await;
@@ -43,7 +45,7 @@ impl CratesClient {
                 .as_ref()
                 .is_err_and(|e: &RequestError| !e.is_not_found_error())
             {
-                self.emit_result(&inner);
+                CratesClient::emit_result(&inner);
             }
 
             inner
@@ -96,7 +98,7 @@ impl CratesClient {
                 .as_ref()
                 .is_err_and(|e: &RequestError| !e.is_not_found_error())
             {
-                self.emit_result(&inner);
+                CratesClient::emit_result(&inner);
             }
 
             inner
@@ -143,7 +145,7 @@ impl CratesClient {
             }
             .await;
 
-            self.emit_result(&inner);
+            CratesClient::emit_result(&inner);
 
             inner
         };

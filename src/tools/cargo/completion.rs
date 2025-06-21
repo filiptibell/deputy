@@ -11,7 +11,7 @@ use async_language_server::{
     tree_sitter_utils::{ts_range_contains_lsp_position, ts_range_to_lsp_range},
 };
 
-use crate::clients::*;
+use crate::clients::Clients;
 use crate::parser::cargo;
 use crate::parser::utils::unquote;
 use crate::tools::cargo::constants::CratesIoPackage;
@@ -147,7 +147,7 @@ async fn complete_version(
         .map(|(index, potential_version)| CompletionItem {
             label: potential_version.item_version_raw.to_string(),
             kind: Some(CompletionItemKind::VALUE),
-            sort_text: Some(format!("{:0>5}", index)),
+            sort_text: Some(format!("{index:0>5}")),
             deprecated: Some(potential_version.item.yanked),
             text_edit: Some(CompletionTextEdit::Edit(TextEdit {
                 new_text: potential_version.item_version_raw.to_string(),
@@ -180,7 +180,7 @@ async fn complete_features(
         .map(|(index, known_feat)| CompletionItem {
             label: known_feat.to_string(),
             kind: Some(CompletionItemKind::VALUE),
-            sort_text: Some(format!("{:0>5}", index)),
+            sort_text: Some(format!("{index:0>5}")),
             text_edit: Some(CompletionTextEdit::Edit(TextEdit {
                 new_text: known_feat.to_string(),
                 range: range.shrink(1, 1),

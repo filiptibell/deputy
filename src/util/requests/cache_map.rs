@@ -96,11 +96,14 @@ impl<T: Clone + Send + Sync + 'static> RequestCacheMap<T> {
 
         // Wait for permission to try to perform the request -
         // guarantees at most one requester at a time per key
-        let sem = self.sems.get(&key).map(|s| s.clone()).unwrap_or_else(|| {
-            let sem = Arc::new(Semaphore::new(1));
-            self.sems.insert(key.clone(), sem.clone());
-            sem
-        });
+        let sem = self.sems.get(&key).map_or_else(
+            || {
+                let sem = Arc::new(Semaphore::new(1));
+                self.sems.insert(key.clone(), sem.clone());
+                sem
+            },
+            |s| s.clone(),
+        );
         let _guard = sem.acquire_arc().await;
 
         // We have permission, but the cache may have been updated, check again

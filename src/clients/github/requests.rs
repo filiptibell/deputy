@@ -1,8 +1,11 @@
 use tracing::debug;
 
-use super::consts::*;
-use super::models::*;
-use super::*;
+use super::consts::{
+    GITHUB_API_BASE_URL, GITHUB_API_CONTENT_TYPE_RAW, GITHUB_API_VERSION_NAME,
+    GITHUB_API_VERSION_VALUE,
+};
+use super::models::{GitTreeRoot, RepositoryMetrics, RepositoryRelease};
+use super::{GithubClient, Request, RequestResult};
 
 impl GithubClient {
     pub async fn get_repository_metrics(
@@ -123,7 +126,7 @@ impl GithubClient {
             debug!("Fetching GitHub file for {owner}/{repository} at {path}");
 
             let result = Request::get(git_file_url)
-                .with_header("Accept", consts::GITHUB_API_CONTENT_TYPE_RAW)
+                .with_header("Accept", GITHUB_API_CONTENT_TYPE_RAW)
                 .with_header(GITHUB_API_VERSION_NAME, GITHUB_API_VERSION_VALUE)
                 .with_header_opt("Authorization", agent_auth)
                 .send()

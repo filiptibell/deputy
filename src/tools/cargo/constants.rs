@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
-use super::CompletionMap;
+use crate::tools::shared::CompletionMap;
 
 /**
     A statically stored package from the crates.io index.

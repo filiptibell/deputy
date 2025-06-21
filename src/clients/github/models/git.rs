@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+use std::path::Path;
+
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -37,7 +39,11 @@ impl GitTreeRoot {
         self.tree
             .iter()
             .filter_map(|node| {
-                if node.is_blob() && !node.path.ends_with(".json") {
+                if node.is_blob()
+                    && !Path::new(&node.path)
+                        .extension()
+                        .is_some_and(|ext| ext.eq_ignore_ascii_case("json"))
+                {
                     Some(node.path.clone())
                 } else {
                     None

@@ -32,12 +32,12 @@ impl CodeActionMetadata {
             } => {
                 let replaced = source_text.replace(&version_current, &version_latest);
                 let text_edit = TextEdit {
-                    new_text: if replaced != source_text {
-                        // means we replaced substring like ^x0.y0.z0 with ^x1.y1.z1
-                        replaced
-                    } else {
+                    new_text: if replaced == source_text {
                         // failed to replace substring, just insert latest version
                         version_latest
+                    } else {
+                        // means we replaced substring like ^x0.y0.z0 with ^x1.y1.z1
+                        replaced
                     },
                     range: edit_range,
                 };
