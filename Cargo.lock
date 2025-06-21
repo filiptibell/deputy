@@ -110,7 +110,7 @@ dependencies = [
 [[package]]
 name = "async-language-server"
 version = "0.0.0"
-source = "git+https://github.com/filiptibell/async-language-server?rev=f344168d14419e6038e196fd9d61805089b75627#f344168d14419e6038e196fd9d61805089b75627"
+source = "git+https://github.com/filiptibell/async-language-server?rev=a0ab43be5d01b9eade82393431ac7adf0ec51d8e#a0ab43be5d01b9eade82393431ac7adf0ec51d8e"
 dependencies = [
  "async-lsp",
  "dashmap",

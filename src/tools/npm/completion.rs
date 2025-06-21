@@ -4,6 +4,7 @@ use async_language_server::{
         Range, TextEdit,
     },
     server::{Document, ServerResult},
+    text_utils::RangeExt,
     tree_sitter::Node,
     tree_sitter_utils::{ts_range_contains_lsp_position, ts_range_to_lsp_range},
 };
@@ -67,7 +68,7 @@ async fn complete_name(name: &str, range: Range) -> ServerResult<Option<Completi
             kind: Some(CompletionItemKind::VALUE),
             text_edit: Some(CompletionTextEdit::Edit(TextEdit {
                 new_text: package.name.to_string(),
-                range: shrink_range(range),
+                range: range.shrink(1, 1),
             })),
             ..Default::default()
         })
@@ -97,19 +98,11 @@ async fn complete_spec(
             sort_text: Some(format!("{:0>5}", index)),
             text_edit: Some(CompletionTextEdit::Edit(TextEdit {
                 new_text: potential_version.item_version_raw.to_string(),
-                range: shrink_range(range),
+                range: range.shrink(1, 1),
             })),
             ..Default::default()
         })
         .collect::<Vec<_>>();
 
     Ok(Some(CompletionResponse::Array(valid_vec)))
-}
-
-// Shrink range to not replace quotes, only the inner string contents
-
-fn shrink_range(mut range: Range) -> Range {
-    range.start.character += 1;
-    range.end.character -= 1;
-    range
 }

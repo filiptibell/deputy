@@ -1,7 +1,8 @@
 use async_language_server::{
     lsp_types::{
-        ClientCapabilities, CodeActionParams, CodeActionResponse, CompletionOptions,
-        CompletionParams, CompletionResponse, DiagnosticOptions, DiagnosticServerCapabilities,
+        ClientCapabilities, CodeActionKind, CodeActionOptions, CodeActionParams,
+        CodeActionProviderCapability, CodeActionResponse, CompletionOptions, CompletionParams,
+        CompletionResponse, DiagnosticOptions, DiagnosticServerCapabilities,
         DocumentDiagnosticParams, DocumentDiagnosticReport, DocumentDiagnosticReportResult,
         FullDocumentDiagnosticReport, Hover, HoverParams, HoverProviderCapability,
         RelatedFullDocumentDiagnosticReport, ServerCapabilities, ServerInfo,
@@ -48,6 +49,11 @@ impl Server for ToolingLanguageServer {
                 trigger_characters: Some(completion_trigger_characters()),
                 ..Default::default()
             }),
+            code_action_provider: Some(CodeActionProviderCapability::Options(CodeActionOptions {
+                code_action_kinds: Some(vec![CodeActionKind::QUICKFIX]),
+                resolve_provider: Some(false),
+                ..Default::default()
+            })),
             diagnostic_provider: Some(DiagnosticServerCapabilities::Options(DiagnosticOptions {
                 inter_file_dependencies: false,
                 workspace_diagnostics: false,

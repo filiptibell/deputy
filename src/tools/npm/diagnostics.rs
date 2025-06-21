@@ -1,6 +1,7 @@
 use async_language_server::{
     lsp_types::{Diagnostic, DiagnosticSeverity, DiagnosticTag},
     server::{Document, ServerResult},
+    text_utils::RangeExt,
     tree_sitter::Node,
     tree_sitter_utils::ts_range_to_lsp_range,
 };
@@ -99,7 +100,7 @@ pub async fn get_npm_diagnostics(
         let latest_version_string = latest_version.item_version.to_string();
 
         let metadata = CodeActionMetadata::LatestVersion {
-            edit_range: ts_range_to_lsp_range(dep.spec.range()),
+            edit_range: ts_range_to_lsp_range(dep.spec.range().shrink(1, 1)),
             source_uri: doc.url().clone(),
             source_text: spec.to_string(),
             version_current: version.to_string(),

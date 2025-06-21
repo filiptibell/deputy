@@ -30,19 +30,22 @@ impl CodeActionMetadata {
                 version_latest,
                 ..
             } => {
-                let mut change_map = HashMap::new();
-                change_map.insert(
-                    source_uri,
-                    vec![TextEdit {
-                        range: edit_range,
-                        new_text: source_text.replace(&version_current, &version_latest),
-                    }],
-                );
+                let replaced = source_text.replace(&version_current, &version_latest);
+                let text_edit = TextEdit {
+                    new_text: if replaced != source_text {
+                        // means we replaced substring like ^x0.y0.z0 with ^x1.y1.z1
+                        replaced
+                    } else {
+                        // failed to replace substring, just insert latest version
+                        version_latest
+                    },
+                    range: edit_range,
+                };
                 CodeActionOrCommand::CodeAction(CodeAction {
                     title: String::from("Update to latest version"),
                     kind: Some(CodeActionKind::QUICKFIX),
                     edit: Some(WorkspaceEdit {
-                        changes: Some(change_map),
+                        changes: Some(HashMap::from([(source_uri, vec![text_edit])])),
                         ..Default::default()
                     }),
                     diagnostics: Some(vec![diag]),
