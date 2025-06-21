@@ -12,6 +12,7 @@ use async_language_server::{
 
 use crate::clients::*;
 use crate::parser::cargo;
+use crate::parser::utils::unquote;
 use crate::tools::cargo::constants::CratesIoPackage;
 use crate::tools::cargo::util::get_features;
 
@@ -65,7 +66,7 @@ pub async fn get_cargo_completions(
                 clients,
                 name.as_str(),
                 version.as_str(),
-                feat.as_str(),
+                unquote(feat).as_str(),
                 ts_range_to_lsp_range(feat_node.range()),
             )
             .await;
