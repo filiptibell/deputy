@@ -26,7 +26,7 @@ jobs:
       - name: Get version
         id: get_version
         run: |
-          VERSION=$(cargo info --color never --quiet --offline tooling-language-server | grep "^version:" | cut -d' ' -f2)
+          VERSION=$(cargo info --color never --quiet --offline deputy | grep "^version:" | cut -d' ' -f2)
           echo "Found version '$VERSION' for package"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
@@ -38,31 +38,31 @@ jobs:
         include:
           - name: Windows x86_64
             runner-os: windows-latest
-            artifact-name: tooling-language-server-${{ needs.init.outputs.version }}-windows-x86_64
+            artifact-name: deputy-${{ needs.init.outputs.version }}-windows-x86_64
             cargo-target: x86_64-pc-windows-msvc
             vscode-target: win32-x64
 
           - name: Linux x86_64
             runner-os: ubuntu-latest
-            artifact-name: tooling-language-server-${{ needs.init.outputs.version }}-linux-x86_64
+            artifact-name: deputy-${{ needs.init.outputs.version }}-linux-x86_64
             cargo-target: x86_64-unknown-linux-gnu
             vscode-target: linux-x64
 
           - name: Linux aarch64
             runner-os: ubuntu-latest
-            artifact-name: tooling-language-server-${{ needs.init.outputs.version }}-linux-aarch64
+            artifact-name: deputy-${{ needs.init.outputs.version }}-linux-aarch64
             cargo-target: aarch64-unknown-linux-gnu
             vscode-target: linux-arm64
 
           - name: macOS x86_64
             runner-os: macos-13
-            artifact-name: tooling-language-server-${{ needs.init.outputs.version }}-macos-x86_64
+            artifact-name: deputy-${{ needs.init.outputs.version }}-macos-x86_64
             cargo-target: x86_64-apple-darwin
             vscode-target: darwin-x64
 
           - name: macOS aarch64
             runner-os: macos-14
-            artifact-name: tooling-language-server-${{ needs.init.outputs.version }}-macos-aarch64
+            artifact-name: deputy-${{ needs.init.outputs.version }}-macos-aarch64
             cargo-target: aarch64-apple-darwin
             vscode-target: darwin-arm64
 

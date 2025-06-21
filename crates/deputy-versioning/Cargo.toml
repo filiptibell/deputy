@@ -1,0 +1,16 @@
+[package]
+name = "deputy-versioning"
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+publish = { workspace = true }
+
+[lib]
+name = "deputy_versioning"
+path = "src/lib.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+semver = "1.0"

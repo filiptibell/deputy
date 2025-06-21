@@ -4,7 +4,7 @@ use zed::http_client::{fetch, HttpMethod, HttpRequestBuilder};
 use zed::Result;
 use zed_extension_api::{self as zed};
 
-const PERSONAL_ACCESS_TOKEN_FILE_PATH: &str = "github-personal-access-token";
+const PERSONAL_ACCESS_TOKEN_FILE_PATH: &str = "github-pat";
 
 pub fn validate(token: &str) -> Result<()> {
     // https://docs.github.com/en/rest/overview/authenticating-to-the-rest-api

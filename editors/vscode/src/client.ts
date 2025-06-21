@@ -35,9 +35,7 @@ export const startServer = async () => {
 	// Create persistent output channel if one does not exist
 
 	if (outputChannel === undefined) {
-		outputChannel = vscode.window.createOutputChannel(
-			"Tooling Language Server"
-		);
+		outputChannel = vscode.window.createOutputChannel("Deputy");
 	}
 
 	// Retrieve and validate stored authentication, if any
@@ -46,30 +44,27 @@ export const startServer = async () => {
 
 	// Find which executable was bundled with the extension - either debug or release
 
-	const exeName =
-		os.platform() === "win32"
-			? "tooling-language-server.exe"
-			: "tooling-language-server";
+	const exeName = os.platform() === "win32" ? "deputy.exe" : "deputy";
 
 	const exeDebug = vscode.Uri.joinPath(
 		context.extensionUri,
 		"out",
 		"debug",
-		exeName
+		exeName,
 	);
 
 	const exeRelease = vscode.Uri.joinPath(
 		context.extensionUri,
 		"out",
 		"release",
-		exeName
+		exeName,
 	);
 
 	const command = (await util.fs.fileExists(exeRelease))
 		? exeRelease.fsPath
 		: (await util.fs.fileExists(exeDebug))
-		? exeDebug.fsPath
-		: null;
+			? exeDebug.fsPath
+			: null;
 	if (!command) {
 		vscode.window.showErrorMessage("Missing language server executable");
 		return;
@@ -85,7 +80,7 @@ export const startServer = async () => {
 					RUST_LOG: "debug",
 					RUST_BACKTRACE: "1",
 				},
-		  }
+			}
 		: { env: { PATH: process.env.PATH } };
 
 	options.env["GITHUB_TOKEN"] = githubAuthToken;
@@ -109,7 +104,7 @@ export const startServer = async () => {
 			{ scheme: "file", language: "toml" },
 			{ scheme: "file", language: "json" },
 		],
-		diagnosticCollectionName: "Tooling Language Server",
+		diagnosticCollectionName: "Deputy",
 		outputChannel,
 	};
 
@@ -122,10 +117,10 @@ export const startServer = async () => {
 	}
 
 	client = new LanguageClient(
-		"tooling-language-server",
-		"Tooling Language Server",
+		"deputy",
+		"Deputy",
 		serverOptions,
-		clientOptions
+		clientOptions,
 	);
 
 	client.start();
@@ -133,7 +128,7 @@ export const startServer = async () => {
 	// Listen for custom requests from server
 	client.onRequest(
 		requests.rateLimit.RATE_LIMIT_METHOD,
-		requests.rateLimit.handleRateLimitRequest
+		requests.rateLimit.handleRateLimitRequest,
 	);
 };
 

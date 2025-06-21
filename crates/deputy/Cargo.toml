@@ -1,0 +1,28 @@
+[package]
+name = "deputy"
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+publish = { workspace = true }
+
+[[bin]]
+name = "deputy"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow = "1.0"
+
+clap = { version = "4.4", features = ["derive", "env"] }
+
+tokio = { version = "1.45", features = ["rt", "macros"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+async-language-server = { workspace = true }
+
+deputy-clients = { path = "../deputy-clients" }
+deputy-tools = { path = "../deputy-tools" }
+deputy-parser = { path = "../deputy-parser" }

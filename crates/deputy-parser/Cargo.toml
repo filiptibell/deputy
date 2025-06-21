@@ -1,0 +1,21 @@
+[package]
+name = "deputy-parser"
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+publish = { workspace = true }
+
+[lib]
+name = "deputy_parser"
+path = "src/lib.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+tree-sitter-json = "0.24"
+tree-sitter-toml-ng = "0.7"
+
+async-language-server = { workspace = true }
+
+deputy-versioning = { path = "../deputy-versioning" }

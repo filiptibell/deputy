@@ -1,12 +1,12 @@
 [workspace]
 resolver = "2"
-default-members = ["crates/tooling-language-server"]
+default-members = ["crates/deputy"]
 members = [
-	"crates/clients",
-	"crates/parser",
-	"crates/tooling-language-server",
-	"crates/tools",
-	"crates/versioning",
+	"crates/deputy",
+	"crates/deputy-clients",
+	"crates/deputy-parser",
+	"crates/deputy-tools",
+	"crates/deputy-versioning",
 ]
 
 [profile.release]

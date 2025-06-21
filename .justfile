@@ -1,7 +1,7 @@
 EXT := if os() == "windows" { ".exe" } else { "" }
 CWD := invocation_directory()
 VSCODE := invocation_directory() / "editors" / "vscode"
-BIN_NAME := "tooling-language-server"
+BIN_NAME := "deputy"
 
 # Default hidden recipe for listing other recipes + cwd
 [no-cd]
@@ -26,14 +26,14 @@ build *ARGS:
 vsix-copy-files TARGET_DIR DEBUG="false":
 	#!/usr/bin/env bash
 	set -euo pipefail
-	#
+
 	rm -rf "{{VSCODE}}/out"
 	rm -rf "{{VSCODE}}/bin"
 	rm -rf "{{VSCODE}}/CHANGELOG.md"
 	rm -rf "{{VSCODE}}/LICENSE.txt"
 	mkdir -p "{{VSCODE}}/out"
 	mkdir -p "{{VSCODE}}/bin"
-	#
+
 	if [[ "{{DEBUG}}" == "true" ]]; then
 		mkdir -p {{VSCODE}}/out/debug/
 		cp {{TARGET_DIR}}/debug/{{BIN_NAME}}{{EXT}} {{VSCODE}}/out/debug/
@@ -41,7 +41,7 @@ vsix-copy-files TARGET_DIR DEBUG="false":
 		mkdir -p {{VSCODE}}/out/release/
 		cp {{TARGET_DIR}}/release/{{BIN_NAME}}{{EXT}} {{VSCODE}}/out/release/
 	fi
-	#
+
 	cp CHANGELOG.md {{VSCODE}}/CHANGELOG.md
 	cp LICENSE.txt {{VSCODE}}/LICENSE.txt
 
@@ -60,7 +60,7 @@ vsix-package:
 vsix-build TARGET_TRIPLE:
 	#!/usr/bin/env bash
 	set -euo pipefail
-	#
+
 	echo "🚧 Building language server..."
 	just build --release --target {{TARGET_TRIPLE}}
 	echo "📦 Copying language server files..."
@@ -73,9 +73,9 @@ vsix-build TARGET_TRIPLE:
 vsix-publish TARGET_TRIPLE EXTENSION_TARGET:
 	#!/usr/bin/env bash
 	set -euo pipefail
-	#
+
 	just vsix-build {{TARGET_TRIPLE}}
-	#
+
 	echo "🚀 Publishing extension..."
 	cd "{{VSCODE}}/"
 	vsce publish --skip-duplicate --target {{EXTENSION_TARGET}}
@@ -87,7 +87,7 @@ vsix-publish TARGET_TRIPLE EXTENSION_TARGET:
 vscode-install DEBUG="false":
 	#!/usr/bin/env bash
 	set -euo pipefail
-	#
+
 	echo "🚧 Building language server..."
 	if [[ "{{DEBUG}}" == "true" ]]; then
 		just build
@@ -99,10 +99,10 @@ vscode-install DEBUG="false":
 	echo "🧰 Building extension..."
 	just vsix-package > /dev/null
 	echo "🚀 Installing extension..."
-	#
+
 	EXTENSION=$(find "{{VSCODE}}/bin/" -name "*.vsix")
 	code --install-extension "$EXTENSION" &> /dev/null
-	#
+
 	echo "✅ Installed extension successfully!"
 
 # Zips up language server and built extensions into single zip file
@@ -131,19 +131,19 @@ zip-release TARGET_TRIPLE:
 unpack-releases RELEASES_DIR:
 	#!/usr/bin/env bash
 	set -euo pipefail
-	#
+
 	if [ ! -d "{{RELEASES_DIR}}" ]; then
 		echo "Releases directory is missing"
 		exit 1
 	fi
-	#
+
 	cd "{{RELEASES_DIR}}"
 	echo ""
 	echo "Releases dir:"
 	ls -lhrt
 	echo ""
 	echo "Searching for zipped releases..."
-	#
+
 	for DIR in * ; do
 		if [ -d "$DIR" ]; then
 			cd "$DIR"
@@ -159,7 +159,7 @@ unpack-releases RELEASES_DIR:
 			cd ..
 		fi
 	done
-	#
+
 	echo ""
 	echo "Releases dir:"
 	ls -lhrt

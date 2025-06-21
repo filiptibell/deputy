@@ -265,22 +265,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b94f61472cee1439c0b966b47e3aca9ae07e45d070759512cd390ea2bebc6675"
 
 [[package]]
-name = "clients"
-version = "0.5.0"
-dependencies = [
- "dashmap",
- "moka",
- "reqwest",
- "serde",
- "serde_json",
- "thiserror 2.0.12",
- "tokio",
- "tracing",
- "url",
- "versioning",
-]
-
-[[package]]
 name = "colorchoice"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -340,6 +324,70 @@ dependencies = [
  "lock_api",
  "once_cell",
  "parking_lot_core",
+]
+
+[[package]]
+name = "deputy"
+version = "0.5.0"
+dependencies = [
+ "anyhow",
+ "async-language-server",
+ "clap",
+ "deputy-clients",
+ "deputy-parser",
+ "deputy-tools",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "deputy-clients"
+version = "0.5.0"
+dependencies = [
+ "dashmap",
+ "deputy-versioning",
+ "moka",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.12",
+ "tokio",
+ "tracing",
+ "url",
+]
+
+[[package]]
+name = "deputy-parser"
+version = "0.5.0"
+dependencies = [
+ "async-language-server",
+ "deputy-versioning",
+ "tree-sitter-json",
+ "tree-sitter-toml-ng",
+]
+
+[[package]]
+name = "deputy-tools"
+version = "0.5.0"
+dependencies = [
+ "anyhow",
+ "async-language-server",
+ "deputy-clients",
+ "deputy-parser",
+ "deputy-versioning",
+ "futures",
+ "serde",
+ "serde_json",
+ "strsim",
+ "tracing",
+]
+
+[[package]]
+name = "deputy-versioning"
+version = "0.5.0"
+dependencies = [
+ "semver",
 ]
 
 [[package]]
@@ -1033,16 +1081,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "parser"
-version = "0.5.0"
-dependencies = [
- "async-language-server",
- "tree-sitter-json",
- "tree-sitter-toml-ng",
- "versioning",
-]
-
-[[package]]
 name = "percent-encoding"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1694,37 +1732,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tooling-language-server"
-version = "0.5.0"
-dependencies = [
- "anyhow",
- "async-language-server",
- "clap",
- "clients",
- "parser",
- "tokio",
- "tools",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "tools"
-version = "0.5.0"
-dependencies = [
- "anyhow",
- "async-language-server",
- "clients",
- "futures",
- "parser",
- "serde",
- "serde_json",
- "strsim",
- "tracing",
- "versioning",
-]
-
-[[package]]
 name = "tower"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1928,13 +1935,6 @@ name = "valuable"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba73ea9cf16a25df0c8caa16c51acb937d5712a8429db78a3ee29d5dcacd3a65"
-
-[[package]]
-name = "versioning"
-version = "0.5.0"
-dependencies = [
- "semver",
-]
 
 [[package]]
 name = "waitpid-any"

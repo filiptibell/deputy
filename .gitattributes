@@ -1,10 +1,5 @@
 * text=auto
 
-*.luau linguist-language=Lua
-*.lua  eol=lf
-*.luau eol=lf
-*.rbxm filter=lfs diff=lfs merge=lfs -text
-*.rbxl filter=lfs diff=lfs merge=lfs -text
 *.png filter=lfs diff=lfs merge=lfs -text
 *.jpg filter=lfs diff=lfs merge=lfs -text
 *.jpeg filter=lfs diff=lfs merge=lfs -text

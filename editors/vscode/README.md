@@ -1,32 +1,33 @@
 <!-- markdownlint-disable MD033 -->
 <!-- markdownlint-disable MD041 -->
 
-<h1 align="center">Tooling Language Server</h1>
+<h1 align="center">Deputy</h1>
 
 <div align="center">
-  <a href="https://marketplace.visualstudio.com/items?itemName=filiptibell.tooling-language-server">
-    <img src="https://vsmarketplacebadges.dev/version/filiptibell.tooling-language-server.png" alt="VSCode Marketplace" />
+  <a href="https://marketplace.visualstudio.com/items?itemName=filiptibell.deputy">
+  <img src="https://vsmarketplacebadges.dev/version/filiptibell.deputy.png" alt="VSCode Marketplace" />
   </a>
 </div>
 
 <br/>
 
-A language server supporting several tools and package managers:
+A language server for your dependencies.
 
-- [Aftman](https://github.com/LPGhatguy/aftman) / [Foreman](https://github.com/roblox/foreman)
-- [Cargo](https://crates.io)
-- [NPM](https://www.npmjs.com)
-- [Wally](https://github.com/UpliftGames/wally)
+Deputy currently supports the following package managers & toolchain managers:
+
+- [Cargo](https://crates.io) (`Cargo.toml`)
+- [NPM](https://www.npmjs.com) (`package.json`)
+- [Rokit](https://github.com/rojo-rbx/rokit) (`rokit.toml`)
+- [Wally](https://github.com/UpliftGames/wally) (`wally.toml`)
 
 Provides autocomplete, diagnostics for out-of-date versions, and more. <br/>
 Check out the [features](#features) section for a full list of features.
 
 ## Features
 
-- Autocomplete for names and versions
+- Autocomplete for names, versions, and features
 - Hover for information - includes description, links to documentation & more
 - Diagnostics:
   - A newer version is available
-  - The specified tool / package does not exist
-  - Unsupported platform / architecture / name
+  - The specified tool / package / version does not exist
 - Quick actions on diagnostics - update to newest version

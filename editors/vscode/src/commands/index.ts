@@ -20,7 +20,7 @@ type CommandName = keyof Commands;
 	This will run the command without any arguments.
 */
 export const getCommandLink = <N extends CommandName>(commandName: N) => {
-	return vscode.Uri.parse(`command:tooling-language-server.${commandName}`);
+	return vscode.Uri.parse(`command:deputy.${commandName}`);
 };
 
 /**
@@ -48,9 +48,9 @@ export class CommandProvider implements vscode.Disposable {
 	constructor() {
 		const disposables = [];
 		for (const [commandName, commandHandler] of Object.entries(
-			ALL_COMMANDS
+			ALL_COMMANDS,
 		)) {
-			const commandIdentifier = `tooling-language-server.${commandName}`;
+			const commandIdentifier = `deputy.${commandName}`;
 			disposables.push(
 				vscode.commands.registerCommand(
 					commandIdentifier,
@@ -60,8 +60,8 @@ export class CommandProvider implements vscode.Disposable {
 						// Correct types should always be enforced by the exported command link functions
 						const untyped = commandHandler as any;
 						return untyped(...args);
-					}
-				)
+					},
+				),
 			);
 		}
 		this.disposables = disposables;

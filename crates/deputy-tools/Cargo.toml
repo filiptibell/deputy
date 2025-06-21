@@ -1,0 +1,30 @@
+[package]
+name = "deputy-tools"
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+publish = { workspace = true }
+
+[lib]
+name = "deputy_tools"
+path = "src/lib.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow = "1.0"
+strsim = "0.11"
+
+futures = "0.3"
+
+serde = "1.0"
+serde_json = "1.0"
+
+tracing = "0.1"
+
+async-language-server = { workspace = true }
+
+deputy-clients = { path = "../deputy-clients" }
+deputy-parser = { path = "../deputy-parser" }
+deputy-versioning = { path = "../deputy-versioning" }

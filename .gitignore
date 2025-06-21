@@ -21,3 +21,8 @@
 
 /release.zip
 /**/extension.wasm
+
+# Test files
+
+/rokit.toml
+/wally.toml

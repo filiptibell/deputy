@@ -7,9 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+**Tooling Language Server** is now **Deputy**!
+
+The previous name was generic, verbose, and simply not fun enough.
+It is still the same language server, albeit improved & with a fresh coat of paint.
+
+### Added
+
+- Added support for the [Zed](https://zed.dev) editor ([#8])
+- Added support for NPM deprecations ([#18])
+
+### Changed
+
+- Rewrote the core language server using [async-language-server](https://github.com/filiptibell/async-language-server), leading to significant improvements in stability, fewer weird race conditions, and better handling of unicode in different editors. You may also notice performance improvements and less memory being used.
+
 ### Removed
 
 - Removed support for the Zap language from this extension - it did not really fit into this project, and is now a completely separate extension, which can be found [here](https://github.com/filiptibell/zap-language)
+
+[#8]: https://github.com/filiptibell/deputy/pull/8
+[#18]: https://github.com/filiptibell/deputy/pull/18
 
 ## `0.5.0` - March 12th, 2025
 
