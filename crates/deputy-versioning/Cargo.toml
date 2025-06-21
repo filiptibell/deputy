@@ -8,6 +8,7 @@ publish = { workspace = true }
 [lib]
 name = "deputy_versioning"
 path = "src/lib.rs"
+doctest = false
 
 [lints]
 workspace = true
