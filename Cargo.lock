@@ -286,6 +286,35 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b94f61472cee1439c0b966b47e3aca9ae07e45d070759512cd390ea2bebc6675"
 
 [[package]]
+name = "clients"
+version = "0.5.0"
+dependencies = [
+ "anyhow",
+ "async-channel",
+ "async-language-server",
+ "async-semaphore",
+ "clap",
+ "dashmap",
+ "futures",
+ "ignore",
+ "moka",
+ "reqwest",
+ "semver",
+ "serde",
+ "serde_json",
+ "shared",
+ "strsim",
+ "thiserror 2.0.12",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "tree-sitter-json",
+ "tree-sitter-toml-ng",
+ "url",
+ "which",
+]
+
+[[package]]
 name = "colorchoice"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1082,6 +1111,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "parser"
+version = "0.5.0"
+dependencies = [
+ "anyhow",
+ "async-channel",
+ "async-language-server",
+ "async-semaphore",
+ "clap",
+ "dashmap",
+ "futures",
+ "ignore",
+ "moka",
+ "reqwest",
+ "semver",
+ "serde",
+ "serde_json",
+ "shared",
+ "strsim",
+ "thiserror 2.0.12",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "tree-sitter-json",
+ "tree-sitter-toml-ng",
+ "url",
+ "which",
+]
+
+[[package]]
 name = "percent-encoding"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1523,6 +1581,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "shared"
+version = "0.5.0"
+dependencies = [
+ "anyhow",
+ "async-channel",
+ "async-language-server",
+ "async-semaphore",
+ "clap",
+ "dashmap",
+ "futures",
+ "ignore",
+ "moka",
+ "reqwest",
+ "semver",
+ "serde",
+ "serde_json",
+ "strsim",
+ "thiserror 2.0.12",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "tree-sitter-json",
+ "tree-sitter-toml-ng",
+ "url",
+ "which",
+]
+
+[[package]]
 name = "shlex"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1761,6 +1847,7 @@ dependencies = [
  "async-language-server",
  "async-semaphore",
  "clap",
+ "clients",
  "dashmap",
  "futures",
  "ignore",
@@ -1769,6 +1856,38 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
+ "strsim",
+ "thiserror 2.0.12",
+ "tokio",
+ "tools",
+ "tracing",
+ "tracing-subscriber",
+ "tree-sitter-json",
+ "tree-sitter-toml-ng",
+ "url",
+ "which",
+]
+
+[[package]]
+name = "tools"
+version = "0.5.0"
+dependencies = [
+ "anyhow",
+ "async-channel",
+ "async-language-server",
+ "async-semaphore",
+ "clap",
+ "clients",
+ "dashmap",
+ "futures",
+ "ignore",
+ "moka",
+ "parser",
+ "reqwest",
+ "semver",
+ "serde",
+ "serde_json",
+ "shared",
  "strsim",
  "thiserror 2.0.12",
  "tokio",

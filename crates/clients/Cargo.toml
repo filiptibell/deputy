@@ -1,0 +1,55 @@
+[package]
+name = "clients"
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+publish = { workspace = true }
+
+[lib]
+name = "clients"
+path = "src/lib.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow = "1.0"
+dashmap = "6.1"
+ignore = "0.4"
+semver = "1.0"
+strsim = "0.11"
+thiserror = "2.0"
+url = "2.4"
+which = "7.0"
+
+async-channel = "2.2"
+async-semaphore = "1.2"
+futures = "0.3"
+
+serde = "1.0"
+serde_json = "1.0"
+
+tree-sitter-json = "0.24"
+tree-sitter-toml-ng = "0.7"
+
+moka = { version = "0.12", features = ["future"] }
+
+tokio = { version = "1.25", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+shared = { path = "../shared" }
+
+[dependencies.async-language-server]
+git = "https://github.com/filiptibell/async-language-server"
+rev = "a0ab43be5d01b9eade82393431ac7adf0ec51d8e"
+features = ["tracing", "tree-sitter"]
+
+[dependencies.reqwest]
+version = "0.12"
+default-features = false
+features = ["rustls-tls", "gzip"]
+
+[dependencies.clap]
+version = "4.4"
+features = ["derive", "env"]
