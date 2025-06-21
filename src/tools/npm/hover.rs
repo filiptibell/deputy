@@ -3,10 +3,12 @@ use tracing::trace;
 use async_language_server::{
     lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind},
     server::{Document, ServerResult},
+    tree_sitter::Node,
+    tree_sitter_utils::ts_range_to_lsp_range,
 };
 
 use crate::{
-    parser::Dependency,
+    parser::npm,
     tools::MarkdownBuilder,
     util::{VersionReqExt, Versioned},
 };
@@ -15,25 +17,29 @@ use super::Clients;
 
 pub async fn get_npm_hover(
     clients: &Clients,
-    _doc: &Document,
-    dep: &Dependency,
+    doc: &Document,
+    node: Node<'_>,
 ) -> ServerResult<Option<Hover>> {
-    let Ok(version_req) = dep.parse_version_req() else {
+    let Some(dep) = npm::parse_dependency(node) else {
         return Ok(None);
     };
 
-    let dependency_name = dep.name().unquoted();
-    let dependency_version = version_req.minimum_version();
+    let (name, spec) = dep.text(doc);
+    let Ok(version_req) = spec.parse_version_req() else {
+        return Ok(None);
+    };
+
+    let version = version_req.minimum_version();
 
     // Add basic hover information with version and name
-    trace!("Hovering: {dependency_name} version {dependency_version}");
+    trace!("Hovering: {name} version {version}");
     let mut md = MarkdownBuilder::new();
-    md.h2(dependency_name);
-    md.version(dependency_version);
+    md.h2(&name);
+    md.version(version);
 
     // Try to fetch additional information from the index - description, links
     trace!("Fetching package data from npm");
-    if let Ok(meta) = clients.npm.get_registry_metadata(dependency_name).await {
+    if let Ok(meta) = clients.npm.get_registry_metadata(&name).await {
         if let Some(desc) = meta.current_version.description.as_ref() {
             md.br();
             md.p(desc);
@@ -60,7 +66,7 @@ pub async fn get_npm_hover(
     }
 
     Ok(Some(Hover {
-        range: Some(dep.range()),
+        range: Some(ts_range_to_lsp_range(node.range())),
         contents: HoverContents::Markup(MarkupContent {
             kind: MarkupKind::Markdown,
             value: md.build(),

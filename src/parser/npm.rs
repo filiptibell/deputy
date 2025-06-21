@@ -1,6 +1,9 @@
 use std::str::FromStr;
 
-use async_language_server::{server::Document, tree_sitter::Node as TsNode};
+use async_language_server::{
+    lsp_types::Position, server::Document, tree_sitter::Node as TsNode,
+    tree_sitter_utils::find_ancestor,
+};
 
 use super::utils::unquote;
 
@@ -57,6 +60,20 @@ pub fn find_all_dependencies(doc: &Document) -> Vec<TsNode> {
     }
 
     deps
+}
+
+pub fn find_dependency_at(doc: &Document, pos: Position) -> Option<TsNode> {
+    let node = doc.node_at_position(pos)?; // either the key or value
+    let pair = find_ancestor(node, |a| a.kind() == "pair")?; // "package": "spec"
+
+    let deps_obj = find_ancestor(pair, |a| a.kind() == "object")?;
+    let deps_pair = find_ancestor(deps_obj, |a| a.kind() == "pair")?;
+
+    let key = deps_pair.child_by_field_name("key").expect("valid pair");
+    let key_str = unquote(doc.node_text(key));
+    DependencyKind::from_str(&key_str).ok()?;
+
+    Some(pair)
 }
 
 pub fn parse_dependency<'tree>(pair: TsNode<'tree>) -> Option<NpmDependency<'tree>> {

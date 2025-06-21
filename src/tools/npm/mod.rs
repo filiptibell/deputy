@@ -7,8 +7,6 @@ use async_language_server::{
 };
 
 use crate::parser::npm;
-use crate::parser::query_package_json_dependencies;
-use crate::parser::Dependency;
 
 use super::*;
 
@@ -37,15 +35,13 @@ impl Npm {
         pos: Position,
         _node: Node<'_>,
     ) -> ServerResult<Option<Hover>> {
-        // Find the dependency that is hovered over
-        let dependencies = query_package_json_dependencies(doc);
-        let Some(found) = Dependency::find_at_pos(&dependencies, pos) else {
+        let Some(dep) = npm::find_dependency_at(doc, pos) else {
             return Ok(None);
         };
 
-        // Fetch some extra info and return the hover
-        debug!("Hovering: {found:?}");
-        get_npm_hover(&self.clients, doc, found).await
+        debug!("Hovering: {dep:?}");
+
+        get_npm_hover(&self.clients, doc, dep).await
     }
 
     pub(super) async fn completion(
@@ -54,24 +50,13 @@ impl Npm {
         pos: Position,
         _node: Node<'_>,
     ) -> ServerResult<Option<CompletionResponse>> {
-        // Find the dependency that is being completed
-        let dependencies = query_package_json_dependencies(doc);
-        let Some(found) = Dependency::find_at_pos(&dependencies, pos) else {
+        let Some(dep) = npm::find_dependency_at(doc, pos) else {
             return Ok(None);
         };
 
-        // Check what we're completing - name or version
-        if found.name().contains(pos) {
-            debug!("Completing name: {found:?}");
-            return get_npm_completions_name(&self.clients, doc, found).await;
-        } else if let Some(s) = found.spec().filter(|s| s.contains(pos)) {
-            if s.contents.version.as_ref().is_some_and(|v| v.contains(pos)) {
-                debug!("Completing version: {found:?}");
-                return get_npm_completions_version(&self.clients, doc, found).await;
-            }
-        }
+        debug!("Fetching completions: {dep:?}");
 
-        Ok(None)
+        get_npm_completions(&self.clients, doc, pos, dep).await
     }
 
     pub(super) async fn diagnostics(
