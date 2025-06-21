@@ -35,3 +35,8 @@ multiple_crate_versions = { level = "allow", priority = 1 }
 similar_names = { level = "allow", priority = 1 }
 too_many_lines = { level = "allow", priority = 1 }
 unnecessary_wraps = { level = "allow", priority = 1 }
+
+[workspace.dependencies.async-language-server]
+git = "https://github.com/filiptibell/async-language-server"
+rev = "a0ab43be5d01b9eade82393431ac7adf0ec51d8e"
+features = ["tracing", "tree-sitter"]

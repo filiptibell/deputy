@@ -1,8 +1,8 @@
 use std::{future::Future, sync::Arc, time::Duration};
 
-use async_semaphore::Semaphore;
 use dashmap::DashMap;
 use moka::future::Cache;
+use tokio::sync::Semaphore;
 use tracing::trace;
 
 type CacheMap<T> = Cache<String, T>;
@@ -104,7 +104,7 @@ impl<T: Clone + Send + Sync + 'static> RequestCacheMap<T> {
             },
             |s| s.clone(),
         );
-        let _guard = sem.acquire_arc().await;
+        let _guard = sem.acquire().await;
 
         // We have permission, but the cache may have been updated, check again
         if let Some(cached) = self.map.get(&key).await {

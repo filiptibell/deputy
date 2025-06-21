@@ -1,8 +1,8 @@
 use std::collections::{HashSet, VecDeque};
 
-use async_language_server::lsp_types::Url;
 use reqwest::StatusCode;
 use tracing::info;
+use url::Url;
 
 use super::models::{IndexConfig, Metadata};
 use super::{RequestError, RequestResult, ResponseError, WallyClient};

@@ -11,6 +11,7 @@ use async_language_server::{
 };
 
 use clients::Clients;
+use parser::{JSON_LANGUAGE, TOML_LANGUAGE};
 use tools::Tools;
 
 #[allow(dead_code)]
@@ -66,26 +67,10 @@ impl Server for ToolingLanguageServer {
 
     fn server_document_matchers() -> Vec<DocumentMatcher> {
         let matchers = [
-            (
-                "Cargo",
-                ["**/Cargo.toml", "Cargo.toml"],
-                tree_sitter_toml_ng::LANGUAGE,
-            ),
-            (
-                "NPM",
-                ["**/package.json", "package.json"],
-                tree_sitter_json::LANGUAGE,
-            ),
-            (
-                "Rokit",
-                ["**/rokit.toml", "rokit.toml"],
-                tree_sitter_toml_ng::LANGUAGE,
-            ),
-            (
-                "Wally",
-                ["**/wally.toml", "wally.toml"],
-                tree_sitter_toml_ng::LANGUAGE,
-            ),
+            ("Cargo", ["**/Cargo.toml", "Cargo.toml"], TOML_LANGUAGE),
+            ("NPM", ["**/package.json", "package.json"], JSON_LANGUAGE),
+            ("Rokit", ["**/rokit.toml", "rokit.toml"], TOML_LANGUAGE),
+            ("Wally", ["**/wally.toml", "wally.toml"], TOML_LANGUAGE),
         ];
 
         matchers

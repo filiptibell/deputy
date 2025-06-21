@@ -6,8 +6,10 @@ use std::{
     time::Duration,
 };
 
-use async_channel::{Receiver, Sender, unbounded};
-use tokio::time::sleep;
+use tokio::{
+    sync::broadcast::{Sender, channel},
+    time::sleep,
+};
 use tracing::error;
 
 use crate::shared::{Request, RequestError, RequestResult};
@@ -23,19 +25,17 @@ pub mod models;
 #[derive(Debug, Clone)]
 pub struct CratesClient {
     cache: CratesCache,
-    crawl_limit_tx: Sender<()>,
-    crawl_limit_rx: Receiver<()>,
+    crawl_channel: Sender<()>,
     crawl_limited: Arc<AtomicBool>,
 }
 
 impl CratesClient {
     #[must_use]
     pub fn new() -> Self {
-        let (crawl_limit_tx, crawl_limit_rx) = unbounded();
+        let crawl_channel = channel(1).0;
         Self {
             cache: CratesCache::new(),
-            crawl_limit_tx,
-            crawl_limit_rx,
+            crawl_channel,
             crawl_limited: Arc::new(AtomicBool::new(false)),
         }
     }
@@ -57,20 +57,20 @@ impl CratesClient {
     fn set_crawl_limited(&self) {
         if !self.is_crawl_limited() {
             let lim = self.crawl_limited.clone();
-            let tx = self.crawl_limit_tx.clone();
+            let tx = self.crawl_channel.clone();
             lim.store(true, Ordering::SeqCst);
             tokio::spawn(async move {
                 sleep(Duration::from_secs_f32(consts::CRAWL_MAX_INTERVAL_SECONDS)).await;
                 lim.store(false, Ordering::SeqCst);
-                tx.try_send(()).ok();
+                tx.send(()).ok();
             });
         }
     }
 
     async fn wait_for_crawl_limit(&self) {
         if self.is_crawl_limited() {
-            let crawl_limit_rx = self.crawl_limit_rx.clone();
-            crawl_limit_rx.recv().await.ok();
+            let mut rx = self.crawl_channel.subscribe();
+            rx.recv().await.ok();
         }
     }
 }
