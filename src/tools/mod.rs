@@ -4,8 +4,8 @@ use async_language_server::{
         DocumentDiagnosticParams, Hover, Position,
     },
     server::{Document, ServerResult},
+    tree_sitter::Node,
 };
-use tree_sitter::Node;
 
 use crate::clients::*;
 

@@ -3,9 +3,9 @@ use tracing::trace;
 use async_language_server::{
     lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind},
     server::{Document, ServerResult},
+    tree_sitter::Node,
     tree_sitter_utils::ts_range_to_lsp_range,
 };
-use tree_sitter::Node;
 
 use crate::{parser::rokit, tools::MarkdownBuilder};
 

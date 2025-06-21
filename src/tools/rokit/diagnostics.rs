@@ -1,9 +1,9 @@
 use async_language_server::{
     lsp_types::{Diagnostic, DiagnosticSeverity},
     server::{Document, ServerResult},
+    tree_sitter::Node,
     tree_sitter_utils::ts_range_to_lsp_range,
 };
-use tree_sitter::Node;
 
 use crate::parser::rokit;
 use crate::util::Versioned;
