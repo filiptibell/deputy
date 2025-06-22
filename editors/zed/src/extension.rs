@@ -1,112 +1,83 @@
-use std::fs;
-use util::{is_dir, is_file};
-use zed::LanguageServerId;
-use zed_extension_api::{self as zed, Result};
+#![allow(clippy::unused_self)]
 
-mod github_auth;
-mod util;
+use zed_extension_api::{self as zed, LanguageServerId, Result};
+
+mod auth;
+mod constants;
+mod fs;
+mod github;
+mod platform;
+
+use self::constants::BINARY_NAME;
+use self::fs::{cleanup_dir_entries, create_dir_if_nonexistent, file_exists};
+use self::platform::PlatformDescriptor;
 
 struct DeputyExtension {
     cached_binary_path: Option<String>,
 }
 
 impl DeputyExtension {
-    fn language_server_binary_path(
+    fn language_server_path(
         &mut self,
         language_server_id: &LanguageServerId,
         worktree: &zed::Worktree,
     ) -> Result<String> {
-        if let Some(path) = worktree.which("deputy") {
+        // Prefer a local binary, if one exists, or a cached one
+
+        if let Some(path) = worktree.which(BINARY_NAME) {
+            return Ok(path);
+        } else if let Some(path) = self.cached_binary_path.clone().filter(|p| file_exists(p)) {
             return Ok(path);
         }
 
-        if let Some(path) = &self.cached_binary_path {
-            if is_file(path) {
-                return Ok(path.clone());
-            }
-        }
+        // No local or cached binary exists, check for the latest released binary
 
         zed::set_language_server_installation_status(
-            &language_server_id,
+            language_server_id,
             &zed::LanguageServerInstallationStatus::CheckingForUpdate,
         );
 
-        let release = zed::latest_github_release(
-            "filiptibell/deputy",
-            zed::GithubReleaseOptions {
-                require_assets: true,
-                pre_release: false,
-            },
-        )?;
-        let (platform, arch) = zed::current_platform();
-        let version = {
-            let mut chars = release.version.chars();
-            chars.next();
-            chars.as_str()
-        };
-        let asset_name = format!(
-            "deputy-{}-{}-{}.zip",
-            version,
-            match platform {
-                zed::Os::Mac => "macos",
-                zed::Os::Windows => "windows",
-                zed::Os::Linux => "linux",
-            },
-            match arch {
-                zed::Architecture::Aarch64 => "aarch64",
-                _ => "x86_64",
-            },
-        );
-        let asset = release
-            .assets
-            .iter()
-            .find(|asset| asset.name == asset_name)
-            .ok_or_else(|| format!("no asset found matching {:?}", asset_name))?;
+        let pdesc = PlatformDescriptor::current();
+        let (release_version, release_download_url) = github::find_latest_release(&pdesc)?;
 
-        const BINARY_DIR: &str = "binary";
-        let version_dir_name = format!("deputy-{}", release.version);
-        let version_dir = format!("{BINARY_DIR}/{version_dir_name}");
-        let binary_path = format!(
-            "{version_dir}/deputy{extension}",
-            extension = match platform {
-                zed::Os::Mac | zed::Os::Linux => "",
-                zed::Os::Windows => ".exe",
-            }
-        );
+        // Latest released binary was found, check if that's a version we have downloaded already
 
-        if !is_dir(BINARY_DIR) {
-            fs::create_dir(BINARY_DIR)
-                .map_err(|e| format!("failed to create directory for binary: {e}"))?;
-        }
+        let root_dir = pdesc.server_binary_root();
+        let version_dir_name = pdesc.server_binary_dir(&release_version);
+        let version_dir_path = format!("{root_dir}/{version_dir_name}");
+        let binary_path = format!("{version_dir_path}/{}", pdesc.server_binary_path());
 
-        if !is_file(&binary_path) {
+        if !file_exists(&binary_path) {
+            // We don't have the latest binary, download it and get rid of old binaries
+
+            create_dir_if_nonexistent(&root_dir)?;
+
             zed::set_language_server_installation_status(
-                &language_server_id,
+                language_server_id,
                 &zed::LanguageServerInstallationStatus::Downloading,
             );
 
             zed::download_file(
-                &asset.download_url,
-                &version_dir,
+                &release_download_url,
+                &version_dir_path,
                 zed::DownloadedFileType::Zip,
-            )
-            .map_err(|e| format!("failed to download file: {e}"))?;
+            )?;
 
             zed::make_file_executable(&binary_path)?;
 
-            let entries = fs::read_dir(BINARY_DIR)
-                .map_err(|e| format!("failed to list working directory {e}"))?;
-            for entry in entries {
-                let entry = entry.map_err(|e| format!("failed to load directory entry {e}"))?;
-                if entry.file_name().to_str() != Some(&version_dir_name) {
-                    fs::remove_dir_all(&entry.path()).ok();
-                }
-            }
+            cleanup_dir_entries(&root_dir, &version_dir_name)?;
         }
+
+        // We now know that we have a latest binary downloaded,
+        // cache it for the remainder of the Zed editor session
 
         self.cached_binary_path = Some(binary_path.clone());
 
         Ok(binary_path)
+    }
+
+    fn language_server_args(&self) -> Vec<String> {
+        vec![String::from("serve")]
     }
 }
 
@@ -122,17 +93,13 @@ impl zed::Extension for DeputyExtension {
         language_server_id: &zed::LanguageServerId,
         worktree: &zed::Worktree,
     ) -> Result<zed::Command> {
-        let mut env = Vec::new();
-
-        let github_auth_token = github_auth::get_personal_access_token()?;
-        if let Some(token) = github_auth_token {
-            env.push(("GITHUB_TOKEN".to_string(), token));
-        }
-
         Ok(zed::Command {
-            command: self.language_server_binary_path(language_server_id, worktree)?,
-            args: vec!["serve".into()],
-            env,
+            command: self.language_server_path(language_server_id, worktree)?,
+            args: self.language_server_args(),
+            env: match auth::github::get_pat()? {
+                Some(token) => Vec::from([("GITHUB_TOKEN".to_string(), token)]),
+                None => Vec::new(),
+            },
         })
     }
 
@@ -143,10 +110,8 @@ impl zed::Extension for DeputyExtension {
         _worktree: Option<&zed::Worktree>,
     ) -> Result<zed::SlashCommandOutput, String> {
         match command.name.as_str() {
-            "deputy-set-github-pat" => github_auth::run_set_personal_access_token(command, args),
-            "deputy-remove-github-pat" => {
-                github_auth::run_remove_personal_access_token(command, args)
-            }
+            "deputy-set-github-pat" => auth::github::run_set_pat(command, args),
+            "deputy-remove-github-pat" => auth::github::run_remove_pat(command, args),
             command => Err(format!("unknown slash command: \"{command}\"")),
         }
     }

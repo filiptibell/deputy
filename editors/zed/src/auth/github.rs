@@ -1,8 +1,9 @@
-use crate::util::is_file;
 use std::fs;
 use zed::http_client::{fetch, HttpMethod, HttpRequestBuilder};
 use zed::Result;
 use zed_extension_api::{self as zed};
+
+use crate::fs::file_exists;
 
 const PERSONAL_ACCESS_TOKEN_FILE_PATH: &str = "github-pat";
 
@@ -15,6 +16,7 @@ pub fn validate(token: &str) -> Result<()> {
         .method(HttpMethod::Get)
         .build()
         .map_err(|e| format!("Failed to build http request: {e}"))?;
+
     fetch(&request).map_err(|e| {
         const STATUS_CODE_START: &str = "status code ";
         format!(
@@ -36,10 +38,11 @@ pub fn validate(token: &str) -> Result<()> {
             }
         )
     })?;
+
     Ok(())
 }
 
-pub fn run_set_personal_access_token(
+pub fn run_set_pat(
     _command: zed::SlashCommand,
     args: Vec<String>,
 ) -> Result<zed::SlashCommandOutput, String> {
@@ -58,15 +61,15 @@ pub fn run_set_personal_access_token(
     })
 }
 
-pub fn run_remove_personal_access_token(
+pub fn run_remove_pat(
     _command: zed::SlashCommand,
     args: Vec<String>,
 ) -> Result<zed::SlashCommandOutput, String> {
-    if args.len() != 0 {
+    if !args.is_empty() {
         return Err("Expected no arguments.".to_owned());
     }
 
-    if !is_file(PERSONAL_ACCESS_TOKEN_FILE_PATH) {
+    if !file_exists(PERSONAL_ACCESS_TOKEN_FILE_PATH) {
         return Err("No GitHub personal access token was set.".into());
     }
     fs::remove_file(PERSONAL_ACCESS_TOKEN_FILE_PATH)
@@ -78,14 +81,16 @@ pub fn run_remove_personal_access_token(
     })
 }
 
-pub fn get_personal_access_token() -> Result<Option<String>> {
-    if !is_file(PERSONAL_ACCESS_TOKEN_FILE_PATH) {
+pub fn get_pat() -> Result<Option<String>> {
+    if !file_exists(PERSONAL_ACCESS_TOKEN_FILE_PATH) {
         return Ok(None);
     }
+
     let token = fs::read_to_string(PERSONAL_ACCESS_TOKEN_FILE_PATH)
         .map_err(|e| format!("Failed to read the GitHub personal access token file: {e}"))?;
     if token.is_empty() {
         return Ok(None);
     }
+
     Ok(Some(token))
 }
