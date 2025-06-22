@@ -3,7 +3,7 @@ name = "Deputy"
 version = "0.1.0"
 schema_version = 1
 authors = ["Filip Tibell <filip.tibell@gmail.com>", "teapo <4teapo@gmail.com>"]
-description = "A language server for your dependencies."
+description = "Autocomplete, hover info, and more for your dependencies"
 repository = "https://github.com/filiptibell/deputy"
 
 [language_servers.deputy]
