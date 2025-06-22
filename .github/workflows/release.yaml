@@ -67,14 +67,6 @@ jobs:
         with:
           targets: ${{ matrix.cargo-target }}
 
-      - name: Install Node
-        uses: actions/setup-node@v3
-        with:
-          node-version: 22.x
-
-      - name: Install Bun
-        uses: oven-sh/setup-bun@v1
-
       - name: Build binary
         run: |
           cargo build \
@@ -89,18 +81,6 @@ jobs:
         with:
           name: ${{ matrix.artifact-name }}
           path: release.zip
-
-      - name: Install VSIX dependencies
-        working-directory: ./editors/vscode
-        run: bun install && bun pm trust --all
-
-      - name: Publish VSIX extension
-        working-directory: ./editors/vscode
-        run: bun run extension-publish
-        env:
-          VSCODE_TARGET: ${{ matrix.vscode-target }}
-          VSCE_PAT: ${{ secrets.VSCE_TOKEN }}
-          OVSX_PAT: ${{ secrets.OVSX_TOKEN }}
 
   release:
     name: Release
