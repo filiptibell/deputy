@@ -42,10 +42,8 @@ The language server can also be installed manually from the [latest release](htt
 <summary> Manual Installation - VSCode </summary>
 
 1. [Install Bun](https://bun.sh/docs/installation)
-2. [Install the VSCode Command Line Interface](https://code.visualstudio.com/docs/editor/command-line)
-3. Make sure you have installed the language server binary and that it exists on PATH
-4. Clone this repository, and navigate to the `editors/vscode` directory
-5. Finally, build and install the extension by running these three commands, in order:
+2. Clone this repository, and navigate to the `editors/vscode` directory
+3. Build and install the extension by running these three commands, in order:
    ```bash
    bun install
    bun pm trust --all
@@ -58,9 +56,8 @@ The language server can also be installed manually from the [latest release](htt
 <summary> Manual Installation - Zed </summary>
 
 1. [Install Rust](https://www.rust-lang.org/tools/install)
-2. Make sure you have installed the language server binary and that it exists on PATH
-3. Clone this repository, and navigate to the root directory
-4. Install the Zed extension at `editors/zed` as a [dev extension](https://zed.dev/docs/extensions/developing-extensions#developing-an-extension-locally)
+2. Clone this repository, and navigate to the root directory
+3. Install the Zed extension at `editors/zed` as a [dev extension](https://zed.dev/docs/extensions/developing-extensions#developing-an-extension-locally)
 
 </details>
 
