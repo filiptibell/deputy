@@ -15,7 +15,7 @@ export type RateLimitResponse = {
 };
 
 export const handleRateLimitRequest = async (
-	request: RateLimitRequest
+	request: RateLimitRequest,
 ): Promise<RateLimitResponse> => {
 	let response: RateLimitResponse = {
 		kind: request.kind,

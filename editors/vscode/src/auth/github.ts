@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import * as vscode from "vscode";
-import axios from "axios";
 
 import { getExtensionContext } from "../extension";
 
@@ -10,17 +9,16 @@ const GITHUB_AUTH_TOKEN_STORAGE_KEY = "auth.github.token";
 // https://docs.github.com/en/rest/overview/authenticating-to-the-rest-api
 const validate = async (token: string): Promise<boolean> => {
 	return new Promise((resolve) => {
-		axios
-			.get("https://api.github.com/octocat", {
-				headers: {
-					Authorization: `Bearer ${token}`,
-					"X-GitHub-Api-Version": "2022-11-28",
-				},
+		fetch("https://api.github.com/octocat", {
+			headers: {
+				Authorization: `Bearer ${token}`,
+				"X-GitHub-Api-Version": "2022-11-28",
+			},
+		})
+			.then((res) => {
+				resolve(res.ok);
 			})
-			.then((_) => {
-				resolve(true);
-			})
-			.catch((e) => {
+			.catch((_) => {
 				resolve(false);
 			});
 	});
@@ -35,7 +33,7 @@ const validate = async (token: string): Promise<boolean> => {
 	Any token returned from this function is guaranteed to currently be valid.
 */
 export const prompt = async (
-	skipNotification?: true
+	skipNotification?: true,
 ): Promise<string | null> => {
 	const context = getExtensionContext();
 
@@ -43,7 +41,7 @@ export const prompt = async (
 		const result = await vscode.window.showInformationMessage(
 			"The GitHub API rate limit has been reached." +
 				"\nSome functionality will be disabled until authenticated.",
-			"Set Personal Access Token"
+			"Set Personal Access Token",
 		);
 		if (result !== "Set Personal Access Token") {
 			return null;
@@ -62,7 +60,7 @@ export const prompt = async (
 			if (token !== "" && (await validate(token))) {
 				await context.globalState.update(
 					GITHUB_AUTH_TOKEN_STORAGE_KEY,
-					token
+					token,
 				);
 				return token;
 			} else {
@@ -95,7 +93,7 @@ export const get = async (): Promise<string | undefined> => {
 		} else {
 			await context.globalState.update(
 				GITHUB_AUTH_TOKEN_STORAGE_KEY,
-				undefined
+				undefined,
 			);
 		}
 	}
@@ -114,7 +112,7 @@ export const reset = async (): Promise<boolean> => {
 	if (!!context.globalState.get(GITHUB_AUTH_TOKEN_STORAGE_KEY)) {
 		await context.globalState.update(
 			GITHUB_AUTH_TOKEN_STORAGE_KEY,
-			undefined
+			undefined,
 		);
 		return true;
 	} else {
