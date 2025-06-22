@@ -55,7 +55,7 @@
         "watch": "tsc -p ./ && bun run esbuild-watch",
         "extension-package": "rm -rf './bin' && mkdir -p './bin' && vsce package --out './bin/' --skip-license",
         "extension-install": "bun run extension-package && code --install-extension ./bin/*.vsix",
-        "extension-publish": "bun run extension-package && vsce publish --skip-duplicate --target $VSCODE_TARGET && ovsx publish --skip-duplicate --target $VSCODE_TARGET"
+        "extension-publish": "bun run extension-package && vsce publish --skip-license --skip-duplicate && ovsx publish --skip-license --skip-duplicate"
     },
     "devDependencies": {
         "@types/node": "^22.0",
@@ -63,8 +63,8 @@
         "@types/which": "^3.0.4",
         "@vscode/vsce": "^3.4.1",
         "esbuild": "^0.24.2",
-        "typescript": "^5.7.2",
-        "ovsx": "^0.10.4"
+        "ovsx": "^0.10.4",
+        "typescript": "^5.7.2"
     },
     "dependencies": {
         "jszip": "^3.10.1",
@@ -72,8 +72,6 @@
         "which": "^5.0.0"
     },
     "trustedDependencies": [
-        "@vscode/vsce-sign",
-        "esbuild",
-        "keytar"
+        "@vscode/vsce-sign"
     ]
 }
