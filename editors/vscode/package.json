@@ -54,7 +54,7 @@
         "watch": "tsc -p ./ && bun run esbuild-watch",
         "extension-package": "rm -rf './bin' && mkdir -p './bin' && vsce package --out './bin/' --skip-license",
         "extension-install": "bun run extension-package && code --install-extension ./bin/*.vsix",
-        "extension-publish": "bun run extension-package && vsce publish --skip-license --skip-duplicate && ovsx publish --skip-license --skip-duplicate"
+        "extension-publish": "bun run extension-package && vsce publish --skip-license --skip-duplicate && ovsx publish --skip-duplicate"
     },
     "devDependencies": {
         "@types/node": "^22.0",
