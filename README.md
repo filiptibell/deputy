@@ -35,8 +35,9 @@ Deputy can be installed as an extension from:
 
 - The [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=filiptibell.deputy) (VSCode)
 - The [Open VSX Registry](https://open-vsx.org/extension/filiptibell/deputy) (Cursor, Windsurf, ...)
+- The [Zed Extensions](https://zed.dev/extensions) registry
 
-The language server can also be installed manually from the [latest release](https://github.com/filiptibell/deputy/releases/latest).
+Extensions can also be built and installed from source:
 
 <details>
 <summary> Manual Installation - VSCode </summary>
