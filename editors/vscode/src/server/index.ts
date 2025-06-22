@@ -44,7 +44,11 @@ export const start = async () => {
 	// Check if we have the server binary on PATH, download it if not
 
 	let resolved = await which(BINARY_NAME, { nothrow: true });
-	if (!resolved) {
+	if (resolved) {
+		outputChannel.appendLine(
+			`Using server binary found on PATH: ${resolved}`,
+		);
+	} else {
 		const downloader = new Downloader(context, outputChannel);
 
 		await vscode.window.withProgress(
