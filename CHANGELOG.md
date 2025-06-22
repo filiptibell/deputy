@@ -20,6 +20,7 @@ It is still the same language server, albeit improved & with a fresh coat of pai
 ### Changed
 
 - Rewrote the core language server using [async-language-server](https://github.com/filiptibell/async-language-server), leading to significant improvements in stability, fewer weird race conditions, and better handling of unicode in different editors. You may also notice performance improvements and less memory being used.
+- The extension for VSCode now automatically downloads the latest version of the Deputy language server, instead of bundling it. This behavior can be disabled by simply adding the language server binary somewhere in your PATH.
 
 ### Removed
 
