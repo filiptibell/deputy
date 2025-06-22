@@ -83,7 +83,10 @@ export const start = async () => {
 
 	const clientOptions: LanguageClientOptions = {
 		stdioEncoding: "utf8",
-		documentSelector: [{ scheme: "file", language: "zap" }],
+		documentSelector: [
+			{ scheme: "file", language: "toml" },
+			{ scheme: "file", language: "json" },
+		],
 		outputChannel,
 	};
 
