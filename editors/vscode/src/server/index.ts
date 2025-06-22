@@ -1,21 +1,20 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import * as vscode from "vscode";
-import * as os from "os";
+import which from "which";
 
 import {
 	Executable,
-	ExecutableOptions,
 	LanguageClient,
 	LanguageClientOptions,
 	ServerOptions,
 } from "vscode-languageclient/node";
 
-import { getExtensionContext } from "./extension";
-
-import auth from "./auth";
-import requests from "./requests";
-import util from "./util";
+import auth from "../auth";
+import requests from "../requests";
+import { getExtensionContext } from "../extension";
+import { Downloader } from "./downloader";
+import { BINARY_NAME, DISPLAY_NAME } from "./constants";
 
 let client: LanguageClient | undefined;
 let outputChannel: vscode.OutputChannel;
@@ -25,7 +24,7 @@ let outputChannel: vscode.OutputChannel;
 
 	Will throw an error if the language server has already been started.
 */
-export const startServer = async () => {
+export const start = async () => {
 	if (client !== undefined) {
 		throw new Error("Language server has already been started");
 	}
@@ -35,59 +34,39 @@ export const startServer = async () => {
 	// Create persistent output channel if one does not exist
 
 	if (outputChannel === undefined) {
-		outputChannel = vscode.window.createOutputChannel("Deputy");
+		outputChannel = vscode.window.createOutputChannel(DISPLAY_NAME);
 	}
 
 	// Retrieve and validate stored authentication, if any
 
 	const githubAuthToken = await auth.github.get();
 
-	// Find which executable was bundled with the extension - either debug or release
+	// Check if we have the server binary on PATH, download it if not
 
-	const exeName = os.platform() === "win32" ? "deputy.exe" : "deputy";
+	let resolved = await which(BINARY_NAME, { nothrow: true });
+	if (!resolved) {
+		const downloader = new Downloader(context, outputChannel);
 
-	const exeDebug = vscode.Uri.joinPath(
-		context.extensionUri,
-		"out",
-		"debug",
-		exeName,
-	);
+		await vscode.window.withProgress(
+			{
+				location: vscode.ProgressLocation.Window,
+				title: `Downloading ${DISPLAY_NAME}...`,
+			},
+			async () => {
+				await downloader.download();
+			},
+		);
 
-	const exeRelease = vscode.Uri.joinPath(
-		context.extensionUri,
-		"out",
-		"release",
-		exeName,
-	);
-
-	const command = (await util.fs.fileExists(exeRelease))
-		? exeRelease.fsPath
-		: (await util.fs.fileExists(exeDebug))
-			? exeDebug.fsPath
-			: null;
-	if (!command) {
-		vscode.window.showErrorMessage("Missing language server executable");
-		return;
+		resolved = downloader.path();
 	}
 
-	// Create args for language server, including any stored auth
-
-	const isDebug = command === exeDebug.fsPath;
-	const options: ExecutableOptions = isDebug
-		? {
-				env: {
-					PATH: process.env.PATH,
-					RUST_LOG: "debug",
-					RUST_BACKTRACE: "1",
-				},
-			}
-		: { env: { PATH: process.env.PATH } };
-
-	options.env["GITHUB_TOKEN"] = githubAuthToken;
+	// Create args for language server
 
 	const server: Executable = {
-		command,
-		options,
+		command: resolved,
+		options: {
+			env: { PATH: process.env.PATH, GITHUB_TOKEN: githubAuthToken },
+		},
 		args: ["serve"],
 	};
 
@@ -100,25 +79,17 @@ export const startServer = async () => {
 
 	const clientOptions: LanguageClientOptions = {
 		stdioEncoding: "utf8",
-		documentSelector: [
-			{ scheme: "file", language: "toml" },
-			{ scheme: "file", language: "json" },
-		],
-		diagnosticCollectionName: "Deputy",
+		documentSelector: [{ scheme: "file", language: "zap" }],
 		outputChannel,
 	};
 
 	// Start language server & client
 
-	if (isDebug) {
-		outputChannel.appendLine("Starting language server (debug)");
-	} else {
-		outputChannel.appendLine("Starting language server");
-	}
+	outputChannel.appendLine("Starting language server");
 
 	client = new LanguageClient(
-		"deputy",
-		"Deputy",
+		BINARY_NAME,
+		DISPLAY_NAME,
 		serverOptions,
 		clientOptions,
 	);
@@ -126,6 +97,7 @@ export const startServer = async () => {
 	client.start();
 
 	// Listen for custom requests from server
+
 	client.onRequest(
 		requests.rateLimit.RATE_LIMIT_METHOD,
 		requests.rateLimit.handleRateLimitRequest,
@@ -137,7 +109,7 @@ export const startServer = async () => {
 
 	Returns `true` if stopped, `false` if the language server was not running.
 */
-export const stopServer = async (): Promise<boolean> => {
+export const stop = async (): Promise<boolean> => {
 	const c = client;
 	if (c !== undefined) {
 		client = undefined;
@@ -154,7 +126,7 @@ export const stopServer = async (): Promise<boolean> => {
 	Should be used only when a language server configuration that requires a full
 	restart is needed, other methods such as notifications should be preferred.
 */
-export const restartServer = async () => {
-	await stopServer();
-	await startServer();
+export const restart = async () => {
+	await stop();
+	await start();
 };

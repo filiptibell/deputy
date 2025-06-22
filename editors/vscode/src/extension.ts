@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 
-import * as client from "./client";
+import * as server from "./server";
 
 import { CommandProvider } from "./commands";
 
@@ -19,9 +19,9 @@ export async function activate(ctx: vscode.ExtensionContext) {
 
 	ctx.subscriptions.push(new CommandProvider());
 
-	await client.startServer();
+	await server.start();
 }
 
 export async function deactivate() {
-	await client.stopServer();
+	await server.stop();
 }

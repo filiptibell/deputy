@@ -1,15 +1,15 @@
-import * as client from "../client";
+import * as server from "../server";
 
 import auth from "../auth";
 
 export const promptAuthForGitHub = async (args: {}) => {
 	await auth.github.prompt(true);
-	await client.restartServer();
+	await server.restart();
 };
 
 export const resetAuthForGitHub = async (args: {}) => {
 	await auth.github.reset();
-	await client.restartServer();
+	await server.restart();
 };
 
 export default {
