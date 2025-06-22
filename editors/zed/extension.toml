@@ -1,6 +1,6 @@
 id = "deputy"
 name = "Deputy"
-version = "0.1.0"
+version = "1.0.0"
 schema_version = 1
 authors = ["Filip Tibell <filip.tibell@gmail.com>", "teapo <4teapo@gmail.com>"]
 description = "Autocomplete, hover info, and more for your dependencies"

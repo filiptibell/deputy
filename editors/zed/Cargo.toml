@@ -3,7 +3,7 @@ resolver = "2"
 
 [package]
 name = "deputy-extension"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
 publish = false
 license = "MIT"
@@ -13,4 +13,4 @@ path = "src/extension.rs"
 crate-type = ["cdylib"]
 
 [dependencies]
-zed_extension_api = "0.4"
+zed_extension_api = "0.6"
