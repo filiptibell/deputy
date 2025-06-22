@@ -8,6 +8,10 @@ src/**
 .eslintrc.json
 .gitignore
 tsconfig.json
+
+package-lock.json
+bun.lockb
+
 **/*.map
 **/*.ts
 
