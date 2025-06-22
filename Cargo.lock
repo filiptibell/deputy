@@ -328,7 +328,7 @@ dependencies = [
 
 [[package]]
 name = "deputy"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "async-language-server",
@@ -343,7 +343,7 @@ dependencies = [
 
 [[package]]
 name = "deputy-clients"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "dashmap",
  "deputy-versioning",
@@ -359,7 +359,7 @@ dependencies = [
 
 [[package]]
 name = "deputy-parser"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "async-language-server",
  "deputy-versioning",
@@ -369,7 +369,7 @@ dependencies = [
 
 [[package]]
 name = "deputy-tools"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "async-language-server",
@@ -385,7 +385,7 @@ dependencies = [
 
 [[package]]
 name = "deputy-versioning"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "semver",
 ]
