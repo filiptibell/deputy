@@ -35,7 +35,9 @@ Deputy can be installed as an extension from:
 
 - The [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=filiptibell.deputy) (VSCode)
 - The [Open VSX Registry](https://open-vsx.org/extension/filiptibell/deputy) (Cursor, Windsurf, ...)
-- The [Zed Extensions](https://zed.dev/extensions) registry
+- The [Zed Extensions](https://zed.dev/extensions) registry <sup>[1]</sup>
+
+<sup>[1]</sup> TOML language extension must also be installed for Deputy to work in Zed.
 
 Extensions can also be built and installed from source:
 
@@ -84,7 +86,6 @@ Extensions can also be built and installed from source:
 ### Completions
 
 <img src="assets/cargo-screenshot-completions.png" alt="Completions" height="50%" width="50%" />
-
 
 ## Why "Deputy"?
 

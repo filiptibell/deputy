@@ -144,7 +144,6 @@ Supporting both Aftman and Foreman would add a non-trivial amount of complexity 
 ### Added
 
 - Added full support for NPM! This includes:
-
   - Autocomplete for package names and versions
   - Hover for info about a package (installed version, description, links)
   - Diagnostics for when a newer version is available + action to update
