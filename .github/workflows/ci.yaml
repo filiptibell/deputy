@@ -9,6 +9,9 @@ defaults:
   run:
     shell: bash
 
+env:
+  CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+
 jobs:
   fmt:
     name: Check formatting
@@ -35,16 +38,24 @@ jobs:
             runner-os: windows-latest
             cargo-target: x86_64-pc-windows-msvc
 
+          - name: Windows aarch64
+            runner-os: windows-latest
+            cargo-target: aarch64-pc-windows-msvc
+
           - name: Linux x86_64
             runner-os: ubuntu-latest
             cargo-target: x86_64-unknown-linux-gnu
 
+          - name: Linux aarch64
+            runner-os: ubuntu-latest
+            cargo-target: aarch64-unknown-linux-gnu
+
           - name: macOS x86_64
-            runner-os: macos-13
+            runner-os: macos-latest
             cargo-target: x86_64-apple-darwin
 
           - name: macOS aarch64
-            runner-os: macos-14
+            runner-os: macos-latest
             cargo-target: aarch64-apple-darwin
 
     name: CI - ${{ matrix.name }}
@@ -61,6 +72,12 @@ jobs:
           components: clippy
           targets: ${{ matrix.cargo-target }}
 
+      - name: Install cross-compilation dependencies (Linux aarch64)
+        if: matrix.cargo-target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
       - name: Build
         run: |
           cargo build \
@@ -76,6 +93,7 @@ jobs:
           --target ${{ matrix.cargo-target }}
 
       - name: Test
+        if: matrix.cargo-target != 'aarch64-unknown-linux-gnu' && matrix.cargo-target != 'aarch64-pc-windows-msvc'
         run: |
           cargo test \
           --workspace \
