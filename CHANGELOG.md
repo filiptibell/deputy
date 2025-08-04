@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## `0.6.1` - August 4th, 2025
 
+### Added
+
+- Added release binaries for arm-based Windows & Linux
+
 ### Fixed
 
 - Fixed regression causing GitHub PATs to be ignored even if configured
