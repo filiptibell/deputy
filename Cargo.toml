@@ -15,7 +15,7 @@ strip = true
 lto = true
 
 [workspace.package]
-version = "0.6.0"
+version = "0.6.1"
 edition = "2024"
 publish = false
 license = "MIT"
@@ -32,6 +32,7 @@ cast_sign_loss = { level = "allow", priority = 1 }
 module_inception = { level = "allow", priority = 1 }
 module_name_repetitions = { level = "allow", priority = 1 }
 multiple_crate_versions = { level = "allow", priority = 1 }
+large_futures = { level = "allow", priority = 1 }
 similar_names = { level = "allow", priority = 1 }
 too_many_lines = { level = "allow", priority = 1 }
 unnecessary_wraps = { level = "allow", priority = 1 }

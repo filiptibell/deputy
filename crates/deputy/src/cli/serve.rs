@@ -12,6 +12,8 @@ pub struct ServeCommand {
     pub socket: Option<u16>,
     #[arg(long)]
     pub stdio: bool,
+    #[arg(long, env = "GITHUB_TOKEN")]
+    pub github_token: Option<String>,
 }
 
 impl ServeCommand {
@@ -26,6 +28,10 @@ impl ServeCommand {
 
         let transport = transport.unwrap_or_default();
         let server = DeputyLanguageServer::new();
+
+        if let Some(github_token) = self.github_token {
+            server.set_github_token(github_token);
+        }
 
         debug!("Parsed arguments\n\ttransport: {transport}");
 

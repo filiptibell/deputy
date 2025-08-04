@@ -27,6 +27,10 @@ impl DeputyLanguageServer {
         let tools = Tools::new(&clients);
         Self { clients, tools }
     }
+
+    pub fn set_github_token(&self, github_token: impl AsRef<str>) {
+        self.clients.github.set_auth_token(github_token);
+    }
 }
 
 impl Default for DeputyLanguageServer {
