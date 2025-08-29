@@ -9,9 +9,6 @@ defaults:
   run:
     shell: bash
 
-env:
-  CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
-
 jobs:
   fmt:
     name: Check formatting
@@ -39,7 +36,7 @@ jobs:
             cargo-target: x86_64-pc-windows-msvc
 
           - name: Windows aarch64
-            runner-os: windows-latest
+            runner-os: windows-11-arm
             cargo-target: aarch64-pc-windows-msvc
 
           - name: Linux x86_64
@@ -47,7 +44,7 @@ jobs:
             cargo-target: x86_64-unknown-linux-gnu
 
           - name: Linux aarch64
-            runner-os: ubuntu-latest
+            runner-os: ubuntu-24.04-arm
             cargo-target: aarch64-unknown-linux-gnu
 
           - name: macOS x86_64
@@ -63,20 +60,12 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          submodules: true
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
           targets: ${{ matrix.cargo-target }}
-
-      - name: Install cross-compilation dependencies (Linux aarch64)
-        if: matrix.cargo-target == 'aarch64-unknown-linux-gnu'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu
 
       - name: Build
         run: |
@@ -93,7 +82,6 @@ jobs:
           --target ${{ matrix.cargo-target }}
 
       - name: Test
-        if: matrix.cargo-target != 'aarch64-unknown-linux-gnu' && matrix.cargo-target != 'aarch64-pc-windows-msvc'
         run: |
           cargo test \
           --workspace \

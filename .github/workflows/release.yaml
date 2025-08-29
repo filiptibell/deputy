@@ -10,9 +10,6 @@ defaults:
   run:
     shell: bash
 
-env:
-  CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
-
 jobs:
   init:
     name: Init
@@ -42,7 +39,7 @@ jobs:
             vscode-target: win32-x64
 
           - name: Windows aarch64
-            runner-os: windows-latest
+            runner-os: windows-11-arm
             artifact-name: deputy-${{ needs.init.outputs.version }}-windows-aarch64
             cargo-target: aarch64-pc-windows-msvc
             vscode-target: win32-arm64
@@ -54,7 +51,7 @@ jobs:
             vscode-target: linux-x64
 
           - name: Linux aarch64
-            runner-os: ubuntu-latest
+            runner-os: ubuntu-24.04-arm
             artifact-name: deputy-${{ needs.init.outputs.version }}-linux-aarch64
             cargo-target: aarch64-unknown-linux-gnu
             vscode-target: linux-arm64
@@ -81,12 +78,6 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.cargo-target }}
-
-      - name: Install cross-compilation dependencies (Linux aarch64)
-        if: matrix.cargo-target == 'aarch64-unknown-linux-gnu'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu
 
       - name: Build binary
         run: |
