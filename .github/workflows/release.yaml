@@ -33,7 +33,7 @@ jobs:
       matrix:
         include:
           - name: Windows x86_64
-            runner-os: windows-11
+            runner-os: windows-2025
             artifact-name: deputy-${{ needs.init.outputs.version }}-windows-x86_64
             cargo-target: x86_64-pc-windows-msvc
             vscode-target: win32-x64
