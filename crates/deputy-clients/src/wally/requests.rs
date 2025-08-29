@@ -178,10 +178,9 @@ fn parse_index_url(index_url: &str) -> RequestResult<(String, String)> {
         .to_string()
         .trim_end_matches(".git")
         .strip_prefix("https://github.com/")
+        && let Some((owner, repo)) = stripped.split_once('/')
     {
-        if let Some((owner, repo)) = stripped.split_once('/') {
-            return Ok((owner.to_ascii_lowercase(), repo.to_ascii_lowercase()));
-        }
+        return Ok((owner.to_ascii_lowercase(), repo.to_ascii_lowercase()));
     }
 
     Err(RequestError::Client(format!(

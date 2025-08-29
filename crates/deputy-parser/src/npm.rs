@@ -30,7 +30,7 @@ impl FromStr for DependencyKind {
 
 #[allow(clippy::missing_panics_doc)]
 #[must_use]
-pub fn find_all_dependencies(doc: &Document) -> Vec<TsNode> {
+pub fn find_all_dependencies(doc: &Document) -> Vec<TsNode<'_>> {
     // package.json should always have a single json object at root
     let Some(root) = doc.node_at_root() else {
         return Vec::new();
@@ -66,7 +66,7 @@ pub fn find_all_dependencies(doc: &Document) -> Vec<TsNode> {
 
 #[allow(clippy::missing_panics_doc)]
 #[must_use]
-pub fn find_dependency_at(doc: &Document, pos: Position) -> Option<TsNode> {
+pub fn find_dependency_at(doc: &Document, pos: Position) -> Option<TsNode<'_>> {
     let node = doc.node_at_position(pos)?; // either the key or value
     let pair = find_ancestor(node, |a| a.kind() == "pair")?; // "package": "spec"
 

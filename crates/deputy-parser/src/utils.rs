@@ -15,23 +15,23 @@ pub fn unquote(text: impl AsRef<str>) -> String {
 #[must_use]
 pub fn table_key_parts(doc: &Document, node: TsNode) -> Vec<String> {
     let mut parts = Vec::new();
-    if node.kind() == "table" {
-        if let Some(key) = node.named_child(0) {
-            if key.kind() == "bare_key" {
-                // [dependencies]
-                parts.push(doc.node_text(key).to_string());
-            } else if key.kind() == "quoted_key" {
-                // ["dependencies"]
-                parts.push(unquote(doc.node_text(key)));
-            } else if key.kind() == "dotted_key" {
-                // [workspace.dependencies] etc
-                let mut cursor = key.walk();
-                for child in key.children(&mut cursor) {
-                    if child.kind() == "bare_key" {
-                        parts.push(doc.node_text(child).to_string());
-                    } else if child.kind() == "quoted_key" {
-                        parts.push(unquote(doc.node_text(child)));
-                    }
+    if node.kind() == "table"
+        && let Some(key) = node.named_child(0)
+    {
+        if key.kind() == "bare_key" {
+            // [dependencies]
+            parts.push(doc.node_text(key).to_string());
+        } else if key.kind() == "quoted_key" {
+            // ["dependencies"]
+            parts.push(unquote(doc.node_text(key)));
+        } else if key.kind() == "dotted_key" {
+            // [workspace.dependencies] etc
+            let mut cursor = key.walk();
+            for child in key.children(&mut cursor) {
+                if child.kind() == "bare_key" {
+                    parts.push(doc.node_text(child).to_string());
+                } else if child.kind() == "quoted_key" {
+                    parts.push(unquote(doc.node_text(child)));
                 }
             }
         }

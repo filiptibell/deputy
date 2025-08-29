@@ -173,10 +173,10 @@ pub trait Versioned {
         potential_versions.retain(|v| filter_fn(v));
 
         potential_versions.sort_unstable_by(|a, b| {
-            if let Ok(v_a) = a.parse_version() {
-                if let Ok(v_b) = b.parse_version() {
-                    return v_a.cmp(&v_b);
-                }
+            if let Ok(v_a) = a.parse_version()
+                && let Ok(v_b) = b.parse_version()
+            {
+                return v_a.cmp(&v_b);
             }
             let s_a = a.raw_version_string();
             let s_b = b.raw_version_string();

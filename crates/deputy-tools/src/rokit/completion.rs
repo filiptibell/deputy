@@ -31,38 +31,38 @@ pub async fn get_rokit_completions(
     let (owner, repository, version) = ranges.text(doc);
 
     // Try to complete versions
-    if let Some(range) = ranges.version {
-        if ts_range_contains_lsp_position(range, pos) {
-            debug!("Completing version: {dep:?}");
-            return complete_version(
-                clients,
-                owner.unwrap_or_default(),
-                repository.unwrap_or_default(),
-                version.unwrap_or_default(),
-                ts_range_to_lsp_range(range),
-            )
-            .await;
-        }
+    if let Some(range) = ranges.version
+        && ts_range_contains_lsp_position(range, pos)
+    {
+        debug!("Completing version: {dep:?}");
+        return complete_version(
+            clients,
+            owner.unwrap_or_default(),
+            repository.unwrap_or_default(),
+            version.unwrap_or_default(),
+            ts_range_to_lsp_range(range),
+        )
+        .await;
     }
 
     // Try to complete names
-    if let Some(range) = ranges.repository {
-        if ts_range_contains_lsp_position(range, pos) {
-            debug!("Completing name: {dep:?}");
-            return complete_repository(
-                owner.unwrap_or_default(),
-                repository.unwrap_or_default(),
-                ts_range_to_lsp_range(range),
-            );
-        }
+    if let Some(range) = ranges.repository
+        && ts_range_contains_lsp_position(range, pos)
+    {
+        debug!("Completing name: {dep:?}");
+        return complete_repository(
+            owner.unwrap_or_default(),
+            repository.unwrap_or_default(),
+            ts_range_to_lsp_range(range),
+        );
     }
 
     // Try to complete authors
-    if let Some(range) = ranges.owner {
-        if ts_range_contains_lsp_position(range, pos) {
-            debug!("Completing author: {dep:?}");
-            return complete_owner(owner.unwrap_or_default(), ts_range_to_lsp_range(range));
-        }
+    if let Some(range) = ranges.owner
+        && ts_range_contains_lsp_position(range, pos)
+    {
+        debug!("Completing author: {dep:?}");
+        return complete_owner(owner.unwrap_or_default(), ts_range_to_lsp_range(range));
     }
 
     // No completions yet - probably empty spec
@@ -114,9 +114,8 @@ async fn complete_version(
     version: &str,
     range: Range,
 ) -> ServerResult<Option<CompletionResponse>> {
-    let metadatas = match clients.github.get_repository_releases(author, name).await {
-        Err(_) => return Ok(None),
-        Ok(m) => m,
+    let Ok(metadatas) = clients.github.get_repository_releases(author, name).await else {
+        return Ok(None);
     };
 
     let valid_vec = version

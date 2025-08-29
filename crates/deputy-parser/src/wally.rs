@@ -8,11 +8,11 @@ pub use super::shared::{
 };
 
 #[must_use]
-pub fn find_all_dependencies(doc: &Document) -> Vec<TsNode> {
+pub fn find_all_dependencies(doc: &Document) -> Vec<TsNode<'_>> {
     super::shared::find_all_dependencies(doc, super::shared::TableNames::Wally)
 }
 
 #[must_use]
-pub fn find_dependency_at(doc: &Document, pos: Position) -> Option<TsNode> {
+pub fn find_dependency_at(doc: &Document, pos: Position) -> Option<TsNode<'_>> {
     super::shared::find_dependency_at(doc, pos, super::shared::TableNames::Wally)
 }

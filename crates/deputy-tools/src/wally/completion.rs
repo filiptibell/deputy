@@ -33,48 +33,48 @@ pub async fn get_wally_completions(
     let (owner, repository, version) = ranges.text(doc);
 
     // Try to complete versions
-    if let Some(range) = ranges.version {
-        if ts_range_contains_lsp_position(range, pos) {
-            debug!("Completing version: {dep:?}");
-            return complete_version(
-                clients,
-                index_url,
-                owner.unwrap_or_default(),
-                repository.unwrap_or_default(),
-                version.unwrap_or_default(),
-                ts_range_to_lsp_range(range),
-            )
-            .await;
-        }
+    if let Some(range) = ranges.version
+        && ts_range_contains_lsp_position(range, pos)
+    {
+        debug!("Completing version: {dep:?}");
+        return complete_version(
+            clients,
+            index_url,
+            owner.unwrap_or_default(),
+            repository.unwrap_or_default(),
+            version.unwrap_or_default(),
+            ts_range_to_lsp_range(range),
+        )
+        .await;
     }
 
     // Try to complete packages
-    if let Some(range) = ranges.repository {
-        if ts_range_contains_lsp_position(range, pos) {
-            debug!("Completing name: {dep:?}");
-            return complete_package(
-                clients,
-                index_url,
-                owner.unwrap_or_default(),
-                repository.unwrap_or_default(),
-                ts_range_to_lsp_range(range),
-            )
-            .await;
-        }
+    if let Some(range) = ranges.repository
+        && ts_range_contains_lsp_position(range, pos)
+    {
+        debug!("Completing name: {dep:?}");
+        return complete_package(
+            clients,
+            index_url,
+            owner.unwrap_or_default(),
+            repository.unwrap_or_default(),
+            ts_range_to_lsp_range(range),
+        )
+        .await;
     }
 
     // Try to complete scopes
-    if let Some(range) = ranges.owner {
-        if ts_range_contains_lsp_position(range, pos) {
-            debug!("Completing scope: {dep:?}");
-            return complete_scope(
-                clients,
-                index_url,
-                owner.unwrap_or_default(),
-                ts_range_to_lsp_range(range),
-            )
-            .await;
-        }
+    if let Some(range) = ranges.owner
+        && ts_range_contains_lsp_position(range, pos)
+    {
+        debug!("Completing scope: {dep:?}");
+        return complete_scope(
+            clients,
+            index_url,
+            owner.unwrap_or_default(),
+            ts_range_to_lsp_range(range),
+        )
+        .await;
     }
 
     // No completions yet - probably empty spec
@@ -87,9 +87,8 @@ async fn complete_scope(
     scope: &str,
     range: Range,
 ) -> ServerResult<Option<CompletionResponse>> {
-    let package_scopes = match clients.wally.get_index_scopes(index_url).await {
-        Err(_) => return Ok(None),
-        Ok(m) => m,
+    let Ok(package_scopes) = clients.wally.get_index_scopes(index_url).await else {
+        return Ok(None);
     };
 
     let items = package_scopes
@@ -117,9 +116,8 @@ async fn complete_package(
     package: &str,
     range: Range,
 ) -> ServerResult<Option<CompletionResponse>> {
-    let package_names = match clients.wally.get_index_packages(index_url, author).await {
-        Err(_) => return Ok(None),
-        Ok(m) => m,
+    let Ok(package_names) = clients.wally.get_index_packages(index_url, author).await else {
+        return Ok(None);
     };
 
     let items = package_names
@@ -148,13 +146,12 @@ async fn complete_version(
     version: &str,
     range: Range,
 ) -> ServerResult<Option<CompletionResponse>> {
-    let metadatas = match clients
+    let Ok(metadatas) = clients
         .wally
         .get_index_metadatas(index_url, author, package)
         .await
-    {
-        Err(_) => return Ok(None),
-        Ok(m) => m,
+    else {
+        return Ok(None);
     };
 
     let valid_vec = version

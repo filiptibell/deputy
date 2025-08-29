@@ -88,7 +88,7 @@ fn check_dependencies_table_single(
 }
 
 #[must_use]
-pub fn find_all_dependencies(doc: &Document) -> Vec<TsNode> {
+pub fn find_all_dependencies(doc: &Document) -> Vec<TsNode<'_>> {
     let Some(root) = doc.node_at_root() else {
         return Vec::new();
     };
@@ -115,7 +115,7 @@ pub fn find_all_dependencies(doc: &Document) -> Vec<TsNode> {
 }
 
 #[must_use]
-pub fn find_dependency_at(doc: &Document, pos: Position) -> Option<TsNode> {
+pub fn find_dependency_at(doc: &Document, pos: Position) -> Option<TsNode<'_>> {
     let node = doc.node_at_position(pos)?; // either the key or value
 
     if let Some(table) = find_ancestor(node, |a| check_dependencies_table_single(doc, a).is_some())

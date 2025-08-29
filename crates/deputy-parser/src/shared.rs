@@ -21,7 +21,7 @@ fn check_table_name(table_names: TableNames, key: &str) -> bool {
     }
 }
 
-pub(super) fn find_all_dependencies(doc: &Document, table_names: TableNames) -> Vec<TsNode> {
+pub(super) fn find_all_dependencies(doc: &Document, table_names: TableNames) -> Vec<TsNode<'_>> {
     let Some(root) = doc.node_at_root() else {
         return Vec::new();
     };
@@ -53,7 +53,7 @@ pub(super) fn find_dependency_at(
     doc: &Document,
     pos: Position,
     table_names: TableNames,
-) -> Option<TsNode> {
+) -> Option<TsNode<'_>> {
     let node = doc.node_at_position(pos)?; // either the key or value
     let pair = find_ancestor(node, |a| a.kind() == "pair")?; // tool-name = "spec"
 

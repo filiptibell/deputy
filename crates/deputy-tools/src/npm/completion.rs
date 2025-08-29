@@ -82,9 +82,8 @@ async fn complete_spec(
     spec: &str,
     range: Range,
 ) -> ServerResult<Option<CompletionResponse>> {
-    let metadata = match clients.npm.get_registry_metadata(name).await {
-        Err(_) => return Ok(None),
-        Ok(m) => m,
+    let Ok(metadata) = clients.npm.get_registry_metadata(name).await else {
+        return Ok(None);
     };
 
     let valid_vec = spec

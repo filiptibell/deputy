@@ -89,27 +89,27 @@ async fn complete_name(
         .cloned()
         .collect::<Vec<_>>();
 
-    if packages.len() < MINIMUM_PACKAGES_BEFORE_FETCH {
-        if let Ok(crates) = clients.crates.search_crates(name).await {
-            let count_prev = packages.len();
+    if packages.len() < MINIMUM_PACKAGES_BEFORE_FETCH
+        && let Ok(crates) = clients.crates.search_crates(name).await
+    {
+        let count_prev = packages.len();
 
-            packages.extend(crates.inner.into_iter().map(|m| CratesIoPackage {
-                name: m.name.to_string().into(),
-                downloads: m.downloads.total_count,
-                description: m.description.to_string().into(),
-            }));
+        packages.extend(crates.inner.into_iter().map(|m| CratesIoPackage {
+            name: m.name.to_string().into(),
+            downloads: m.downloads.total_count,
+            description: m.description.to_string().into(),
+        }));
 
-            packages.sort_by_key(|package| package.name.to_ascii_lowercase());
-            packages.dedup_by_key(|p| p.name.to_ascii_lowercase());
-            packages.truncate(MINIMUM_PACKAGES_BEFORE_FETCH);
+        packages.sort_by_key(|package| package.name.to_ascii_lowercase());
+        packages.dedup_by_key(|p| p.name.to_ascii_lowercase());
+        packages.truncate(MINIMUM_PACKAGES_BEFORE_FETCH);
 
-            let count_after = packages.len();
-            if count_after > count_prev {
-                debug!(
-                    "Found {} additional crates for prefix '{name}'",
-                    count_after.saturating_sub(count_prev),
-                );
-            }
+        let count_after = packages.len();
+        if count_after > count_prev {
+            debug!(
+                "Found {} additional crates for prefix '{name}'",
+                count_after.saturating_sub(count_prev),
+            );
         }
     }
 
@@ -135,9 +135,8 @@ async fn complete_version(
     version: &str,
     range: Range,
 ) -> ServerResult<Option<CompletionResponse>> {
-    let metadatas = match clients.crates.get_sparse_index_crate_metadatas(name).await {
-        Err(_) => return Ok(None),
-        Ok(m) => m,
+    let Ok(metadatas) = clients.crates.get_sparse_index_crate_metadatas(name).await else {
+        return Ok(None);
     };
 
     let valid_vec = version
