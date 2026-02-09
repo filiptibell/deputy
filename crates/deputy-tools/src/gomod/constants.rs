@@ -14,8 +14,7 @@ use crate::shared::CompletionMap;
     github.com/user/repo:Display Name:"description"
     ```
 
-    Note that unlike other statically embedded package lists,
-    this is unordered - whereas Cargo etc order by popularity.
+    Where the entries are sorted alphabetically by path.
 */
 #[allow(dead_code)]
 #[derive(Debug, Clone)]

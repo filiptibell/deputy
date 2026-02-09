@@ -98,7 +98,10 @@ async fn complete_version(
 }
 
 fn complete_name(path: &str, range: Range) -> ServerResult<Option<CompletionResponse>> {
-    let packages = top_go_packages_prefixed(path, MAXIMUM_PACKAGES_SHOWN);
+    let packages = top_go_packages_prefixed(path, MAXIMUM_PACKAGES_SHOWN)
+        .into_iter()
+        .cloned()
+        .collect::<Vec<_>>();
 
     let items = packages
         .into_iter()
