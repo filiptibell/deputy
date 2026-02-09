@@ -1,5 +1,5 @@
 mod git;
 mod repository;
 
-pub use git::*;
-pub use repository::*;
+pub use self::git::*;
+pub use self::repository::*;

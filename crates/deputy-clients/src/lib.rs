@@ -7,10 +7,10 @@ pub mod github;
 pub mod npm;
 pub mod wally;
 
-use crates::CratesClient;
-use github::GithubClient;
-use npm::NpmClient;
-use wally::WallyClient;
+use self::crates::CratesClient;
+use self::github::GithubClient;
+use self::npm::NpmClient;
+use self::wally::WallyClient;
 
 #[derive(Debug, Clone)]
 pub struct Clients {

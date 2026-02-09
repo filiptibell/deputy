@@ -1,5 +1,5 @@
 mod index;
 mod metadata;
 
-pub use index::*;
-pub use metadata::*;
+pub use self::index::*;
+pub use self::metadata::*;

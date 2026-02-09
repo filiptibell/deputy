@@ -1,11 +1,10 @@
-use futures::future::try_join_all;
-use tracing::debug;
-
 use async_language_server::{
     lsp_types::{CompletionResponse, Diagnostic, DocumentDiagnosticParams, Hover, Position},
     server::{Document, ServerResult},
     tree_sitter::Node,
 };
+use futures::future::try_join_all;
+use tracing::debug;
 
 use deputy_clients::Clients;
 use deputy_parser::npm;
@@ -15,9 +14,9 @@ mod constants;
 mod diagnostics;
 mod hover;
 
-use completion::get_npm_completions;
-use diagnostics::get_npm_diagnostics;
-use hover::get_npm_hover;
+use self::completion::get_npm_completions;
+use self::diagnostics::get_npm_diagnostics;
+use self::hover::get_npm_hover;
 
 #[derive(Debug, Clone)]
 pub struct Npm {

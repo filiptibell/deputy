@@ -1,5 +1,3 @@
-use tracing::debug;
-
 use async_language_server::{
     lsp_types::{
         CompletionItem, CompletionItemKind, CompletionResponse, CompletionTextEdit, Position,
@@ -10,14 +8,16 @@ use async_language_server::{
     tree_sitter::Node,
     tree_sitter_utils::{ts_range_contains_lsp_position, ts_range_to_lsp_range},
 };
+use tracing::debug;
 
 use deputy_clients::Clients;
-use deputy_parser::cargo;
-use deputy_parser::utils::unquote;
+use deputy_parser::{cargo, utils::unquote};
 use deputy_versioning::Versioned;
 
-use crate::cargo::constants::CratesIoPackage;
-use crate::cargo::util::{get_features, get_local_metadata};
+use crate::cargo::{
+    constants::CratesIoPackage,
+    util::{get_features, get_local_metadata},
+};
 
 use super::constants::top_crates_io_packages_prefixed;
 

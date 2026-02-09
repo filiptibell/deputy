@@ -1,5 +1,3 @@
-use tracing::debug;
-
 use async_language_server::{
     lsp_types::{Diagnostic, DiagnosticSeverity},
     server::{Document, ServerResult},
@@ -7,6 +5,7 @@ use async_language_server::{
     tree_sitter::Node,
     tree_sitter_utils::ts_range_to_lsp_range,
 };
+use tracing::debug;
 
 use deputy_clients::crates::models::{IndexMetadata, LocalMetadata};
 use deputy_parser::{

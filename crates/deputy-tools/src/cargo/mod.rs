@@ -1,11 +1,10 @@
-use futures::future::try_join_all;
-use tracing::debug;
-
 use async_language_server::{
     lsp_types::{CompletionResponse, Diagnostic, DocumentDiagnosticParams, Hover, Position},
     server::{Document, ServerResult},
     tree_sitter::Node,
 };
+use futures::future::try_join_all;
+use tracing::debug;
 
 use deputy_clients::Clients;
 use deputy_parser::cargo;
@@ -16,9 +15,9 @@ mod diagnostics;
 mod hover;
 mod util;
 
-use completion::get_cargo_completions;
-use diagnostics::get_cargo_diagnostics;
-use hover::get_cargo_hover;
+use self::completion::get_cargo_completions;
+use self::diagnostics::get_cargo_diagnostics;
+use self::hover::get_cargo_hover;
 
 #[derive(Debug, Clone)]
 pub struct Cargo {

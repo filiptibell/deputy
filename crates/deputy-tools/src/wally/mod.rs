@@ -1,13 +1,12 @@
 use std::io::{BufRead, BufReader};
 
-use futures::future::try_join_all;
-use tracing::debug;
-
 use async_language_server::{
     lsp_types::{CompletionResponse, Diagnostic, DocumentDiagnosticParams, Hover, Position},
     server::{Document, ServerResult},
     tree_sitter::Node,
 };
+use futures::future::try_join_all;
+use tracing::debug;
 
 use deputy_clients::Clients;
 use deputy_parser::wally;
@@ -17,10 +16,10 @@ mod constants;
 mod diagnostics;
 mod hover;
 
-use completion::get_wally_completions;
-use constants::WALLY_DEFAULT_REGISTRY;
-use diagnostics::get_wally_diagnostics;
-use hover::get_wally_hover;
+use self::completion::get_wally_completions;
+use self::constants::WALLY_DEFAULT_REGISTRY;
+use self::diagnostics::get_wally_diagnostics;
+use self::hover::get_wally_hover;
 
 #[derive(Debug, Clone)]
 pub struct Wally {

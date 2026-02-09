@@ -1,11 +1,10 @@
 use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize};
-
 use async_language_server::lsp_types::{
     CodeAction, CodeActionKind, CodeActionOrCommand, Diagnostic, Range, TextEdit, Url,
     WorkspaceEdit,
 };
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind")]

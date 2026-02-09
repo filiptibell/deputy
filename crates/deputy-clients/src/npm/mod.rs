@@ -3,12 +3,12 @@ use tracing::error;
 use crate::shared::{Request, RequestResult};
 
 mod cache;
-use cache::NpmCache;
-
 mod consts;
 mod requests;
 
 pub mod models;
+
+use self::cache::NpmCache;
 
 #[derive(Debug, Clone)]
 pub struct NpmClient {

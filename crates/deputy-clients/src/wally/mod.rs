@@ -1,12 +1,13 @@
-use super::github::GithubClient;
 use crate::shared::{RequestError, RequestResult, ResponseError};
 
-mod cache;
-use cache::WallyCache;
+use super::github::GithubClient;
 
+mod cache;
 mod requests;
 
 pub mod models;
+
+use self::cache::WallyCache;
 
 #[derive(Debug, Clone)]
 pub struct WallyClient {

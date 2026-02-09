@@ -1,8 +1,7 @@
 use anyhow::{Context, Result};
+use async_language_server::server::{Transport, serve};
 use clap::Parser;
 use tracing::debug;
-
-use async_language_server::server::{Transport, serve};
 
 use crate::server::DeputyLanguageServer;
 

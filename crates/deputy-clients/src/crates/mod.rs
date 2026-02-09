@@ -15,13 +15,13 @@ use tracing::error;
 use crate::shared::{Request, RequestError, RequestResult};
 
 mod cache;
-use cache::CratesCache;
-
 mod consts;
 mod local;
 mod requests;
 
 pub mod models;
+
+use self::cache::CratesCache;
 
 #[derive(Debug, Clone)]
 pub struct CratesClient {

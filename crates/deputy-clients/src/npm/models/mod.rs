@@ -1,3 +1,3 @@
 mod registry;
 
-pub use registry::*;
+pub use self::registry::*;

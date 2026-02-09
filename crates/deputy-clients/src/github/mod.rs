@@ -8,14 +8,13 @@ use tracing::error;
 use crate::shared::{Request, RequestResult};
 
 mod cache;
-use cache::GithubCache;
-
-use self::consts::{GITHUB_API_VERSION_NAME, GITHUB_API_VERSION_VALUE};
-
 mod consts;
 mod requests;
 
 pub mod models;
+
+use self::cache::GithubCache;
+use self::consts::{GITHUB_API_VERSION_NAME, GITHUB_API_VERSION_VALUE};
 
 #[derive(Debug, Clone)]
 pub struct GithubClient {

@@ -1,14 +1,14 @@
-use tracing::trace;
-
 use async_language_server::{
     lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind},
     server::{Document, ServerResult},
     tree_sitter::Node,
     tree_sitter_utils::ts_range_to_lsp_range,
 };
+use tracing::trace;
+
+use deputy_parser::cargo;
 
 use crate::shared::MarkdownBuilder;
-use deputy_parser::cargo;
 
 use super::Clients;
 
