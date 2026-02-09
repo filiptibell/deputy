@@ -40,11 +40,13 @@ impl SimpleMetadata {
         serde_json::from_str(s)
     }
 
-    /// Converts the metadata into a flat list of versions.
-    ///
-    /// A version is considered yanked if all of its files
-    /// are yanked. Files are matched to versions by checking
-    /// if the filename starts with `{name}-{version}`.
+    /**
+        Converts the metadata into a flat list of versions.
+
+        A version is considered yanked if all of its files
+        are yanked. Files are matched to versions by checking
+        if the filename starts with `{name}-{version}`.
+    */
     #[must_use]
     pub fn versions(&self) -> Vec<SimpleMetadataVersion> {
         let name_lower = self.name.to_lowercase();

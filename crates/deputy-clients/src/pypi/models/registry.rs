@@ -70,10 +70,12 @@ impl RegistryMetadata {
         serde_json::from_str(s)
     }
 
-    /// Converts the releases map into a flat list of versions.
-    ///
-    /// A version is considered yanked if all of its release files
-    /// are yanked, or if the version has no release files at all.
+    /**
+        Converts the releases map into a flat list of versions.
+
+        A version is considered yanked if all of its release files
+        are yanked, or if the version has no release files at all.
+    */
     #[must_use]
     pub fn versions(&self) -> Vec<RegistryMetadataVersion> {
         self.releases
