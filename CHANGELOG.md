@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added full support for Go modules using `go.mod`:
+  - Autocomplete for module paths and module versions
+  - Hover for info about a module (installed version, description, links)
+  - Diagnostics for when a newer version is available
 - Added full support for Python / PyPI using `pyproject.toml`:
   - Autocomplete for package names and versions
   - Hover for info about a package (installed version, description, links)
