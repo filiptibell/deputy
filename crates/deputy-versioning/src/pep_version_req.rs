@@ -121,3 +121,154 @@ fn possible_versions_for_req(req: &PepVersionReq) -> Vec<PepVersion> {
         })
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn min(req: &str) -> String {
+        req.parse::<PepVersionReq>()
+            .unwrap()
+            .minimum_version()
+            .to_string()
+    }
+
+    // Equal
+
+    #[test]
+    fn equal_full() {
+        assert_eq!(min("==1.2.3"), "1.2.3");
+    }
+
+    #[test]
+    fn equal_two_part() {
+        assert_eq!(min("==1.2"), "1.2.0");
+    }
+
+    // Greater than or equal
+
+    #[test]
+    fn gte_full() {
+        assert_eq!(min(">=1.2.3"), "1.2.3");
+    }
+
+    #[test]
+    fn gte_two_part() {
+        assert_eq!(min(">=1.2"), "1.2.0");
+    }
+
+    // Greater than
+
+    #[test]
+    fn gt_full() {
+        assert_eq!(min(">1.2.3"), "1.2.4");
+    }
+
+    #[test]
+    fn gt_two_part() {
+        assert_eq!(min(">1.2"), "1.3.0");
+    }
+
+    #[test]
+    fn gt_one_part() {
+        assert_eq!(min(">1"), "2.0.0");
+    }
+
+    // Less than
+
+    #[test]
+    fn lt_full() {
+        assert_eq!(min("<1.2.3"), "1.2.3");
+    }
+
+    #[test]
+    fn lt_two_part() {
+        assert_eq!(min("<1.2"), "1.2.0");
+    }
+
+    #[test]
+    fn lt_one_part() {
+        assert_eq!(min("<2"), "2.0.0");
+    }
+
+    // Less than or equal
+
+    #[test]
+    fn lte_full() {
+        assert_eq!(min("<=1.2.3"), "1.2.3");
+    }
+
+    #[test]
+    fn lte_two_part() {
+        assert_eq!(min("<=1.2"), "1.3.0");
+    }
+
+    #[test]
+    fn lte_one_part() {
+        assert_eq!(min("<=2"), "3.0.0");
+    }
+
+    // Tilde equal
+
+    #[test]
+    fn tilde_equal_full() {
+        // ~=1.4.5 means >=1.4.5, ==1.4.*
+        assert_eq!(min("~=1.4.5"), "1.4.5");
+    }
+
+    #[test]
+    fn tilde_equal_two_part() {
+        // ~=1.4 means >=1.4, ==1.*
+        assert_eq!(min("~=1.4"), "1.4.0");
+    }
+
+    // Equal star (wildcard)
+
+    #[test]
+    fn equal_star_minor() {
+        // ==1.2.* matches any 1.2.x
+        assert_eq!(min("==1.2.*"), "1.2.0");
+    }
+
+    #[test]
+    fn equal_star_major() {
+        // ==1.* matches any 1.x
+        assert_eq!(min("==1.*"), "1.0.0");
+    }
+
+    // Not equal
+
+    #[test]
+    fn not_equal() {
+        // !=1.2.3 - exclusion, base version as candidate
+        assert_eq!(min("!=1.2.3"), "1.2.3");
+    }
+
+    // Not equal star
+
+    #[test]
+    fn not_equal_star() {
+        assert_eq!(min("!=1.2.*"), "1.2.0");
+    }
+
+    // Exact equal
+
+    #[test]
+    fn exact_equal() {
+        assert_eq!(min("===1.2.3"), "1.2.3");
+    }
+
+    // Combined
+
+    #[test]
+    fn combined_range() {
+        // >=1.2.0, <2.0.0 - minimum should be 1.2.0
+        assert_eq!(min(">=1.2.0, <2.0.0"), "1.2.0");
+    }
+
+    #[test]
+    fn combined_gt_lt() {
+        // >0.5, <1.0 - minimum should be 0.6.0
+        assert_eq!(min(">0.5, <1.0"), "0.6.0");
+    }
+}

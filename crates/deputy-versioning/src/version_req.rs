@@ -119,3 +119,167 @@ fn possible_versions_for_req(req: &VersionReq) -> Vec<Version> {
         })
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn min(req: &str) -> String {
+        req.parse::<VersionReq>()
+            .unwrap()
+            .minimum_version()
+            .to_string()
+    }
+
+    // Exact
+
+    #[test]
+    fn exact_full() {
+        assert_eq!(min("=1.2.3"), "1.2.3");
+    }
+
+    #[test]
+    fn exact_partial() {
+        assert_eq!(min("=1.2"), "1.2.0");
+    }
+
+    // Greater than or equal
+
+    #[test]
+    fn gte_full() {
+        assert_eq!(min(">=1.2.3"), "1.2.3");
+    }
+
+    #[test]
+    fn gte_partial() {
+        assert_eq!(min(">=1.2"), "1.2.0");
+    }
+
+    // Greater than
+
+    #[test]
+    fn gt_full() {
+        assert_eq!(min(">1.2.3"), "1.2.4");
+    }
+
+    #[test]
+    fn gt_major_minor() {
+        assert_eq!(min(">1.2"), "1.3.0");
+    }
+
+    #[test]
+    fn gt_major_only() {
+        assert_eq!(min(">1"), "2.0.0");
+    }
+
+    // Less than
+
+    #[test]
+    fn lt_full() {
+        assert_eq!(min("<1.2.3"), "1.2.3");
+    }
+
+    #[test]
+    fn lt_major_minor() {
+        assert_eq!(min("<1.2"), "1.2.0");
+    }
+
+    #[test]
+    fn lt_major_only() {
+        assert_eq!(min("<2"), "2.0.0");
+    }
+
+    // Less than or equal
+
+    #[test]
+    fn lte_full() {
+        assert_eq!(min("<=1.2.3"), "1.2.3");
+    }
+
+    #[test]
+    fn lte_major_minor() {
+        assert_eq!(min("<=1.2"), "1.3.0");
+    }
+
+    #[test]
+    fn lte_major_only() {
+        assert_eq!(min("<=2"), "3.0.0");
+    }
+
+    // Tilde
+
+    #[test]
+    fn tilde_full() {
+        assert_eq!(min("~1.2.3"), "1.2.3");
+    }
+
+    #[test]
+    fn tilde_major_minor() {
+        assert_eq!(min("~1.2"), "1.2.0");
+    }
+
+    #[test]
+    fn tilde_major_only() {
+        assert_eq!(min("~1"), "1.0.0");
+    }
+
+    // Caret
+
+    #[test]
+    fn caret_major() {
+        assert_eq!(min("^1.2.3"), "1.2.3");
+    }
+
+    #[test]
+    fn caret_zero_minor() {
+        assert_eq!(min("^0.2.3"), "0.2.3");
+    }
+
+    #[test]
+    fn caret_zero_zero_patch() {
+        assert_eq!(min("^0.0.3"), "0.0.3");
+    }
+
+    #[test]
+    fn caret_zero_zero() {
+        assert_eq!(min("^0.0"), "0.0.0");
+    }
+
+    #[test]
+    fn caret_zero() {
+        assert_eq!(min("^0"), "0.0.0");
+    }
+
+    // Wildcard
+
+    #[test]
+    fn wildcard_major_minor() {
+        assert_eq!(min("1.2.*"), "1.2.0");
+    }
+
+    #[test]
+    fn wildcard_major() {
+        assert_eq!(min("1.*"), "1.0.0");
+    }
+
+    // Combined
+
+    #[test]
+    fn combined_range() {
+        // >=1.2.0, <2.0.0 - minimum should be 1.2.0
+        assert_eq!(min(">=1.2.0, <2.0.0"), "1.2.0");
+    }
+
+    #[test]
+    fn combined_gt_lt() {
+        // >0.5, <1.0 - minimum should be 0.6.0
+        assert_eq!(min(">0.5, <1.0"), "0.6.0");
+    }
+
+    // Fallback
+
+    #[test]
+    fn star_only() {
+        assert_eq!(min("*"), "0.0.0");
+    }
+}

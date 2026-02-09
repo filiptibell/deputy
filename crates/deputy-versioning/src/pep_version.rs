@@ -223,3 +223,210 @@ impl PepVersioned for &str {
         (*self).to_string()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct TestVersion {
+        version: String,
+        deprecated: bool,
+    }
+
+    impl TestVersion {
+        fn new(version: &str) -> Self {
+            Self {
+                version: version.to_string(),
+                deprecated: false,
+            }
+        }
+
+        fn deprecated(version: &str) -> Self {
+            Self {
+                version: version.to_string(),
+                deprecated: true,
+            }
+        }
+    }
+
+    impl PepVersioned for TestVersion {
+        fn raw_version_string(&self) -> String {
+            self.version.clone()
+        }
+
+        fn deprecated(&self) -> bool {
+            self.deprecated
+        }
+    }
+
+    // extract_latest_version
+
+    #[test]
+    fn latest_version_picks_highest() {
+        let versions = vec![
+            TestVersion::new("1.0.0"),
+            TestVersion::new("1.1.0"),
+            TestVersion::new("1.2.0"),
+        ];
+        let result = "1.0.0".extract_latest_version(versions).unwrap();
+        assert_eq!(result.item_version.to_string(), "1.2.0");
+    }
+
+    #[test]
+    fn latest_version_exact_match() {
+        let versions = vec![
+            TestVersion::new("1.0.0"),
+            TestVersion::new("1.1.0"),
+            TestVersion::new("1.2.0"),
+        ];
+        let result = "1.2.0".extract_latest_version(versions).unwrap();
+        assert!(result.is_exactly_compatible);
+        assert!(result.is_compatible);
+    }
+
+    #[test]
+    fn latest_version_incompatible_when_newer_exists() {
+        // Input "1.0.0" is a valid PEP 440 version. As a req it becomes "==1.0.0".
+        // 2.0.0 is the latest but not compatible with ==1.0.0.
+        let versions = vec![
+            TestVersion::new("1.0.0"),
+            TestVersion::new("1.5.0"),
+            TestVersion::new("2.0.0"),
+        ];
+        let result = "1.0.0".extract_latest_version(versions).unwrap();
+        assert_eq!(result.item_version.to_string(), "2.0.0");
+        assert!(!result.is_compatible);
+    }
+
+    #[test]
+    fn latest_version_skips_deprecated() {
+        let versions = vec![
+            TestVersion::new("1.0.0"),
+            TestVersion::deprecated("1.5.0"),
+            TestVersion::new("1.2.0"),
+        ];
+        let result = "1.0.0".extract_latest_version(versions).unwrap();
+        assert_eq!(result.item_version.to_string(), "1.2.0");
+    }
+
+    #[test]
+    fn latest_version_filters_prerelease() {
+        let versions = vec![
+            TestVersion::new("1.0.0"),
+            TestVersion::new("1.1.0"),
+            TestVersion::new("2.0.0a1"),
+        ];
+        // PEP 440 prerelease for 2.0.0 should be excluded since our version is 1.0.0
+        let result = "1.0.0".extract_latest_version(versions).unwrap();
+        assert_eq!(result.item_version.to_string(), "1.1.0");
+    }
+
+    #[test]
+    fn latest_version_includes_same_base_prerelease() {
+        let versions = vec![
+            TestVersion::new("1.0.0"),
+            TestVersion::new("1.0.0b2"),
+            TestVersion::new("1.0.0b1"),
+        ];
+        // Prereleases for 1.0.0 should be included since our version is also 1.0.0
+        let result = "1.0.0".extract_latest_version(versions).unwrap();
+        assert_eq!(result.item_version.to_string(), "1.0.0");
+    }
+
+    #[test]
+    fn latest_version_with_filter() {
+        let versions = vec![
+            TestVersion::new("1.0.0"),
+            TestVersion::new("1.1.0"),
+            TestVersion::new("1.2.0"),
+        ];
+        let result = "1.0.0"
+            .extract_latest_version_filtered(versions, |v| v.item_version.minor() < 2)
+            .unwrap();
+        assert_eq!(result.item_version.to_string(), "1.1.0");
+    }
+
+    #[test]
+    fn latest_version_none_when_empty() {
+        let versions: Vec<TestVersion> = vec![];
+        let result = "1.0.0".extract_latest_version(versions);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn latest_version_none_when_invalid_input() {
+        let versions = vec![TestVersion::new("1.0.0")];
+        let result = "not-a-version".extract_latest_version(versions);
+        assert!(result.is_none());
+    }
+
+    // extract_completion_versions
+
+    #[test]
+    fn completion_versions_prefix_filter() {
+        let versions = vec![
+            TestVersion::new("1.0.0"),
+            TestVersion::new("1.1.0"),
+            TestVersion::new("2.0.0"),
+        ];
+        let results = "1.".extract_completion_versions(versions);
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0].item_version_raw, "1.1.0");
+        assert_eq!(results[1].item_version_raw, "1.0.0");
+    }
+
+    #[test]
+    fn completion_versions_empty_prefix() {
+        let versions = vec![TestVersion::new("1.0.0"), TestVersion::new("2.0.0")];
+        let results = "".extract_completion_versions(versions);
+        assert_eq!(results.len(), 2);
+    }
+
+    #[test]
+    fn completion_versions_strips_specifier() {
+        let versions = vec![
+            TestVersion::new("1.0.0"),
+            TestVersion::new("1.1.0"),
+            TestVersion::new("2.0.0"),
+        ];
+        // ">=1." should strip ">=" and filter by "1."
+        let results = ">=1.".extract_completion_versions(versions);
+        assert_eq!(results.len(), 2);
+    }
+
+    #[test]
+    fn completion_versions_skips_deprecated() {
+        let versions = vec![
+            TestVersion::new("1.0.0"),
+            TestVersion::deprecated("1.1.0"),
+            TestVersion::new("1.2.0"),
+        ];
+        let results = "1.".extract_completion_versions(versions);
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0].item_version_raw, "1.2.0");
+        assert_eq!(results[1].item_version_raw, "1.0.0");
+    }
+
+    #[test]
+    fn completion_versions_sorted_latest_first() {
+        let versions = vec![
+            TestVersion::new("1.2.0"),
+            TestVersion::new("1.0.0"),
+            TestVersion::new("1.10.0"),
+            TestVersion::new("1.1.0"),
+        ];
+        let results = "1.".extract_completion_versions(versions);
+        let raw: Vec<_> = results
+            .iter()
+            .map(|r| r.item_version_raw.as_str())
+            .collect();
+        assert_eq!(raw, vec!["1.10.0", "1.2.0", "1.1.0", "1.0.0"]);
+    }
+
+    #[test]
+    fn completion_versions_no_match() {
+        let versions = vec![TestVersion::new("1.0.0"), TestVersion::new("1.1.0")];
+        let results = "2.".extract_completion_versions(versions);
+        assert!(results.is_empty());
+    }
+}
