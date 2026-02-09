@@ -24,5 +24,7 @@
 
 # Test files
 
+/go.mod
+/pyproject.toml
 /rokit.toml
 /wally.toml
