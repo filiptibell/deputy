@@ -147,6 +147,7 @@ pub fn parse_dependency<'tree>(
         let mut version = None;
         let mut features = None;
         let mut package = None;
+        let mut path = None;
         if value.kind() == "string" {
             version = Some(value);
         } else if value.kind() == "inline_table" {
@@ -162,6 +163,7 @@ pub fn parse_dependency<'tree>(
             version = pairs.remove("version");
             features = pairs.remove("features");
             package = pairs.remove("package");
+            path = pairs.remove("path");
         }
 
         // aliased_serde = { package = "serde" }
@@ -173,6 +175,7 @@ pub fn parse_dependency<'tree>(
             name,
             version: version?,
             features,
+            path,
         })
     } else if pair_or_table.kind() == "table" {
         // alias is last part in [dependencies."abcdef"."ghijkl".name]
@@ -192,6 +195,7 @@ pub fn parse_dependency<'tree>(
         let version = pairs.remove("version");
         let features = pairs.remove("features");
         let package = pairs.remove("package");
+        let path = pairs.remove("path");
 
         // [dependencies.aliased_serde]
         // package = "serde"
@@ -203,6 +207,7 @@ pub fn parse_dependency<'tree>(
             name,
             version: version?,
             features,
+            path,
         })
     } else {
         None
@@ -215,6 +220,7 @@ pub struct CargoDependency<'tree> {
     pub name: TsNode<'tree>,
     pub version: TsNode<'tree>,
     pub features: Option<TsNode<'tree>>,
+    pub path: Option<TsNode<'tree>>,
 }
 
 impl CargoDependency<'_> {
@@ -223,6 +229,11 @@ impl CargoDependency<'_> {
         let name = doc.node_text(self.name);
         let version = doc.node_text(self.version);
         (unquote(name), unquote(version))
+    }
+
+    #[must_use]
+    pub fn path_text(&self, doc: &Document) -> Option<String> {
+        self.path.map(|p| unquote(doc.node_text(p)))
     }
 
     #[must_use]

@@ -17,7 +17,7 @@ use deputy_parser::utils::unquote;
 use deputy_versioning::Versioned;
 
 use crate::cargo::constants::CratesIoPackage;
-use crate::cargo::util::get_features;
+use crate::cargo::util::{LocalCrate, get_features};
 
 use super::constants::top_crates_io_packages_prefixed;
 
@@ -64,14 +64,18 @@ pub async fn get_cargo_completions(
         let feat = doc.node_text(feat_node);
         if ts_range_contains_lsp_position(feat_node.range(), pos) {
             debug!("Completing features: {dep:?}");
+
+            let known_features = if let Some(path) = dep.path_text(doc) {
+                LocalCrate::read(doc.url(), &path).await.map(|c| c.features)
+            } else {
+                get_features(clients, &name, &version).await
+            };
+
             return complete_features(
-                clients,
-                name.as_str(),
-                version.as_str(),
+                known_features,
                 unquote(feat).as_str(),
                 ts_range_to_lsp_range(feat_node.range()),
-            )
-            .await;
+            );
         }
     }
 
@@ -160,14 +164,12 @@ async fn complete_version(
     Ok(Some(CompletionResponse::Array(valid_vec)))
 }
 
-async fn complete_features(
-    clients: &Clients,
-    name: &str,
-    version: &str,
+fn complete_features(
+    known_features: Option<Vec<String>>,
     feat: &str,
     range: Range,
 ) -> ServerResult<Option<CompletionResponse>> {
-    let Some(known_features) = get_features(clients, name, version).await else {
+    let Some(known_features) = known_features else {
         return Ok(None);
     };
 

@@ -19,7 +19,7 @@ use deputy_parser::{
 use crate::shared::{CodeActionMetadata, ResolveContext, did_you_mean};
 
 use super::Clients;
-use super::util::get_features;
+use super::util::{LocalCrate, get_features};
 
 pub async fn get_cargo_diagnostics(
     clients: &Clients,
@@ -30,8 +30,23 @@ pub async fn get_cargo_diagnostics(
         return Ok(Vec::new());
     };
 
-    let (name, _version) = dep.text(doc);
+    // For path dependencies, check version against the
+    // local crate instead of the crates.io registry
+    if let Some(path) = dep.path_text(doc) {
+        let Some(local_crate) = LocalCrate::read(doc.url(), &path).await else {
+            return Ok(Vec::new());
+        };
+        let mut diagnostics = Vec::new();
+        diagnostics.extend(get_cargo_diagnostics_local_version(doc, &dep, &local_crate));
+        diagnostics.extend(get_cargo_diagnostics_features(
+            doc,
+            &dep,
+            &local_crate.features,
+        ));
+        return Ok(diagnostics);
+    }
 
+    let (name, _) = dep.text(doc);
     let metas = match clients.crates.get_sparse_index_crate_metadatas(&name).await {
         Ok(v) => v,
         Err(e) => {
@@ -48,22 +63,53 @@ pub async fn get_cargo_diagnostics(
         }
     };
 
+    let (name, version) = dep.text(doc);
+
     let mut diagnostics = Vec::new();
-    diagnostics.extend(get_cargo_diagnostics_version(clients, doc, &dep, &metas)?);
-    diagnostics.extend(get_cargo_diagnostics_features(clients, doc, &dep, &metas).await?);
+    diagnostics.extend(get_cargo_diagnostics_version(doc, &dep, &metas));
+    if let Some(known_features) = get_features(clients, &name, &version).await {
+        diagnostics.extend(get_cargo_diagnostics_features(doc, &dep, &known_features));
+    }
     Ok(diagnostics)
 }
 
+fn get_cargo_diagnostics_local_version(
+    doc: &Document,
+    dep: &CargoDependency<'_>,
+    local_crate: &LocalCrate,
+) -> Vec<Diagnostic> {
+    let (_name, version) = dep.text(doc);
+
+    let Ok(version_req) = VersionReq::parse(&version) else {
+        return Vec::new();
+    };
+
+    let Some(local_version) = &local_crate.version else {
+        return Vec::new();
+    };
+
+    if !version_req.matches(local_version) {
+        return vec![Diagnostic {
+            source: Some(String::from("Cargo")),
+            range: ts_range_to_lsp_range(dep.version.range()),
+            message: format!("No local version exists that matches requirement `{version}`"),
+            severity: Some(DiagnosticSeverity::ERROR),
+            ..Default::default()
+        }];
+    }
+
+    Vec::new()
+}
+
 fn get_cargo_diagnostics_version(
-    _clients: &Clients,
     doc: &Document,
     dep: &CargoDependency<'_>,
     metas: &[IndexMetadata],
-) -> ServerResult<Vec<Diagnostic>> {
+) -> Vec<Diagnostic> {
     let (name, version) = dep.text(doc);
 
     let Ok(version_req) = VersionReq::parse(&version) else {
-        return Ok(Vec::new());
+        return Vec::new();
     };
     let version_min = version_req.minimum_version();
 
@@ -74,13 +120,13 @@ fn get_cargo_diagnostics_version(
             .ok()
             .unwrap_or_default()
     }) {
-        return Ok(vec![Diagnostic {
+        return vec![Diagnostic {
             source: Some(String::from("Cargo")),
             range: ts_range_to_lsp_range(dep.version.range()),
             message: format!("No version exists that matches requirement `{version}`"),
             severity: Some(DiagnosticSeverity::ERROR),
             ..Default::default()
-        }]);
+        }];
     }
 
     // Try to find the latest non-prerelease version, filtering out
@@ -92,7 +138,7 @@ fn get_cargo_diagnostics_version(
         })
     else {
         debug!("Failed to get latest crates.io version for '{latest_name}'");
-        return Ok(Vec::new());
+        return Vec::new();
     };
 
     if !latest_version.is_semver_compatible {
@@ -106,7 +152,7 @@ fn get_cargo_diagnostics_version(
             version_latest: latest_version_string.clone(),
         };
 
-        return Ok(vec![Diagnostic {
+        return vec![Diagnostic {
             source: Some(String::from("Cargo")),
             range: ts_range_to_lsp_range(dep.version.range()),
             message: format!(
@@ -122,24 +168,17 @@ fn get_cargo_diagnostics_version(
                 .into(),
             ),
             ..Default::default()
-        }]);
+        }];
     }
 
-    Ok(Vec::new())
+    Vec::new()
 }
 
-async fn get_cargo_diagnostics_features(
-    clients: &Clients,
+fn get_cargo_diagnostics_features(
     doc: &Document,
     dep: &CargoDependency<'_>,
-    _metas: &[IndexMetadata],
-) -> ServerResult<Vec<Diagnostic>> {
-    let (name, version) = dep.text(doc);
-
-    let Some(known_features) = get_features(clients, &name, &version).await else {
-        return Ok(Vec::new());
-    };
-
+    known_features: &[String],
+) -> Vec<Diagnostic> {
     let mut diagnostics = Vec::new();
     for feat_node in dep.feature_nodes() {
         let feat = unquote(doc.node_text(feat_node));
@@ -147,7 +186,7 @@ async fn get_cargo_diagnostics_features(
             diagnostics.push(Diagnostic {
                 source: Some(String::from("Cargo")),
                 range: ts_range_to_lsp_range(feat_node.range()),
-                message: match did_you_mean(&feat, known_features.as_slice()) {
+                message: match did_you_mean(&feat, known_features) {
                     Some(suggestion) => {
                         format!("Unknown feature `{feat}` - did you mean `{suggestion}`?")
                     }
@@ -158,6 +197,5 @@ async fn get_cargo_diagnostics_features(
             });
         }
     }
-
-    Ok(diagnostics)
+    diagnostics
 }
