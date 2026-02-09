@@ -39,5 +39,5 @@ unnecessary_wraps = { level = "allow", priority = 1 }
 
 [workspace.dependencies.async-language-server]
 git = "https://github.com/filiptibell/async-language-server"
-rev = "a0ab43be5d01b9eade82393431ac7adf0ec51d8e"
+rev = "0c6c099e418944439e4f17db35363c010475cd80"
 features = ["tracing", "tree-sitter"]
