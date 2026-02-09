@@ -125,7 +125,7 @@ pub async fn get_rokit_diagnostics(
             source_uri: doc.url().clone(),
             source_text: version.to_string(),
             version_current: parsed_version.to_string(),
-            version_latest: latest_version_string.to_string(),
+            version_latest: latest_version_string.clone(),
         };
 
         return Ok(vec![Diagnostic {

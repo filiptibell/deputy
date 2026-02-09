@@ -102,9 +102,9 @@ pub async fn get_npm_diagnostics(
         let metadata = CodeActionMetadata::LatestVersion {
             edit_range: ts_range_to_lsp_range(dep.spec.range().shrink(1, 1)),
             source_uri: doc.url().clone(),
-            source_text: spec.to_string(),
+            source_text: spec.clone(),
             version_current: version.to_string(),
-            version_latest: latest_version_string.to_string(),
+            version_latest: latest_version_string.clone(),
         };
 
         return Ok(vec![Diagnostic {

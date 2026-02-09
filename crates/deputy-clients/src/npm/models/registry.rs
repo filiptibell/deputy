@@ -37,7 +37,7 @@ pub struct RegistryMetadataVersion {
 
 impl Versioned for RegistryMetadataVersion {
     fn raw_version_string(&self) -> String {
-        self.version.to_string()
+        self.version.clone()
     }
 
     fn deprecated(&self) -> bool {

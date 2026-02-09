@@ -20,7 +20,7 @@ pub fn table_key_parts(doc: &Document, node: TsNode) -> Vec<String> {
     {
         if key.kind() == "bare_key" {
             // [dependencies]
-            parts.push(doc.node_text(key).to_string());
+            parts.push(doc.node_text(key).clone());
         } else if key.kind() == "quoted_key" {
             // ["dependencies"]
             parts.push(unquote(doc.node_text(key)));
@@ -29,7 +29,7 @@ pub fn table_key_parts(doc: &Document, node: TsNode) -> Vec<String> {
             let mut cursor = key.walk();
             for child in key.children(&mut cursor) {
                 if child.kind() == "bare_key" {
-                    parts.push(doc.node_text(child).to_string());
+                    parts.push(doc.node_text(child).clone());
                 } else if child.kind() == "quoted_key" {
                     parts.push(unquote(doc.node_text(child)));
                 }

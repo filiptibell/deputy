@@ -60,6 +60,6 @@ pub struct CrateDataVersion {
 
 impl Versioned for CrateDataVersion {
     fn raw_version_string(&self) -> String {
-        self.version.to_string()
+        self.version.clone()
     }
 }

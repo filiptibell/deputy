@@ -95,9 +95,9 @@ async fn complete_name(
         let count_prev = packages.len();
 
         packages.extend(crates.inner.into_iter().map(|m| CratesIoPackage {
-            name: m.name.to_string().into(),
+            name: m.name.clone().into(),
             downloads: m.downloads.total_count,
-            description: m.description.to_string().into(),
+            description: m.description.clone().into(),
         }));
 
         packages.sort_by_key(|package| package.name.to_ascii_lowercase());
@@ -145,12 +145,12 @@ async fn complete_version(
         .take(MAXIMUM_PACKAGES_SHOWN)
         .enumerate()
         .map(|(index, potential_version)| CompletionItem {
-            label: potential_version.item_version_raw.to_string(),
+            label: potential_version.item_version_raw.clone(),
             kind: Some(CompletionItemKind::VALUE),
             sort_text: Some(format!("{index:0>5}")),
             deprecated: Some(potential_version.item.yanked),
             text_edit: Some(CompletionTextEdit::Edit(TextEdit {
-                new_text: potential_version.item_version_raw.to_string(),
+                new_text: potential_version.item_version_raw.clone(),
                 range: range.shrink(1, 1),
             })),
             ..Default::default()
@@ -178,11 +178,11 @@ async fn complete_features(
         .filter(|f| f.starts_with(feat))
         .enumerate()
         .map(|(index, known_feat)| CompletionItem {
-            label: known_feat.to_string(),
+            label: known_feat.clone(),
             kind: Some(CompletionItemKind::VALUE),
             sort_text: Some(format!("{index:0>5}")),
             text_edit: Some(CompletionTextEdit::Edit(TextEdit {
-                new_text: known_feat.to_string(),
+                new_text: known_feat.clone(),
                 range: range.shrink(1, 1),
             })),
             ..Default::default()

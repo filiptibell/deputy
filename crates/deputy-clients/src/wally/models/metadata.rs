@@ -13,7 +13,7 @@ pub struct Metadata {
 
 impl Versioned for Metadata {
     fn raw_version_string(&self) -> String {
-        self.package.version.to_string()
+        self.package.version.clone()
     }
 }
 
@@ -43,7 +43,7 @@ pub struct MetadataPackage {
 
 impl Versioned for MetadataPackage {
     fn raw_version_string(&self) -> String {
-        self.version.to_string()
+        self.version.clone()
     }
 }
 

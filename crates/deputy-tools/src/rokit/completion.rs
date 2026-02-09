@@ -124,11 +124,11 @@ async fn complete_version(
         .take(MAXIMUM_TOOLS_SHOWN)
         .enumerate()
         .map(|(index, potential_version)| CompletionItem {
-            label: potential_version.item_version_raw.to_string(),
+            label: potential_version.item_version_raw.clone(),
             kind: Some(CompletionItemKind::VALUE),
             sort_text: Some(format!("{index:0>5}")),
             text_edit: Some(CompletionTextEdit::Edit(TextEdit {
-                new_text: potential_version.item_version_raw.to_string(),
+                new_text: potential_version.item_version_raw.clone(),
                 range,
             })),
             ..Default::default()

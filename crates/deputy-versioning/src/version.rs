@@ -214,13 +214,13 @@ impl Versioned for Version {
 
 impl Versioned for String {
     fn raw_version_string(&self) -> String {
-        self.to_string()
+        self.clone()
     }
 }
 
 impl Versioned for &String {
     fn raw_version_string(&self) -> String {
-        (*self).to_string()
+        (*self).clone()
     }
 }
 

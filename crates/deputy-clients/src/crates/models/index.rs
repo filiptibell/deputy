@@ -21,7 +21,7 @@ pub struct IndexMetadata {
 
 impl Versioned for IndexMetadata {
     fn raw_version_string(&self) -> String {
-        self.version.to_string()
+        self.version.clone()
     }
 }
 

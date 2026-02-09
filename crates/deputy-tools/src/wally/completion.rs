@@ -96,11 +96,11 @@ async fn complete_scope(
         .filter(|s| filter_starts_with(s.as_str(), scope))
         .take(MAXIMUM_PACKAGES_SHOWN)
         .map(|scope| CompletionItem {
-            label: scope.to_string(),
+            label: scope.clone(),
             kind: Some(CompletionItemKind::ENUM),
             commit_characters: Some(vec![String::from("/")]),
             text_edit: Some(CompletionTextEdit::Edit(TextEdit {
-                new_text: scope.to_string(),
+                new_text: scope.clone(),
                 range,
             })),
             ..Default::default()
@@ -125,11 +125,11 @@ async fn complete_package(
         .filter(|p| filter_starts_with(p.as_str(), package))
         .take(MAXIMUM_PACKAGES_SHOWN)
         .map(|package| CompletionItem {
-            label: package.to_string(),
+            label: package.clone(),
             kind: Some(CompletionItemKind::ENUM_MEMBER),
             commit_characters: Some(vec![String::from("@")]),
             text_edit: Some(CompletionTextEdit::Edit(TextEdit {
-                new_text: package.to_string(),
+                new_text: package.clone(),
                 range,
             })),
             ..Default::default()
@@ -160,11 +160,11 @@ async fn complete_version(
         .take(MAXIMUM_PACKAGES_SHOWN)
         .enumerate()
         .map(|(index, potential_version)| CompletionItem {
-            label: potential_version.item_version_raw.to_string(),
+            label: potential_version.item_version_raw.clone(),
             kind: Some(CompletionItemKind::VALUE),
             sort_text: Some(format!("{index:0>5}")),
             text_edit: Some(CompletionTextEdit::Edit(TextEdit {
-                new_text: potential_version.item_version_raw.to_string(),
+                new_text: potential_version.item_version_raw.clone(),
                 range,
             })),
             ..Default::default()

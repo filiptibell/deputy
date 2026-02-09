@@ -16,7 +16,7 @@ where
         .max_by_key(|(score, _)| *score)?;
 
     if (best_score as f64) / (u64::MAX as f64) >= 0.65 {
-        Some(best_option.to_string())
+        Some(best_option.clone())
     } else {
         None
     }

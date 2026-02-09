@@ -85,7 +85,7 @@ fn get_cargo_diagnostics_version(
 
     // Try to find the latest non-prerelease version, filtering out
     // any version that has been yanked - unless we exactly specify it
-    let latest_name = name.to_string();
+    let latest_name = name.clone();
     let Some(latest_version) = version_min
         .extract_latest_version_filtered(metas.iter().cloned(), |v| {
             !v.item.yanked || v.is_exactly_compatible
@@ -101,9 +101,9 @@ fn get_cargo_diagnostics_version(
         let metadata = CodeActionMetadata::LatestVersion {
             edit_range: ts_range_to_lsp_range(dep.version.range().shrink(1, 1)),
             source_uri: doc.url().clone(),
-            source_text: version.to_string(),
+            source_text: version.clone(),
             version_current: version_min.to_string(),
-            version_latest: latest_version_string.to_string(),
+            version_latest: latest_version_string.clone(),
         };
 
         return Ok(vec![Diagnostic {
@@ -143,7 +143,7 @@ async fn get_cargo_diagnostics_features(
     let mut diagnostics = Vec::new();
     for feat_node in dep.feature_nodes() {
         let feat = unquote(doc.node_text(feat_node));
-        if !known_features.contains(&feat.to_string()) {
+        if !known_features.contains(&feat) {
             diagnostics.push(Diagnostic {
                 source: Some(String::from("Cargo")),
                 range: ts_range_to_lsp_range(feat_node.range()),

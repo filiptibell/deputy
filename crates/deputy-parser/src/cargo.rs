@@ -81,7 +81,7 @@ fn check_dependencies_table_single(
     };
 
     if let Ok(kind) = DependencyKind::from_str(part0) {
-        Some((kind, part1.to_string()))
+        Some((kind, part1.clone()))
     } else {
         None
     }
