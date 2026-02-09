@@ -29,8 +29,8 @@ pub async fn get_cargo_diagnostics(
         return Ok(Vec::new());
     };
 
-    // For path dependencies, check version against the
-    // local crate instead of the crates.io registry
+    // For path dependencies, check version and features
+    // against the local crate instead of the crates.io registry
     if let Some(path) = dep.path_text(doc) {
         let Some(local_meta) = get_local_metadata(clients, doc.url(), &path).await else {
             return Ok(Vec::new());
@@ -43,6 +43,12 @@ pub async fn get_cargo_diagnostics(
             &local_meta.features,
         ));
         return Ok(diagnostics);
+    }
+
+    // Git dependencies are not checked against crates.io
+    // FUTURE: Implement proper resolution for git dependencies?
+    if dep.git_text(doc).is_some() {
+        return Ok(Vec::new());
     }
 
     let (name, _) = dep.text(doc);
@@ -63,9 +69,12 @@ pub async fn get_cargo_diagnostics(
     };
 
     let (name, version) = dep.text(doc);
+    let Some(version) = version else {
+        return Ok(Vec::new());
+    };
 
     let mut diagnostics = Vec::new();
-    diagnostics.extend(get_cargo_diagnostics_version(doc, &dep, &metas));
+    diagnostics.extend(get_cargo_diagnostics_version(doc, &dep, &version, &metas));
     if let Some(known_features) = get_features(clients, &name, &version).await {
         diagnostics.extend(get_cargo_diagnostics_features(doc, &dep, &known_features));
     }
@@ -78,6 +87,9 @@ fn get_cargo_diagnostics_local_version(
     local_meta: &LocalMetadata,
 ) -> Vec<Diagnostic> {
     let (_name, version) = dep.text(doc);
+    let Some(version) = version else {
+        return Vec::new();
+    };
 
     let Ok(version_req) = VersionReq::parse(&version) else {
         return Vec::new();
@@ -88,9 +100,10 @@ fn get_cargo_diagnostics_local_version(
     };
 
     if !version_req.matches(local_version) {
+        let version_node = dep.version.expect("version node must exist");
         return vec![Diagnostic {
             source: Some(String::from("Cargo")),
-            range: ts_range_to_lsp_range(dep.version.range()),
+            range: ts_range_to_lsp_range(version_node.range()),
             message: format!("No local version exists that matches requirement `{version}`"),
             severity: Some(DiagnosticSeverity::ERROR),
             ..Default::default()
@@ -103,11 +116,13 @@ fn get_cargo_diagnostics_local_version(
 fn get_cargo_diagnostics_version(
     doc: &Document,
     dep: &CargoDependency<'_>,
+    version: &str,
     metas: &[IndexMetadata],
 ) -> Vec<Diagnostic> {
-    let (name, version) = dep.text(doc);
+    let (name, _) = dep.text(doc);
+    let version_node = dep.version.expect("version node must exist");
 
-    let Ok(version_req) = VersionReq::parse(&version) else {
+    let Ok(version_req) = VersionReq::parse(version) else {
         return Vec::new();
     };
     let version_min = version_req.minimum_version();
@@ -121,7 +136,7 @@ fn get_cargo_diagnostics_version(
     }) {
         return vec![Diagnostic {
             source: Some(String::from("Cargo")),
-            range: ts_range_to_lsp_range(dep.version.range()),
+            range: ts_range_to_lsp_range(version_node.range()),
             message: format!("No version exists that matches requirement `{version}`"),
             severity: Some(DiagnosticSeverity::ERROR),
             ..Default::default()
@@ -144,16 +159,16 @@ fn get_cargo_diagnostics_version(
         let latest_version_string = latest_version.item_version.to_string();
 
         let metadata = CodeActionMetadata::LatestVersion {
-            edit_range: ts_range_to_lsp_range(dep.version.range().shrink(1, 1)),
+            edit_range: ts_range_to_lsp_range(version_node.range().shrink(1, 1)),
             source_uri: doc.url().clone(),
-            source_text: version.clone(),
+            source_text: version.to_string(),
             version_current: version_min.to_string(),
             version_latest: latest_version_string.clone(),
         };
 
         return vec![Diagnostic {
             source: Some(String::from("Cargo")),
-            range: ts_range_to_lsp_range(dep.version.range()),
+            range: ts_range_to_lsp_range(version_node.range()),
             message: format!(
                 "A newer version of `{latest_name}` is available.\
                 \nThe latest version is `{latest_version_string}`"

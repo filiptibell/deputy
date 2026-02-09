@@ -148,6 +148,7 @@ pub fn parse_dependency<'tree>(
         let mut features = None;
         let mut package = None;
         let mut path = None;
+        let mut git = None;
         if value.kind() == "string" {
             version = Some(value);
         } else if value.kind() == "inline_table" {
@@ -164,6 +165,7 @@ pub fn parse_dependency<'tree>(
             features = pairs.remove("features");
             package = pairs.remove("package");
             path = pairs.remove("path");
+            git = pairs.remove("git");
         }
 
         // aliased_serde = { package = "serde" }
@@ -171,11 +173,16 @@ pub fn parse_dependency<'tree>(
             name = package;
         }
 
+        if version.is_none() && path.is_none() && git.is_none() {
+            return None; // Not a valid package
+        }
+
         Some(CargoDependency {
             name,
-            version: version?,
+            version,
             features,
             path,
+            git,
         })
     } else if pair_or_table.kind() == "table" {
         // alias is last part in [dependencies."abcdef"."ghijkl".name]
@@ -196,6 +203,7 @@ pub fn parse_dependency<'tree>(
         let features = pairs.remove("features");
         let package = pairs.remove("package");
         let path = pairs.remove("path");
+        let git = pairs.remove("git");
 
         // [dependencies.aliased_serde]
         // package = "serde"
@@ -203,11 +211,16 @@ pub fn parse_dependency<'tree>(
             name = package;
         }
 
+        if version.is_none() && path.is_none() && git.is_none() {
+            return None; // Not a valid package
+        }
+
         Some(CargoDependency {
             name,
-            version: version?,
+            version,
             features,
             path,
+            git,
         })
     } else {
         None
@@ -218,22 +231,28 @@ pub fn parse_dependency<'tree>(
 #[derive(Debug, Clone, Copy)]
 pub struct CargoDependency<'tree> {
     pub name: TsNode<'tree>,
-    pub version: TsNode<'tree>,
+    pub version: Option<TsNode<'tree>>,
     pub features: Option<TsNode<'tree>>,
     pub path: Option<TsNode<'tree>>,
+    pub git: Option<TsNode<'tree>>,
 }
 
 impl CargoDependency<'_> {
     #[must_use]
-    pub fn text(&self, doc: &Document) -> (String, String) {
+    pub fn text(&self, doc: &Document) -> (String, Option<String>) {
         let name = doc.node_text(self.name);
-        let version = doc.node_text(self.version);
-        (unquote(name), unquote(version))
+        let version = self.version.map(|v| unquote(doc.node_text(v)));
+        (unquote(name), version)
     }
 
     #[must_use]
     pub fn path_text(&self, doc: &Document) -> Option<String> {
         self.path.map(|p| unquote(doc.node_text(p)))
+    }
+
+    #[must_use]
+    pub fn git_text(&self, doc: &Document) -> Option<String> {
+        self.git.map(|g| unquote(doc.node_text(g)))
     }
 
     #[must_use]

@@ -48,13 +48,16 @@ pub async fn get_cargo_completions(
     }
 
     // Try to complete versions
-    if ts_range_contains_lsp_position(dep.version.range(), pos) {
+    if let Some(version_node) = dep.version
+        && ts_range_contains_lsp_position(version_node.range(), pos)
+    {
+        let version = version.as_deref().unwrap_or_default();
         debug!("Completing version: {dep:?}");
         return complete_version(
             clients,
             name.as_str(),
-            version.as_str(),
-            ts_range_to_lsp_range(dep.version.range()),
+            version,
+            ts_range_to_lsp_range(version_node.range()),
         )
         .await;
     }
@@ -69,8 +72,10 @@ pub async fn get_cargo_completions(
                 get_local_metadata(clients, doc.url(), &path)
                     .await
                     .map(|m| m.features)
+            } else if let Some(version) = &version {
+                get_features(clients, &name, version).await
             } else {
-                get_features(clients, &name, &version).await
+                None
             };
 
             return complete_features(

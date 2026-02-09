@@ -24,10 +24,24 @@ pub async fn get_cargo_hover(
     let (dependency_name, dependency_version) = dep.text(doc);
 
     // Add basic hover information with version and name
-    trace!("Hovering: {dependency_name} version {dependency_version}");
+    trace!("Hovering: {dependency_name} version {dependency_version:?}");
     let mut md = MarkdownBuilder::new();
     md.h2(&dependency_name);
-    md.version(dependency_version);
+    if let Some(version) = &dependency_version {
+        md.version(version);
+    }
+
+    // Skip crates.io lookup for git and path dependencies
+    // FUTURE: Implement resolution for git and path dependencies?
+    if dep.git_text(doc).is_some() || dep.path_text(doc).is_some() {
+        return Ok(Some(Hover {
+            range: Some(ts_range_to_lsp_range(node.range())),
+            contents: HoverContents::Markup(MarkupContent {
+                kind: MarkupKind::Markdown,
+                value: md.build(),
+            }),
+        }));
+    }
 
     // Try to fetch additional information from the index - description, links
     trace!("Fetching crate data from crates.io");
