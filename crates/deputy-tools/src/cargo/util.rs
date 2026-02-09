@@ -1,13 +1,7 @@
-use std::path::Path;
-
 use async_language_server::lsp_types::Url;
-use tokio::{
-    fs::File,
-    io::{AsyncBufReadExt, BufReader},
-};
 
-use deputy_parser::utils::unquote;
-use deputy_versioning::{Version, VersionReq, Versioned};
+use deputy_clients::crates::models::LocalMetadata;
+use deputy_versioning::{VersionReq, Versioned};
 
 use super::Clients;
 
@@ -40,74 +34,23 @@ pub async fn get_features(clients: &Clients, dname: &str, dver: &str) -> Option<
     )
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum LocalCrateParseState {
-    Other,
-    Package,
-    Features,
-}
+pub async fn get_local_metadata(
+    clients: &Clients,
+    doc_url: &Url,
+    relative_path: &str,
+) -> Option<LocalMetadata> {
+    let doc_path = doc_url.to_file_path().ok()?;
+    let doc_dir = doc_path.parent()?;
 
-#[derive(Debug, Clone)]
-pub struct LocalCrate {
-    pub version: Option<Version>,
-    pub features: Vec<String>,
-}
+    let dep_path = doc_dir.join(relative_path);
+    let manifest_dir = if dep_path
+        .extension()
+        .is_some_and(|e| e.eq_ignore_ascii_case("toml"))
+    {
+        dep_path.parent()?
+    } else {
+        dep_path.as_path()
+    };
 
-impl LocalCrate {
-    pub async fn read(doc_url: &Url, relative_path: &str) -> Option<Self> {
-        let doc_path = doc_url.to_file_path().ok()?;
-        let doc_dir = doc_path.parent()?;
-
-        let dep_path = doc_dir.join(relative_path);
-        let manifest_path = if dep_path
-            .extension()
-            .is_some_and(|e| e.eq_ignore_ascii_case("toml"))
-        {
-            dep_path
-        } else {
-            dep_path.join("Cargo.toml")
-        };
-
-        Self::parse_local_manifest(&manifest_path).await
-    }
-
-    async fn parse_local_manifest(path: &Path) -> Option<Self> {
-        let file = File::open(path).await.ok()?;
-        let reader = BufReader::new(file);
-        let mut lines = reader.lines();
-
-        let mut version = None;
-        let mut features = Vec::new();
-        let mut section = LocalCrateParseState::Other;
-
-        while let Ok(Some(line)) = lines.next_line().await {
-            let trimmed = line.trim();
-
-            if trimmed.starts_with('[') {
-                section = match trimmed {
-                    "[package]" => LocalCrateParseState::Package,
-                    "[features]" => LocalCrateParseState::Features,
-                    _ => LocalCrateParseState::Other,
-                };
-                continue;
-            }
-
-            let Some((key, value)) = trimmed.split_once('=') else {
-                continue;
-            };
-            let key = key.trim();
-
-            match section {
-                LocalCrateParseState::Package if key == "version" => {
-                    version = unquote(value.trim()).parse().ok();
-                }
-                LocalCrateParseState::Features => {
-                    features.push(key.to_string());
-                }
-                _ => {}
-            }
-        }
-
-        Some(Self { version, features })
-    }
+    clients.crates.get_local_metadata(manifest_dir).await
 }

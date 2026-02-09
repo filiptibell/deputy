@@ -8,18 +8,17 @@ use async_language_server::{
     tree_sitter_utils::ts_range_to_lsp_range,
 };
 
-use deputy_versioning::{VersionReq, VersionReqExt, Versioned};
-
-use deputy_clients::crates::models::IndexMetadata;
+use deputy_clients::crates::models::{IndexMetadata, LocalMetadata};
 use deputy_parser::{
     cargo::{self, CargoDependency},
     utils::unquote,
 };
+use deputy_versioning::{VersionReq, VersionReqExt, Versioned};
 
 use crate::shared::{CodeActionMetadata, ResolveContext, did_you_mean};
 
 use super::Clients;
-use super::util::{LocalCrate, get_features};
+use super::util::{get_features, get_local_metadata};
 
 pub async fn get_cargo_diagnostics(
     clients: &Clients,
@@ -33,15 +32,15 @@ pub async fn get_cargo_diagnostics(
     // For path dependencies, check version against the
     // local crate instead of the crates.io registry
     if let Some(path) = dep.path_text(doc) {
-        let Some(local_crate) = LocalCrate::read(doc.url(), &path).await else {
+        let Some(local_meta) = get_local_metadata(clients, doc.url(), &path).await else {
             return Ok(Vec::new());
         };
         let mut diagnostics = Vec::new();
-        diagnostics.extend(get_cargo_diagnostics_local_version(doc, &dep, &local_crate));
+        diagnostics.extend(get_cargo_diagnostics_local_version(doc, &dep, &local_meta));
         diagnostics.extend(get_cargo_diagnostics_features(
             doc,
             &dep,
-            &local_crate.features,
+            &local_meta.features,
         ));
         return Ok(diagnostics);
     }
@@ -76,7 +75,7 @@ pub async fn get_cargo_diagnostics(
 fn get_cargo_diagnostics_local_version(
     doc: &Document,
     dep: &CargoDependency<'_>,
-    local_crate: &LocalCrate,
+    local_meta: &LocalMetadata,
 ) -> Vec<Diagnostic> {
     let (_name, version) = dep.text(doc);
 
@@ -84,7 +83,7 @@ fn get_cargo_diagnostics_local_version(
         return Vec::new();
     };
 
-    let Some(local_version) = &local_crate.version else {
+    let Some(local_version) = &local_meta.version else {
         return Vec::new();
     };
 

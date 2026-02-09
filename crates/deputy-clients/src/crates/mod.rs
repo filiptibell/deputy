@@ -18,6 +18,7 @@ mod cache;
 use cache::CratesCache;
 
 mod consts;
+mod local;
 mod requests;
 
 pub mod models;

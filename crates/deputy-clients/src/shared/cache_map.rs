@@ -21,18 +21,30 @@ pub struct RequestCacheMap<T: Clone + Send + Sync + 'static> {
 
 impl<T: Clone + Send + Sync + 'static> RequestCacheMap<T> {
     /**
-        Creates a new cache map.
+        Creates a new cache map with minute-level granularity.
 
         - `minutes_to_live` - how many minutes before any
           cached piecec of data gets removed from the cache
         - `minutes_to_idle` - how many minutes **of not being used**
           before a cached piece of data gets removed from the cache
     */
-    pub fn new(minutes_to_live: u64, minutes_to_idle: u64) -> Self {
+    pub fn new_mins(minutes_to_live: u64, minutes_to_idle: u64) -> Self {
+        Self::new_secs(minutes_to_live * 60, minutes_to_idle * 60)
+    }
+
+    /**
+        Creates a new cache map with second-level granularity.
+
+        - `seconds_to_live` - how many seconds before any
+          cached piece of data gets removed from the cache
+        - `seconds_to_idle` - how many seconds **of not being used**
+          before a cached piece of data gets removed from the cache
+    */
+    pub fn new_secs(seconds_to_live: u64, seconds_to_idle: u64) -> Self {
         let map = Cache::builder()
             .max_capacity(64)
-            .time_to_live(Duration::from_secs(60 * minutes_to_live))
-            .time_to_idle(Duration::from_secs(60 * minutes_to_idle))
+            .time_to_live(Duration::from_secs(seconds_to_live))
+            .time_to_idle(Duration::from_secs(seconds_to_idle))
             .build();
         RequestCacheMap {
             map,

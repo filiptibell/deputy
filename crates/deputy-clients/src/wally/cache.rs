@@ -13,7 +13,7 @@ impl WallyCache {
             // NOTE: Registry configs should never really change,
             // so we can use a really long cache here. If a user
             // wants to refresh their config, they can restart
-            index_configs: RequestCacheMap::new(
+            index_configs: RequestCacheMap::new_mins(
                 60 * 24 * 30, // One month
                 60 * 24 * 7,  // One week
             ),

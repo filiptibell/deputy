@@ -17,7 +17,7 @@ use deputy_parser::utils::unquote;
 use deputy_versioning::Versioned;
 
 use crate::cargo::constants::CratesIoPackage;
-use crate::cargo::util::{LocalCrate, get_features};
+use crate::cargo::util::{get_features, get_local_metadata};
 
 use super::constants::top_crates_io_packages_prefixed;
 
@@ -66,7 +66,9 @@ pub async fn get_cargo_completions(
             debug!("Completing features: {dep:?}");
 
             let known_features = if let Some(path) = dep.path_text(doc) {
-                LocalCrate::read(doc.url(), &path).await.map(|c| c.features)
+                get_local_metadata(clients, doc.url(), &path)
+                    .await
+                    .map(|m| m.features)
             } else {
                 get_features(clients, &name, &version).await
             };

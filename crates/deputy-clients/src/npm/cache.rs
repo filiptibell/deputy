@@ -10,7 +10,7 @@ pub(super) struct NpmCache {
 impl NpmCache {
     pub fn new() -> Self {
         Self {
-            registry_metadatas: RequestCacheMap::new(60, 15),
+            registry_metadatas: RequestCacheMap::new_mins(60, 15),
         }
     }
 }
