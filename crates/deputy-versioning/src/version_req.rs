@@ -31,26 +31,22 @@ fn possible_versions_for_req(req: &VersionReq) -> Vec<Version> {
                     vec![base_version]
                 }
                 Op::Greater => {
-                    if comp.patch.is_none() {
-                        if comp.minor.is_none() {
-                            vec![Version::new(comp.major + 1, 0, 0)]
+                    if let Some(minor) = comp.minor {
+                        if let Some(patch) = comp.patch {
+                            vec![Version::new(comp.major, minor, patch + 1)]
                         } else {
-                            vec![Version::new(comp.major, comp.minor.unwrap() + 1, 0)]
+                            vec![Version::new(comp.major, minor + 1, 0)]
                         }
                     } else {
-                        vec![Version::new(
-                            comp.major,
-                            comp.minor.unwrap(),
-                            comp.patch.unwrap() + 1,
-                        )]
+                        vec![Version::new(comp.major + 1, 0, 0)]
                     }
                 }
                 Op::Less => {
                     if comp.patch.is_none() {
-                        if comp.minor.is_none() {
-                            vec![Version::new(comp.major, 0, 0)]
+                        if let Some(minor) = comp.minor {
+                            vec![Version::new(comp.major, minor, 0)]
                         } else {
-                            vec![Version::new(comp.major, comp.minor.unwrap(), 0)]
+                            vec![Version::new(comp.major, 0, 0)]
                         }
                     } else {
                         vec![base_version]
@@ -58,10 +54,10 @@ fn possible_versions_for_req(req: &VersionReq) -> Vec<Version> {
                 }
                 Op::LessEq => {
                     if comp.patch.is_none() {
-                        if comp.minor.is_none() {
-                            vec![Version::new(comp.major + 1, 0, 0)]
+                        if let Some(minor) = comp.minor {
+                            vec![Version::new(comp.major, minor + 1, 0)]
                         } else {
-                            vec![Version::new(comp.major, comp.minor.unwrap() + 1, 0)]
+                            vec![Version::new(comp.major + 1, 0, 0)]
                         }
                     } else {
                         vec![base_version]
@@ -106,10 +102,10 @@ fn possible_versions_for_req(req: &VersionReq) -> Vec<Version> {
                     }
                 }
                 Op::Wildcard => {
-                    if comp.minor.is_some() {
+                    if let Some(minor) = comp.minor {
                         vec![
-                            Version::new(comp.major, comp.minor.unwrap(), 0),
-                            Version::new(comp.major, comp.minor.unwrap() + 1, 0),
+                            Version::new(comp.major, minor, 0),
+                            Version::new(comp.major, minor + 1, 0),
                         ]
                     } else {
                         vec![
