@@ -1,19 +1,21 @@
-use semver::{Error, Version, VersionReq};
+use pep440_rs::{VersionParseError, VersionSpecifiersParseError};
 
-use crate::util::trim_semver_version_specifiers;
+use crate::util::trim_pep_version_specifiers;
+
+use super::pep_types::{PepVersion, PepVersionReq};
 
 /**
-    The latest found version from a comparison.
+    The latest found version from a PEP 440 comparison.
 
     Includes metadata about the comparison, the versions, as
     well as the associated data for whatever was compared to.
 */
 #[allow(dead_code)]
-pub struct LatestVersion<T> {
-    pub is_semver_compatible: bool,
+pub struct PepLatestVersion<T> {
+    pub is_compatible: bool,
     pub is_exactly_compatible: bool,
-    pub this_version: Version,
-    pub item_version: Version,
+    pub this_version: PepVersion,
+    pub item_version: PepVersion,
     pub item: T,
 }
 
@@ -24,40 +26,36 @@ pub struct LatestVersion<T> {
     as well as the associated data for whatever was compared to.
 
     Note that a completion must not necessarily contain fully valid
-    semver versions, since completions can by definition be partial.
+    PEP 440 versions, since completions can by definition be partial.
 */
 #[allow(dead_code)]
-pub struct CompletionVersion<T> {
-    pub this_version: Option<Version>,
+pub struct PepCompletionVersion<T> {
+    pub this_version: Option<PepVersion>,
     pub this_version_raw: String,
-    pub item_version: Option<Version>,
+    pub item_version: Option<PepVersion>,
     pub item_version_raw: String,
     pub item: T,
 }
 
 /**
-    Helper trait for anything that contains a version string.
+    Helper trait for anything that contains a PEP 440 version string.
 */
-pub trait Versioned {
+pub trait PepVersioned {
     fn raw_version_string(&self) -> String;
 
     /**
-       Parses the string into a `Version` object.
-
-       See [`Version::parse`] for more information.
+        Parses the string into a `PepVersion` object.
     */
     #[allow(clippy::missing_errors_doc)]
-    fn parse_version(&self) -> Result<Version, Error> {
+    fn parse_version(&self) -> Result<PepVersion, VersionParseError> {
         self.raw_version_string().trim().parse()
     }
 
     /**
-       Parses the string into a `VersionReq` object.
-
-       See [`VersionReq::parse`] for more information.
+        Parses the string into a `PepVersionReq` object.
     */
     #[allow(clippy::missing_errors_doc)]
-    fn parse_version_req(&self) -> Result<VersionReq, Error> {
+    fn parse_version_req(&self) -> Result<PepVersionReq, VersionSpecifiersParseError> {
         self.raw_version_string().trim().parse()
     }
 
@@ -69,11 +67,11 @@ pub trait Versioned {
         &self,
         other_versions: I,
         filter_fn: F,
-    ) -> Option<LatestVersion<V>>
+    ) -> Option<PepLatestVersion<V>>
     where
         I: IntoIterator<Item = V>,
-        V: Versioned,
-        F: Fn(&LatestVersion<V>) -> bool,
+        V: PepVersioned,
+        F: Fn(&PepLatestVersion<V>) -> bool,
     {
         let this_version = self.parse_version().ok()?;
         let this_version_req = self.parse_version_req().ok();
@@ -86,14 +84,14 @@ pub trait Versioned {
                 Err(_) => None,
             })
             .filter(|(_, v)| {
-                if v.pre.trim().is_empty() {
-                    // No prerelease = always consider
+                if v.is_stable() {
+                    // Stable = always consider
                     true
                 } else {
                     // Prerelease = only consider if this is also part of the same x.y.z prereleases
-                    v.major == this_version.major
-                        && v.minor == this_version.minor
-                        && v.patch == this_version.patch
+                    v.major() == this_version.major()
+                        && v.minor() == this_version.minor()
+                        && v.patch() == this_version.patch()
                 }
             })
             .collect::<Vec<_>>();
@@ -104,8 +102,8 @@ pub trait Versioned {
                 let is_exactly_compatible = item_version
                     .to_string()
                     .eq_ignore_ascii_case(&this_version.to_string());
-                LatestVersion {
-                    is_semver_compatible: is_exactly_compatible
+                PepLatestVersion {
+                    is_compatible: is_exactly_compatible
                         || this_version_req
                             .as_ref()
                             .is_some_and(|req| req.matches(&item_version)),
@@ -122,10 +120,10 @@ pub trait Versioned {
         latest_versions.pop()
     }
 
-    fn extract_latest_version<I, V>(&self, other_versions: I) -> Option<LatestVersion<V>>
+    fn extract_latest_version<I, V>(&self, other_versions: I) -> Option<PepLatestVersion<V>>
     where
         I: IntoIterator<Item = V>,
-        V: Versioned,
+        V: PepVersioned,
     {
         self.extract_latest_version_filtered(other_versions, |_| true)
     }
@@ -134,15 +132,15 @@ pub trait Versioned {
         &self,
         potential_versions: I,
         filter_fn: F,
-    ) -> Vec<CompletionVersion<V>>
+    ) -> Vec<PepCompletionVersion<V>>
     where
         I: IntoIterator<Item = V>,
-        V: Versioned,
+        V: PepVersioned,
         F: Fn(&V) -> bool,
     {
         // Try to remove prefixes from partial string - this is not necessarily
-        // 100% correct but unfortunately parsing as semver is not always possible
-        let this_version_raw = trim_semver_version_specifiers(&self.raw_version_string());
+        // 100% correct but unfortunately parsing as PEP 440 is not always possible
+        let this_version_raw = trim_pep_version_specifiers(&self.raw_version_string());
 
         let mut potential_versions = potential_versions
             .into_iter()
@@ -180,7 +178,7 @@ pub trait Versioned {
 
         potential_versions
             .into_iter()
-            .map(|item| CompletionVersion {
+            .map(|item| PepCompletionVersion {
                 this_version: this_version_raw.parse().ok(),
                 this_version_raw: this_version_raw.clone(),
                 item_version: item.parse_version().ok(),
@@ -190,34 +188,37 @@ pub trait Versioned {
             .collect()
     }
 
-    fn extract_completion_versions<I, V>(&self, potential_versions: I) -> Vec<CompletionVersion<V>>
+    fn extract_completion_versions<I, V>(
+        &self,
+        potential_versions: I,
+    ) -> Vec<PepCompletionVersion<V>>
     where
         I: IntoIterator<Item = V>,
-        V: Versioned,
+        V: PepVersioned,
     {
         self.extract_completion_versions_filtered(potential_versions, |_| true)
     }
 }
 
-impl Versioned for Version {
+impl PepVersioned for PepVersion {
     fn raw_version_string(&self) -> String {
         self.to_string()
     }
 }
 
-impl Versioned for String {
+impl PepVersioned for String {
     fn raw_version_string(&self) -> String {
         self.clone()
     }
 }
 
-impl Versioned for &String {
+impl PepVersioned for &String {
     fn raw_version_string(&self) -> String {
         (*self).clone()
     }
 }
 
-impl Versioned for &str {
+impl PepVersioned for &str {
     fn raw_version_string(&self) -> String {
         (*self).to_string()
     }
