@@ -22,7 +22,8 @@
     ],
     "activationEvents": [
         "onLanguage:toml",
-        "onLanguage:json"
+        "onLanguage:json",
+        "onLanguage:go.mod"
     ],
     "main": "./out/extension.js",
     "contributes": {

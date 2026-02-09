@@ -8,7 +8,7 @@ repository = "https://github.com/filiptibell/deputy"
 
 [language_servers.deputy]
 name = "Deputy"
-languages = ["TOML", "JSON"]
+languages = ["TOML", "JSON", "Go Mod"]
 
 [slash_commands.deputy-set-github-pat]
 description = "Sets the GitHub personal access token Deputy should use."

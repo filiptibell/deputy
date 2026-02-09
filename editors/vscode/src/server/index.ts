@@ -86,6 +86,7 @@ export const start = async () => {
 		documentSelector: [
 			{ scheme: "file", language: "toml" },
 			{ scheme: "file", language: "json" },
+			{ scheme: "file", language: "go.mod" },
 		],
 		outputChannel,
 	};
