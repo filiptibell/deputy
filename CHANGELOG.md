@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## `0.6.2` - August 4th, 2025
+
+### Added
+
+- Added support for Cargo dependencies that use `path`
+
+### Fixed
+
+- Fixed default behavior of NPM dependencies without specifiers being incorrect (`"x.y.z"` was treated as `"^x.y.z"` instead of `"=x.y.z"`)
+- Fixed errors being emitted for Cargo dependencies without a `version` specified, when using `path` or `git`
+
 ## `0.6.1` - August 4th, 2025
 
 ### Added
