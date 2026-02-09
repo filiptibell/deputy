@@ -13,7 +13,9 @@ use deputy_parser::gomod;
 use deputy_versioning::Versioned;
 
 use super::Clients;
+use super::constants::top_go_packages_prefixed;
 
+const MAXIMUM_PACKAGES_SHOWN: usize = 64;
 const MAXIMUM_VERSIONS_SHOWN: usize = 64;
 
 pub async fn get_gomod_completions(
@@ -28,7 +30,7 @@ pub async fn get_gomod_completions(
 
     let (path, version) = dep.text(doc);
 
-    // Only complete versions — no name search API for Go modules
+    // Try to complete versions
     if let Some(version_node) = dep.version
         && ts_range_contains_lsp_position(version_node.range(), pos)
     {
@@ -40,6 +42,12 @@ pub async fn get_gomod_completions(
             ts_range_to_lsp_range(version_node.range()),
         )
         .await;
+    }
+
+    // Try to complete module paths
+    if ts_range_contains_lsp_position(dep.path.range(), pos) {
+        debug!("Completing name: {dep:?}");
+        return complete_name(&path, ts_range_to_lsp_range(dep.path.range()));
     }
 
     Ok(None)
@@ -86,5 +94,25 @@ async fn complete_version(
         })
         .collect::<Vec<_>>();
 
+    Ok(Some(CompletionResponse::Array(items)))
+}
+
+fn complete_name(path: &str, range: Range) -> ServerResult<Option<CompletionResponse>> {
+    let packages = top_go_packages_prefixed(path, MAXIMUM_PACKAGES_SHOWN);
+
+    let items = packages
+        .into_iter()
+        .map(|package| CompletionItem {
+            label: package.path.to_string(),
+            kind: Some(CompletionItemKind::VALUE),
+            detail: Some(package.description.to_string()),
+            filter_text: Some(format!("{} {}", package.path, package.name)),
+            text_edit: Some(CompletionTextEdit::Edit(TextEdit {
+                new_text: package.path.to_string(),
+                range,
+            })),
+            ..Default::default()
+        })
+        .collect::<Vec<_>>();
     Ok(Some(CompletionResponse::Array(items)))
 }

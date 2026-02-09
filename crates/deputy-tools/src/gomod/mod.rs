@@ -10,6 +10,7 @@ use deputy_clients::Clients;
 use deputy_parser::gomod;
 
 mod completion;
+mod constants;
 mod diagnostics;
 mod hover;
 
