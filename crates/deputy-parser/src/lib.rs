@@ -5,6 +5,7 @@ mod shared;
 
 pub mod cargo;
 pub mod npm;
+pub mod pyproject;
 pub mod rokit;
 pub mod utils;
 pub mod wally;
