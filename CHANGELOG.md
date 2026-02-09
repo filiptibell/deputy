@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Hover for info about a package (installed version, description, links)
   - Diagnostics for when a newer version is available + action to update
   - Diagnostics for yanked versions
+  - Support for extras - autocomplete and diagnostics for `package[extra1,extra2]`
   - Support for all standard dependency locations - `[project] dependencies`, `[project.optional-dependencies]`, `[dependency-groups]`, and `[build-system] requires`
 
 ## `0.6.2` - February 9th, 2026

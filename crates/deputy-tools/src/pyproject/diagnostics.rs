@@ -5,10 +5,10 @@ use async_language_server::{
     tree_sitter_utils::ts_range_to_lsp_range,
 };
 
-use deputy_parser::pyproject;
+use deputy_parser::pyproject::{self, PyProjectDependency};
 use deputy_versioning::{PepVersionReqExt, PepVersioned};
 
-use crate::shared::{CodeActionMetadata, ResolveContext};
+use crate::shared::{CodeActionMetadata, ResolveContext, did_you_mean};
 
 use super::Clients;
 
@@ -102,13 +102,13 @@ pub async fn get_pyproject_diagnostics(
         }]);
     }
 
-    // Everything is OK - but we may be able to suggest new versions...
-    // ... try to find the latest non-prerelease version
-    let Some(latest_version) = version_min.extract_latest_version(versions) else {
-        return Ok(Vec::new());
-    };
+    // Version is valid - collect remaining diagnostics
+    let mut diagnostics = Vec::new();
 
-    if !latest_version.is_compatible {
+    // Check for newer versions available
+    if let Some(latest_version) = version_min.extract_latest_version(versions)
+        && !latest_version.is_compatible
+    {
         let latest_version_string = latest_version.item_version.to_string();
 
         let metadata = CodeActionMetadata::LatestVersion {
@@ -119,7 +119,7 @@ pub async fn get_pyproject_diagnostics(
             version_latest: latest_version_string.clone(),
         };
 
-        return Ok(vec![Diagnostic {
+        diagnostics.push(Diagnostic {
             source: Some(String::from("PyPI")),
             range: ts_range_to_lsp_range(dep.spec_node.range()),
             message: format!(
@@ -135,8 +135,49 @@ pub async fn get_pyproject_diagnostics(
                 .into(),
             ),
             ..Default::default()
-        }]);
+        });
     }
 
-    Ok(Vec::new())
+    // Check extras against known extras from the registry
+    if let Ok(meta) = clients.pypi.get_registry_metadata(&name).await
+        && let Some(known_extras) = &meta.info.provides_extra
+    {
+        diagnostics.extend(get_pyproject_diagnostics_extras(doc, &dep, known_extras));
+    }
+
+    Ok(diagnostics)
+}
+
+fn get_pyproject_diagnostics_extras(
+    doc: &Document,
+    dep: &PyProjectDependency<'_>,
+    known_extras: &[String],
+) -> Vec<Diagnostic> {
+    let mut diagnostics = Vec::new();
+    let txt = doc.text();
+
+    for extra_range in dep.extra_ranges(doc) {
+        let extra = txt
+            .byte_slice(extra_range.start_byte..extra_range.end_byte)
+            .as_str()
+            .unwrap_or_default()
+            .trim();
+
+        if !known_extras.iter().any(|e| e.eq_ignore_ascii_case(extra)) {
+            diagnostics.push(Diagnostic {
+                source: Some(String::from("PyPI")),
+                range: ts_range_to_lsp_range(extra_range),
+                message: match did_you_mean(extra, known_extras) {
+                    Some(suggestion) => {
+                        format!("Unknown extra `{extra}` - did you mean `{suggestion}`?")
+                    }
+                    None => format!("Unknown extra `{extra}`"),
+                },
+                severity: Some(DiagnosticSeverity::ERROR),
+                ..Default::default()
+            });
+        }
+    }
+
+    diagnostics
 }

@@ -156,6 +156,22 @@ impl PyProjectDependency<'_> {
     }
 
     #[must_use]
+    pub fn extra_ranges(&self, doc: &Document) -> Vec<TsRange> {
+        let ranges = self.spec_ranges(doc);
+        let Some(extras_range) = ranges.extras else {
+            return Vec::new();
+        };
+
+        let txt = doc.text();
+        let extras_text = txt
+            .byte_slice(extras_range.start_byte..extras_range.end_byte)
+            .as_str()
+            .unwrap_or_default();
+
+        split_extras_ranges(extras_text, extras_range)
+    }
+
+    #[must_use]
     pub fn raw_spec(&self, doc: &Document) -> String {
         unquote(doc.node_text(self.spec_node))
     }
@@ -240,6 +256,44 @@ fn split_pep508_ranges(text: &str, base: TsRange) -> PyProjectDependencySpecRang
         version,
         extras,
     }
+}
+
+fn split_extras_ranges(text: &str, base: TsRange) -> Vec<TsRange> {
+    // Walk the text once, recording byte offsets of individual extras.
+    // Text includes brackets: "[extra1, extra2]"
+
+    let mut ranges = Vec::new();
+    let mut name_start = None;
+    let mut name_end = None;
+
+    for (i, ch) in text.char_indices() {
+        match ch {
+            '[' | ',' => {
+                // Emit previous extra, if any
+                if let (Some(start), Some(end)) = (name_start, name_end) {
+                    ranges.push(base.sub(text, p(start), p(end)));
+                }
+                name_start = None;
+                name_end = None;
+            }
+            ']' => {
+                // Emit final extra, if any
+                if let (Some(start), Some(end)) = (name_start, name_end) {
+                    ranges.push(base.sub(text, p(start), p(end)));
+                }
+                break;
+            }
+            _ if ch.is_ascii_whitespace() => {}
+            _ => {
+                if name_start.is_none() {
+                    name_start = Some(i);
+                }
+                name_end = Some(i + ch.len_utf8());
+            }
+        }
+    }
+
+    ranges
 }
 
 const fn p(col: usize) -> TsPoint {

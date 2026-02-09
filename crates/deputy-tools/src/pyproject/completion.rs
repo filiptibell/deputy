@@ -44,6 +44,25 @@ pub async fn get_pyproject_completions(
         .await;
     }
 
+    // Try to complete extras
+    for extra_range in dep.extra_ranges(doc) {
+        if ts_range_contains_lsp_position(extra_range, pos) {
+            let txt = doc.text();
+            let extra_text = txt
+                .byte_slice(extra_range.start_byte..extra_range.end_byte)
+                .as_str()
+                .unwrap_or_default();
+            debug!("Completing extras: {dep:?}");
+            return complete_extras(
+                clients,
+                name.as_deref().unwrap_or_default(),
+                extra_text,
+                ts_range_to_lsp_range(extra_range),
+            )
+            .await;
+        }
+    }
+
     // Try to complete names
     if let Some(range) = ranges.name
         && ts_range_contains_lsp_position(range, pos)
@@ -74,6 +93,38 @@ fn complete_name(name: impl AsRef<str>, range: Range) -> ServerResult<Option<Com
             ..Default::default()
         })
         .collect::<Vec<_>>();
+    Ok(Some(CompletionResponse::Array(items)))
+}
+
+async fn complete_extras(
+    clients: &Clients,
+    name: &str,
+    current: &str,
+    range: Range,
+) -> ServerResult<Option<CompletionResponse>> {
+    let Ok(meta) = clients.pypi.get_registry_metadata(name).await else {
+        return Ok(None);
+    };
+    let Some(extras) = meta.info.provides_extra else {
+        return Ok(None);
+    };
+
+    let items = extras
+        .into_iter()
+        .filter(|e| e.starts_with(current))
+        .enumerate()
+        .map(|(index, extra)| CompletionItem {
+            label: extra.clone(),
+            kind: Some(CompletionItemKind::VALUE),
+            sort_text: Some(format!("{index:0>5}")),
+            text_edit: Some(CompletionTextEdit::Edit(TextEdit {
+                new_text: extra,
+                range,
+            })),
+            ..Default::default()
+        })
+        .collect::<Vec<_>>();
+
     Ok(Some(CompletionResponse::Array(items)))
 }
 

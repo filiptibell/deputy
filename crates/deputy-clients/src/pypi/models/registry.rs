@@ -33,6 +33,8 @@ pub struct RegistryMetadataInfo {
     #[serde(default)]
     pub project_urls: Option<HashMap<String, String>>,
     #[serde(default)]
+    pub provides_extra: Option<Vec<String>>,
+    #[serde(default)]
     pub requires_python: Option<String>,
     #[serde(default)]
     pub yanked: bool,
