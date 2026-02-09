@@ -11,6 +11,7 @@ use deputy_clients::Clients;
 
 use crate::cargo::Cargo;
 use crate::npm::Npm;
+use crate::pyproject::PyProject;
 use crate::rokit::Rokit;
 use crate::shared::{CodeActionMetadata, ResolveContext};
 use crate::wally::Wally;
@@ -19,6 +20,7 @@ use crate::wally::Wally;
 pub struct Tools {
     cargo: Cargo,
     npm: Npm,
+    pyproject: PyProject,
     rokit: Rokit,
     wally: Wally,
 }
@@ -29,6 +31,7 @@ impl Tools {
         Self {
             cargo: Cargo::new(clients.clone()),
             npm: Npm::new(clients.clone()),
+            pyproject: PyProject::new(clients.clone()),
             rokit: Rokit::new(clients.clone()),
             wally: Wally::new(clients.clone()),
         }
@@ -48,6 +51,7 @@ impl Tools {
         match tool {
             Tool::Cargo => self.cargo.hover(doc, pos, node).await,
             Tool::Npm => self.npm.hover(doc, pos, node).await,
+            Tool::Pyproject => self.pyproject.hover(doc, pos, node).await,
             Tool::Rokit => self.rokit.hover(doc, pos, node).await,
             Tool::Wally => self.wally.hover(doc, pos, node).await,
         }
@@ -67,6 +71,7 @@ impl Tools {
         match tool {
             Tool::Cargo => self.cargo.completion(doc, pos, node).await,
             Tool::Npm => self.npm.completion(doc, pos, node).await,
+            Tool::Pyproject => self.pyproject.completion(doc, pos, node).await,
             Tool::Rokit => self.rokit.completion(doc, pos, node).await,
             Tool::Wally => self.wally.completion(doc, pos, node).await,
         }
@@ -85,6 +90,7 @@ impl Tools {
         match tool {
             Tool::Cargo => self.cargo.diagnostics(doc, params).await,
             Tool::Npm => self.npm.diagnostics(doc, params).await,
+            Tool::Pyproject => self.pyproject.diagnostics(doc, params).await,
             Tool::Rokit => self.rokit.diagnostics(doc, params).await,
             Tool::Wally => self.wally.diagnostics(doc, params).await,
         }
@@ -121,6 +127,7 @@ impl Tools {
 pub enum Tool {
     Cargo,
     Npm,
+    Pyproject,
     Rokit,
     Wally,
 }
@@ -130,6 +137,7 @@ impl Tool {
         match doc.matched_name()?.trim() {
             s if s.eq_ignore_ascii_case("cargo") => Some(Tool::Cargo),
             s if s.eq_ignore_ascii_case("npm") => Some(Tool::Npm),
+            s if s.eq_ignore_ascii_case("pyproject") => Some(Tool::Pyproject),
             s if s.eq_ignore_ascii_case("rokit") => Some(Tool::Rokit),
             s if s.eq_ignore_ascii_case("wally") => Some(Tool::Wally),
             _ => None,

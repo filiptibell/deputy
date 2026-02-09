@@ -1,5 +1,6 @@
 mod cargo;
 mod npm;
+mod pyproject;
 mod rokit;
 mod shared;
 mod tools;

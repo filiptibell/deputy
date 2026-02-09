@@ -73,6 +73,11 @@ impl Server for DeputyLanguageServer {
         let matchers = [
             ("Cargo", ["**/Cargo.toml", "Cargo.toml"], TOML_LANGUAGE),
             ("NPM", ["**/package.json", "package.json"], JSON_LANGUAGE),
+            (
+                "PyProject",
+                ["**/pyproject.toml", "pyproject.toml"],
+                TOML_LANGUAGE,
+            ),
             ("Rokit", ["**/rokit.toml", "rokit.toml"], TOML_LANGUAGE),
             ("Wally", ["**/wally.toml", "wally.toml"], TOML_LANGUAGE),
         ];
