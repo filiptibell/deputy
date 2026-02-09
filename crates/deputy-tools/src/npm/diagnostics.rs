@@ -7,7 +7,7 @@ use async_language_server::{
 };
 
 use deputy_parser::npm;
-use deputy_versioning::{VersionReqExt, Versioned};
+use deputy_versioning::{VersionReqExt, Versioned, util::is_bare_version};
 
 use crate::shared::{CodeActionMetadata, ResolveContext};
 
@@ -27,7 +27,15 @@ pub async fn get_npm_diagnostics(
         return Ok(Vec::new()); // Ignore these spec formats, for now
     }
 
-    let Ok(version_req) = spec.parse_version_req() else {
+    // In NPM, a bare version like "0.3.6" means exactly that version,
+    // unlike Cargo where bare versions imply a range like "^0.3.6"
+    let normalized_spec = if is_bare_version(&spec) {
+        format!("={spec}")
+    } else {
+        spec.clone()
+    };
+
+    let Ok(version_req) = normalized_spec.parse_version_req() else {
         return Ok(Vec::new());
     };
     let version = version_req.minimum_version();

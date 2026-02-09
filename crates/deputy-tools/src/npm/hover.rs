@@ -9,7 +9,7 @@ use async_language_server::{
 
 use deputy_clients::npm::models::RegistryMetadataRepositoryVariant;
 use deputy_parser::npm;
-use deputy_versioning::{VersionReqExt, Versioned};
+use deputy_versioning::{VersionReqExt, Versioned, util::is_bare_version};
 
 use crate::shared::MarkdownBuilder;
 
@@ -25,7 +25,12 @@ pub async fn get_npm_hover(
     };
 
     let (name, spec) = dep.text(doc);
-    let Ok(version_req) = spec.parse_version_req() else {
+    let normalized_spec = if is_bare_version(&spec) {
+        format!("={spec}")
+    } else {
+        spec.clone()
+    };
+    let Ok(version_req) = normalized_spec.parse_version_req() else {
         return Ok(None);
     };
 
