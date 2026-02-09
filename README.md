@@ -22,8 +22,9 @@ A language server for your dependencies.
 Deputy currently supports the following package managers & toolchain managers:
 
 - [Cargo](https://crates.io) (`Cargo.toml`)
+- [Golang](https://pkg.go.dev) (`go.mod`)
 - [NPM](https://www.npmjs.com) (`package.json`)
-- [PyPI](https://pypi.org) (`pyproject.toml`)
+- [Python](https://pypi.org) (`pyproject.toml`)
 - [Rokit](https://github.com/rojo-rbx/rokit) (`rokit.toml`)
 - [Wally](https://github.com/UpliftGames/wally) (`wally.toml`)
 
@@ -38,7 +39,7 @@ Deputy can be installed as an extension from:
 - The [Open VSX Registry](https://open-vsx.org/extension/filiptibell/deputy) (Cursor, Windsurf, ...)
 - The [Zed Extensions](https://zed.dev/extensions) registry <sup>[1]</sup>
 
-<sup>[1]</sup> TOML language extension must also be installed for Deputy to work in Zed.
+<sup>[1]</sup> Additional extensions for TOML/Go language support may need to be installed first for corresponding Deputy features to be recognized and work in Zed.
 
 Extensions can also be built and installed from source:
 
