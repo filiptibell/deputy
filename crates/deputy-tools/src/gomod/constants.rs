@@ -26,19 +26,19 @@ pub struct GoPackage {
 }
 
 impl FromStr for GoPackage {
-    type Err = String;
+    type Err = &'static str;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let Some((path, rest)) = s.split_once(':') else {
-            return Err("missing path".to_string());
+            return Err("missing path");
         };
         let Some((name, rest)) = rest.split_once(':') else {
-            return Err("missing name".to_string());
+            return Err("missing name");
         };
         let description = rest
             .strip_prefix('"')
-            .ok_or_else(|| "unquoted description".to_string())?
+            .ok_or("unquoted description")?
             .strip_suffix('"')
-            .ok_or_else(|| "unquoted description".to_string())?;
+            .ok_or("unquoted description")?;
         Ok(Self {
             path: path.into(),
             name: name.into(),
