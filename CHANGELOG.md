@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- Added full support for Python / PyPI using `pyproject.toml`! This includes:
+  - Autocomplete for package names and versions
+  - Hover for info about a package (installed version, description, links)
+  - Diagnostics for when a newer version is available + action to update
+  - Diagnostics for yanked versions
+  - Support for all standard dependency locations - `[project] dependencies`, `[project.optional-dependencies]`, `[dependency-groups]`, and `[build-system] requires`
+
 ## `0.6.2` - February 9th, 2026
 
 ### Added

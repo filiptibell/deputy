@@ -23,6 +23,7 @@ Deputy currently supports the following package managers & toolchain managers:
 
 - [Cargo](https://crates.io) (`Cargo.toml`)
 - [NPM](https://www.npmjs.com) (`package.json`)
+- [PyPI](https://pypi.org) (`pyproject.toml`)
 - [Rokit](https://github.com/rojo-rbx/rokit) (`rokit.toml`)
 - [Wally](https://github.com/UpliftGames/wally) (`wally.toml`)
 
