@@ -31,4 +31,4 @@ deputy-versioning = { path = "../deputy-versioning" }
 [dependencies.reqwest]
 version = "0.13"
 default-features = false
-features = ["gzip"]
+features = ["rustls", "gzip"]
