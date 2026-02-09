@@ -11,7 +11,7 @@ use async_language_server::{
 };
 
 use deputy_clients::Clients;
-use deputy_parser::{JSON_LANGUAGE, TOML_LANGUAGE};
+use deputy_parser::{GOMOD_LANGUAGE, JSON_LANGUAGE, TOML_LANGUAGE};
 use deputy_tools::Tools;
 
 #[allow(dead_code)]
@@ -72,6 +72,7 @@ impl Server for DeputyLanguageServer {
     fn server_document_matchers() -> Vec<DocumentMatcher> {
         let matchers = [
             ("Cargo", ["**/Cargo.toml", "Cargo.toml"], TOML_LANGUAGE),
+            ("GoMod", ["**/go.mod", "go.mod"], GOMOD_LANGUAGE),
             ("NPM", ["**/package.json", "package.json"], JSON_LANGUAGE),
             (
                 "PyProject",

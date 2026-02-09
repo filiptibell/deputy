@@ -10,6 +10,7 @@ use async_language_server::{
 use deputy_clients::Clients;
 
 use crate::cargo::Cargo;
+use crate::gomod::GoMod;
 use crate::npm::Npm;
 use crate::pyproject::PyProject;
 use crate::rokit::Rokit;
@@ -19,6 +20,7 @@ use crate::wally::Wally;
 #[derive(Debug, Clone)]
 pub struct Tools {
     cargo: Cargo,
+    gomod: GoMod,
     npm: Npm,
     pyproject: PyProject,
     rokit: Rokit,
@@ -30,6 +32,7 @@ impl Tools {
     pub fn new(clients: &Clients) -> Self {
         Self {
             cargo: Cargo::new(clients.clone()),
+            gomod: GoMod::new(clients.clone()),
             npm: Npm::new(clients.clone()),
             pyproject: PyProject::new(clients.clone()),
             rokit: Rokit::new(clients.clone()),
@@ -50,6 +53,7 @@ impl Tools {
 
         match tool {
             Tool::Cargo => self.cargo.hover(doc, pos, node).await,
+            Tool::GoMod => self.gomod.hover(doc, pos, node).await,
             Tool::Npm => self.npm.hover(doc, pos, node).await,
             Tool::Pyproject => self.pyproject.hover(doc, pos, node).await,
             Tool::Rokit => self.rokit.hover(doc, pos, node).await,
@@ -70,6 +74,7 @@ impl Tools {
 
         match tool {
             Tool::Cargo => self.cargo.completion(doc, pos, node).await,
+            Tool::GoMod => self.gomod.completion(doc, pos, node).await,
             Tool::Npm => self.npm.completion(doc, pos, node).await,
             Tool::Pyproject => self.pyproject.completion(doc, pos, node).await,
             Tool::Rokit => self.rokit.completion(doc, pos, node).await,
@@ -89,6 +94,7 @@ impl Tools {
 
         match tool {
             Tool::Cargo => self.cargo.diagnostics(doc, params).await,
+            Tool::GoMod => self.gomod.diagnostics(doc, params).await,
             Tool::Npm => self.npm.diagnostics(doc, params).await,
             Tool::Pyproject => self.pyproject.diagnostics(doc, params).await,
             Tool::Rokit => self.rokit.diagnostics(doc, params).await,
@@ -126,6 +132,7 @@ impl Tools {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tool {
     Cargo,
+    GoMod,
     Npm,
     Pyproject,
     Rokit,
@@ -136,6 +143,7 @@ impl Tool {
     fn from_document(doc: &Document) -> Option<Self> {
         match doc.matched_name()?.trim() {
             s if s.eq_ignore_ascii_case("cargo") => Some(Tool::Cargo),
+            s if s.eq_ignore_ascii_case("gomod") => Some(Tool::GoMod),
             s if s.eq_ignore_ascii_case("npm") => Some(Tool::Npm),
             s if s.eq_ignore_ascii_case("pyproject") => Some(Tool::Pyproject),
             s if s.eq_ignore_ascii_case("rokit") => Some(Tool::Rokit),

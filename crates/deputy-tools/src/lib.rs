@@ -1,4 +1,5 @@
 mod cargo;
+mod gomod;
 mod npm;
 mod pyproject;
 mod rokit;
