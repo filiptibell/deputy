@@ -15,7 +15,7 @@ strip = true
 lto = true
 
 [workspace.package]
-version = "0.6.2"
+version = "0.7.0"
 edition = "2024"
 publish = false
 license = "MIT"

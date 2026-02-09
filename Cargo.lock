@@ -386,7 +386,7 @@ dependencies = [
 
 [[package]]
 name = "deputy"
-version = "0.6.2"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "async-language-server",
@@ -401,7 +401,7 @@ dependencies = [
 
 [[package]]
 name = "deputy-clients"
-version = "0.6.2"
+version = "0.7.0"
 dependencies = [
  "dashmap",
  "deputy-versioning",
@@ -417,7 +417,7 @@ dependencies = [
 
 [[package]]
 name = "deputy-parser"
-version = "0.6.2"
+version = "0.7.0"
 dependencies = [
  "async-language-server",
  "deputy-versioning",
@@ -428,7 +428,7 @@ dependencies = [
 
 [[package]]
 name = "deputy-tools"
-version = "0.6.2"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "async-language-server",
@@ -444,7 +444,7 @@ dependencies = [
 
 [[package]]
 name = "deputy-versioning"
-version = "0.6.2"
+version = "0.7.0"
 dependencies = [
  "pep440_rs",
  "semver",
@@ -971,9 +971,9 @@ checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
 name = "libc"
-version = "0.2.180"
+version = "0.2.181"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bcc35a38544a891a5f7c865aca548a982ccb3b8650a5b06d0fd33a10283c56fc"
+checksum = "459427e2af2b9c839b132acb702a1c654d95e10f8c326bfc2ad11310e458b1c5"
 
 [[package]]
 name = "linux-raw-sys"
@@ -1249,7 +1249,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.59.0",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -1466,7 +1466,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2216,7 +2216,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
