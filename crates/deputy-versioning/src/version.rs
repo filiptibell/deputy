@@ -1,13 +1,6 @@
 use semver::{Error, Version, VersionReq};
 
-fn trim_version_specifiers(s: &str) -> String {
-    s.trim_start_matches('^')
-        .trim_start_matches('>')
-        .trim_start_matches('<')
-        .trim_start_matches('=')
-        .trim_start_matches('~')
-        .to_string()
-}
+use crate::util::trim_version_specifiers;
 
 /**
     The latest found version from a comparison.
