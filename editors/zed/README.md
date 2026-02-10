@@ -1,15 +1,18 @@
 # Deputy
 
-A language server for your dependencies.
+A lightweight language server for your dependencies.
 
-Deputy currently supports the following package managers & toolchain managers:
+Deputy currently supports the following:
 
 - [Cargo](https://crates.io) (`Cargo.toml`)
+- [Golang](https://pkg.go.dev) (`go.mod`)
 - [NPM](https://www.npmjs.com) (`package.json`)
+- [Python](https://pypi.org) (`pyproject.toml`)
 - [Rokit](https://github.com/rojo-rbx/rokit) (`rokit.toml`)
 - [Wally](https://github.com/UpliftGames/wally) (`wally.toml`)
 
-Provides autocomplete, diagnostics for out-of-date versions, and more. <br/>
+Provides autocomplete, diagnostics for out-of-date versions, and more.
+
 Check out the [features](#features) section for a full list of features.
 
 ## Features
@@ -29,6 +32,6 @@ version of the language server automatically and using that.
 
 The extension also adds the following slash commands:
 
-* `/deputy-set-github-pat <personal-access-token>`: Sets the GitHub personal access token to use for GitHub API requests.
+- `/deputy-set-github-pat <personal-access-token>`: Sets the GitHub personal access token to use for GitHub API requests.
   This prevents rate limiting and is required for the language server to work if you're using a private Wally index repository.
-* `/deputy-remove-github-pat`: Removes the GitHub personal access token that was previously set.
+- `/deputy-remove-github-pat`: Removes the GitHub personal access token that was previously set.

@@ -1,26 +1,18 @@
-<!-- markdownlint-disable MD033 -->
-<!-- markdownlint-disable MD041 -->
+# Deputy
 
-<h1 align="center">Deputy</h1>
+A lightweight language server for your dependencies.
 
-<div align="center">
-  <a href="https://marketplace.visualstudio.com/items?itemName=filiptibell.deputy">
-  <img src="https://vsmarketplacebadges.dev/version/filiptibell.deputy.png" alt="VSCode Marketplace" />
-  </a>
-</div>
-
-<br/>
-
-A language server for your dependencies.
-
-Deputy currently supports the following package managers & toolchain managers:
+Deputy currently supports the following:
 
 - [Cargo](https://crates.io) (`Cargo.toml`)
+- [Golang](https://pkg.go.dev) (`go.mod`)
 - [NPM](https://www.npmjs.com) (`package.json`)
+- [Python](https://pypi.org) (`pyproject.toml`)
 - [Rokit](https://github.com/rojo-rbx/rokit) (`rokit.toml`)
 - [Wally](https://github.com/UpliftGames/wally) (`wally.toml`)
 
-Provides autocomplete, diagnostics for out-of-date versions, and more. <br/>
+Provides autocomplete, diagnostics for out-of-date versions, and more.
+
 Check out the [features](#features) section for a full list of features.
 
 ## Features

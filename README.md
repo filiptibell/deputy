@@ -17,9 +17,9 @@
 
 # Deputy
 
-A language server for your dependencies.
+A lightweight language server for your dependencies.
 
-Deputy currently supports the following package managers & toolchain managers:
+Deputy currently supports the following:
 
 - [Cargo](https://crates.io) (`Cargo.toml`)
 - [Golang](https://pkg.go.dev) (`go.mod`)
