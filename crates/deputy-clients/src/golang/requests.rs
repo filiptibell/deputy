@@ -1,32 +1,109 @@
 use tracing::debug;
+use url::form_urlencoded;
 
-use crate::github::models::RepositoryMetrics;
-use crate::shared::RequestError;
-
-use super::consts::BASE_URL_PROXY;
-use super::models::ModuleVersion;
-use super::util::{encode_module_path, extract_github_owner_repo};
+use super::consts::BASE_URL_PKGSITE_API;
+use super::models::{Module, Package, SearchResults, Versions};
 use super::{GolangClient, RequestResult};
 
 impl GolangClient {
     #[allow(clippy::missing_errors_doc)]
-    pub async fn get_module_versions(&self, module: &str) -> RequestResult<Vec<String>> {
-        let encoded = encode_module_path(module);
-        let url = format!("{BASE_URL_PROXY}/{encoded}/@v/list");
+    pub async fn search(&self, query: &str) -> RequestResult<SearchResults> {
+        let query = query.trim();
+        let encoded_query = form_urlencoded::byte_serialize(query.as_bytes()).collect::<String>();
+        let url = format!("{BASE_URL_PKGSITE_API}/search?q={encoded_query}&limit=64");
 
         let fut = async {
-            debug!("Fetching Go module versions for '{module}'");
+            debug!("Searching pkg.go.dev for '{query}'");
 
             // NOTE: We make this inner scope so that
             // we can catch and emit all errors at once
             let inner = async {
                 let bytes = self.request_get(&url).await?;
-                let text = String::from_utf8(bytes)?;
-                let versions: Vec<String> = text
-                    .lines()
-                    .map(|l| l.trim().to_string())
-                    .filter(|l| !l.is_empty())
-                    .collect();
+                Ok(serde_json::from_slice::<SearchResults>(&bytes)?)
+            }
+            .await;
+
+            GolangClient::emit_result(&inner);
+
+            inner
+        };
+
+        self.cache
+            .searches
+            .with_caching(encoded_query.clone(), fut)
+            .await
+    }
+
+    #[allow(clippy::missing_errors_doc)]
+    pub async fn get_module(&self, module: &str) -> RequestResult<Module> {
+        let module = module.trim();
+        let url = format!("{BASE_URL_PKGSITE_API}/module/{module}");
+
+        let fut = async {
+            debug!("Fetching pkg.go.dev module metadata for '{module}'");
+
+            // NOTE: We make this inner scope so that
+            // we can catch and emit all errors at once
+            let inner = async {
+                let bytes = self.request_get(&url).await?;
+                Ok(serde_json::from_slice::<Module>(&bytes)?)
+            }
+            .await;
+
+            GolangClient::emit_result(&inner);
+
+            inner
+        };
+
+        self.cache
+            .modules
+            .with_caching(module.to_string(), fut)
+            .await
+    }
+
+    #[allow(clippy::missing_errors_doc)]
+    pub async fn get_package(&self, package: &str) -> RequestResult<Package> {
+        let package = package.trim();
+        let url = format!("{BASE_URL_PKGSITE_API}/package/{package}");
+
+        let fut = async {
+            debug!("Fetching pkg.go.dev package metadata for '{package}'");
+
+            // NOTE: We make this inner scope so that
+            // we can catch and emit all errors at once
+            let inner = async {
+                let bytes = self.request_get(&url).await?;
+                Ok(serde_json::from_slice::<Package>(&bytes)?)
+            }
+            .await;
+
+            GolangClient::emit_result(&inner);
+
+            inner
+        };
+
+        self.cache
+            .packages
+            .with_caching(package.to_string(), fut)
+            .await
+    }
+
+    #[allow(clippy::missing_errors_doc)]
+    pub async fn get_module_versions(&self, module: &str) -> RequestResult<Versions> {
+        let module = module.trim();
+        let url = format!("{BASE_URL_PKGSITE_API}/versions/{module}");
+
+        let fut = async {
+            debug!("Fetching pkg.go.dev module versions for '{module}'");
+
+            // NOTE: We make this inner scope so that
+            // we can catch and emit all errors at once
+            let inner = async {
+                let bytes = self.request_get(&url).await?;
+                let mut versions = serde_json::from_slice::<Versions>(&bytes)?;
+                versions
+                    .items
+                    .retain(|version| version.module_path.eq_ignore_ascii_case(module));
                 Ok(versions)
             }
             .await;
@@ -37,46 +114,8 @@ impl GolangClient {
         };
 
         self.cache
-            .version_lists
-            .with_caching(encoded.clone(), fut)
+            .versions
+            .with_caching(module.to_string(), fut)
             .await
-    }
-
-    #[allow(clippy::missing_errors_doc)]
-    pub async fn get_module_latest(&self, module: &str) -> RequestResult<ModuleVersion> {
-        let encoded = encode_module_path(module);
-        let url = format!("{BASE_URL_PROXY}/{encoded}/@latest");
-
-        let fut = async {
-            debug!("Fetching Go module latest for '{module}'");
-
-            // NOTE: We make this inner scope so that
-            // we can catch and emit all errors at once
-            let inner = async {
-                let bytes = self.request_get(&url).await?;
-                Ok(serde_json::from_slice::<ModuleVersion>(&bytes)?)
-            }
-            .await;
-
-            GolangClient::emit_result(&inner);
-
-            inner
-        };
-
-        self.cache
-            .latest_versions
-            .with_caching(encoded.clone(), fut)
-            .await
-    }
-
-    #[allow(clippy::missing_errors_doc)]
-    pub async fn get_module_metadata(&self, module: &str) -> RequestResult<RepositoryMetrics> {
-        let (owner, repo) = extract_github_owner_repo(module).ok_or_else(|| {
-            RequestError::Client(format!(
-                "Cannot fetch metadata for non-GitHub module: {module}"
-            ))
-        })?;
-
-        self.github.get_repository_metrics(&owner, &repo).await
     }
 }

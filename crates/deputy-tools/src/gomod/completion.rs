@@ -12,11 +12,15 @@ use tracing::debug;
 use deputy_parser::gomod;
 use deputy_versioning::Versioned;
 
+use crate::shared::filter_starts_with;
+
 use super::Clients;
-use super::constants::top_go_packages_prefixed;
+use super::constants::{GoPackage, top_go_packages_prefixed};
 
 const MAXIMUM_PACKAGES_SHOWN: usize = 64;
 const MAXIMUM_VERSIONS_SHOWN: usize = 64;
+const MINIMUM_PACKAGES_BEFORE_FETCH: usize = 16; // Less than 16 packages found statically = fetch dynamically
+const MINIMUM_QUERY_LENGTH_BEFORE_FETCH: usize = 4; // Avoid broad pkg.go.dev searches for very short prefixes
 
 pub async fn get_gomod_completions(
     clients: &Clients,
@@ -47,7 +51,7 @@ pub async fn get_gomod_completions(
     // Try to complete module paths
     if ts_range_contains_lsp_position(dep.path.range(), pos) {
         debug!("Completing name: {dep:?}");
-        return complete_name(&path, ts_range_to_lsp_range(dep.path.range()));
+        return complete_name(clients, &path, ts_range_to_lsp_range(dep.path.range())).await;
     }
 
     Ok(None)
@@ -66,21 +70,13 @@ async fn complete_version(
     // Strip v prefix for semver comparison
     let version_trimmed = version.trim_start_matches('v');
 
-    // Strip v prefix from proxy versions for semver compatibility,
-    // then use extract_completion_versions for filtering and sorting
-    let stripped_versions: Vec<String> = versions
-        .iter()
-        .map(|v| v.trim_start_matches('v').to_string())
-        .collect();
-
     let items = version_trimmed
-        .extract_completion_versions(stripped_versions.into_iter())
+        .extract_completion_versions(versions.items.into_iter())
         .into_iter()
         .take(MAXIMUM_VERSIONS_SHOWN)
         .enumerate()
-        .map(|(index, pv)| {
-            // Add v prefix back for go.mod format
-            let display = format!("v{}", pv.item_version_raw);
+        .map(|(index, potential_version)| {
+            let display = potential_version.item.version;
             CompletionItem {
                 label: display.clone(),
                 kind: Some(CompletionItemKind::VALUE),
@@ -97,18 +93,57 @@ async fn complete_version(
     Ok(Some(CompletionResponse::Array(items)))
 }
 
-fn complete_name(path: &str, range: Range) -> ServerResult<Option<CompletionResponse>> {
-    let packages = top_go_packages_prefixed(path, MAXIMUM_PACKAGES_SHOWN)
+async fn complete_name(
+    clients: &Clients,
+    path: &str,
+    range: Range,
+) -> ServerResult<Option<CompletionResponse>> {
+    let mut packages = top_go_packages_prefixed(path, MAXIMUM_PACKAGES_SHOWN)
         .into_iter()
         .cloned()
         .collect::<Vec<_>>();
+
+    if path.len() >= MINIMUM_QUERY_LENGTH_BEFORE_FETCH
+        && packages.len() < MINIMUM_PACKAGES_BEFORE_FETCH
+        && let Ok(results) = clients.golang.search(path).await
+    {
+        let count_prev = packages.len();
+        let is_path_query = path.contains('/');
+
+        packages.extend(
+            results
+                .items
+                .into_iter()
+                .filter(|package| package.module_path != "std")
+                .filter(|package| {
+                    !is_path_query || filter_starts_with(package.module_path.as_str(), path)
+                })
+                .map(|package| GoPackage {
+                    path: package.module_path.into(),
+                    name: package.package_path.into(),
+                    description: package.synopsis.into(),
+                }),
+        );
+
+        packages.sort_by_key(|package| package.path.to_ascii_lowercase());
+        packages.dedup_by_key(|p| p.path.to_ascii_lowercase());
+        packages.truncate(MINIMUM_PACKAGES_BEFORE_FETCH);
+
+        let count_after = packages.len();
+        if count_after > count_prev {
+            debug!(
+                "Found {} additional Go modules for prefix '{path}'",
+                count_after.saturating_sub(count_prev),
+            );
+        }
+    }
 
     let items = packages
         .into_iter()
         .map(|package| CompletionItem {
             label: package.path.to_string(),
             kind: Some(CompletionItemKind::VALUE),
-            detail: Some(package.description.to_string()),
+            detail: Some(package.description.to_string()).filter(|s| !s.is_empty()),
             filter_text: Some(format!("{} {}", package.path, package.name)),
             text_edit: Some(CompletionTextEdit::Edit(TextEdit {
                 new_text: package.path.to_string(),
@@ -117,5 +152,6 @@ fn complete_name(path: &str, range: Range) -> ServerResult<Option<CompletionResp
             ..Default::default()
         })
         .collect::<Vec<_>>();
+
     Ok(Some(CompletionResponse::Array(items)))
 }

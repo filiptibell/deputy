@@ -31,7 +31,7 @@ impl Clients {
     pub fn new() -> Self {
         let crates = CratesClient::new();
         let github = GithubClient::new();
-        let golang = GolangClient::new(github.clone());
+        let golang = GolangClient::new();
         let npm = NpmClient::new();
         let pypi = PyPiClient::new();
         let wally = WallyClient::new(github.clone());

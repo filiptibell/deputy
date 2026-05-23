@@ -1,1 +1,1 @@
-pub const BASE_URL_PROXY: &str = "https://proxy.golang.org";
+pub const BASE_URL_PKGSITE_API: &str = "https://pkg.go.dev/v1beta";

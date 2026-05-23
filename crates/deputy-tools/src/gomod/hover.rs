@@ -34,28 +34,23 @@ pub async fn get_gomod_hover(
         md.version(version);
     }
 
-    // Try to fetch description from GitHub (only works for github.com/... modules)
-    if let Ok(metrics) = clients.golang.get_module_metadata(&path).await
-        && let Some(desc) = &metrics.description
+    // Try to fetch package information from pkg.go.dev
+    if let Ok(package) = clients.golang.get_package(&path).await
+        && !package.synopsis.is_empty()
     {
         md.br();
-        md.p(desc);
+        md.p(package.synopsis);
     }
+
+    let module = clients.golang.get_module(&path).await.ok();
 
     // Add links
     md.br();
     md.h3("Links");
     md.a("Documentation", format!("https://pkg.go.dev/{path}"));
 
-    // Add GitHub link if it's a GitHub module
-    if path.starts_with("github.com/") {
-        let parts: Vec<&str> = path.splitn(4, '/').collect();
-        if parts.len() >= 3 {
-            md.a(
-                "Repository",
-                format!("https://{}/{}", parts[0], parts[1..3].join("/")),
-            );
-        }
+    if let Some(repo_url) = module.and_then(|module| module.repo_url) {
+        md.a("Repository", repo_url);
     }
 
     Ok(Some(Hover {

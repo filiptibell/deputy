@@ -1,3 +1,3 @@
-mod proxy;
+mod pkgsite;
 
-pub use self::proxy::*;
+pub use self::pkgsite::*;

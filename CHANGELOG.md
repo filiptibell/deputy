@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- Added diagnostics for deprecated and retracted Go module versions in `go.mod`
+
+### Changed
+
+- Improved Go module autocomplete, hovers, and version diagnostics using the new official [pkg.go.dev API](https://pkg.go.dev/api)
+
 ## `0.7.0` - February 10th, 2026
 
 ### Added

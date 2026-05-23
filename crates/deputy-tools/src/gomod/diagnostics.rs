@@ -1,5 +1,5 @@
 use async_language_server::{
-    lsp_types::{Diagnostic, DiagnosticSeverity},
+    lsp_types::{Diagnostic, DiagnosticSeverity, DiagnosticTag},
     server::{Document, ServerResult},
     tree_sitter::Node,
     tree_sitter_utils::ts_range_to_lsp_range,
@@ -28,7 +28,7 @@ pub async fn get_gomod_diagnostics(
 
     let parsed_version = version.trim_start_matches('v');
 
-    // Fetch versions from the Go proxy
+    // Fetch versions from the official pkg.go.dev API
     let versions = match clients.golang.get_module_versions(&path).await {
         Ok(v) => v,
         Err(e) => {
@@ -44,6 +44,7 @@ pub async fn get_gomod_diagnostics(
             return Ok(Vec::new());
         }
     };
+    let versions = versions.items;
 
     if versions.is_empty() {
         return Ok(vec![Diagnostic {
@@ -56,10 +57,10 @@ pub async fn get_gomod_diagnostics(
     }
 
     // Check if the exact version specified exists
-    if !versions.iter().any(|v| {
-        v.trim_start_matches('v')
-            .eq_ignore_ascii_case(parsed_version)
-    }) {
+    let Some(current_version) = versions.iter().find(|v| {
+        v.version.eq_ignore_ascii_case(&version)
+            || v.raw_version_string().eq_ignore_ascii_case(parsed_version)
+    }) else {
         return Ok(vec![Diagnostic {
             source: Some(String::from("Go")),
             range: ts_range_to_lsp_range(dep.version.unwrap().range()),
@@ -67,16 +68,32 @@ pub async fn get_gomod_diagnostics(
             severity: Some(DiagnosticSeverity::ERROR),
             ..Default::default()
         }]);
+    };
+
+    if current_version.is_unusable() {
+        let version_kind = if current_version.deprecated {
+            "deprecated"
+        } else {
+            "retracted"
+        };
+        let reason = current_version
+            .unusable_reason()
+            .map(|reason| format!(": {reason}"))
+            .unwrap_or_default();
+
+        return Ok(vec![Diagnostic {
+            source: Some(String::from("Go")),
+            range: ts_range_to_lsp_range(dep.version.unwrap().range()),
+            message: format!("Version `{version}` is {version_kind}{reason}"),
+            severity: Some(DiagnosticSeverity::WARNING),
+            tags: Some(vec![DiagnosticTag::DEPRECATED]),
+            ..Default::default()
+        }]);
     }
 
     // Everything is OK - but we may be able to suggest new versions...
     // ... try to find the latest non-prerelease version
-    let stripped_versions: Vec<String> = versions
-        .iter()
-        .map(|v| v.trim_start_matches('v').to_string())
-        .collect();
-
-    let Some(latest_version) = parsed_version.extract_latest_version(stripped_versions) else {
+    let Some(latest_version) = parsed_version.extract_latest_version(versions) else {
         return Ok(Vec::new());
     };
 
