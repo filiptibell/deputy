@@ -1,9 +1,6 @@
 use std::fs;
 
-use zed::{
-    http_client::{fetch, HttpMethod, HttpRequestBuilder},
-    Result,
-};
+use zed::{http_client::{fetch, HttpMethod, HttpRequestBuilder}, Result};
 use zed_extension_api::{self as zed};
 
 use crate::fs::file_exists;
