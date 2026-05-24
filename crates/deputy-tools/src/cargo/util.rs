@@ -195,25 +195,20 @@ pub async fn get_workspace_local_metadata(
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        fs,
-        time::{SystemTime, UNIX_EPOCH},
-    };
+    use std::fs;
+
+    use tempfile::tempdir;
 
     use super::*;
 
     #[test]
     fn checks_workspace_dependency_existence_from_disk() {
-        let millis = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("system clock is after unix epoch")
-            .as_millis();
-        let root = std::env::temp_dir().join(format!("deputy-workspace-deps-{millis}"));
-        let member = root.join("member");
+        let root = tempdir().expect("temp workspace can be created");
+        let member = root.path().join("member");
 
         fs::create_dir_all(&member).expect("temp workspace can be created");
         fs::write(
-            root.join("Cargo.toml"),
+            root.path().join("Cargo.toml"),
             r#"
 [workspace]
 members = ["member"]
@@ -229,7 +224,7 @@ members = ["member"]
         );
 
         fs::write(
-            root.join("Cargo.toml"),
+            root.path().join("Cargo.toml"),
             r#"
 [workspace]
 members = ["member"]
@@ -244,22 +239,16 @@ serde = "1.0"
             workspace_dependency_exists(&manifest_path, "serde"),
             Some(true)
         );
-
-        fs::remove_dir_all(root).expect("temp workspace can be removed");
     }
 
     #[test]
     fn checks_dotted_workspace_dependency_existence_from_disk() {
-        let millis = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("system clock is after unix epoch")
-            .as_millis();
-        let root = std::env::temp_dir().join(format!("deputy-dotted-workspace-deps-{millis}"));
-        let member = root.join("member");
+        let root = tempdir().expect("temp workspace can be created");
+        let member = root.path().join("member");
 
         fs::create_dir_all(&member).expect("temp workspace can be created");
         fs::write(
-            root.join("Cargo.toml"),
+            root.path().join("Cargo.toml"),
             r#"
 [workspace]
 members = ["member"]
@@ -280,19 +269,13 @@ dependencies.foo.package = "rand"
             workspace_dependency_exists(&manifest_path, "rand"),
             Some(false)
         );
-
-        fs::remove_dir_all(root).expect("temp workspace can be removed");
     }
 
     #[test]
     fn resolves_local_dependency_paths_from_disk() {
-        let millis = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("system clock is after unix epoch")
-            .as_millis();
-        let root = std::env::temp_dir().join(format!("deputy-local-deps-{millis}"));
-        let member = root.join("member");
-        let dep = root.join("dep");
+        let root = tempdir().expect("temp workspace can be created");
+        let member = root.path().join("member");
+        let dep = root.path().join("dep");
 
         fs::create_dir_all(&member).expect("temp member can be created");
         let manifest_path = member.join("Cargo.toml");
@@ -318,7 +301,5 @@ dependencies.foo.package = "rand"
             resolve_local_dependency_path(&manifest_url, "../dep"),
             Some(LocalDependencyPathResolution::Resolved { manifest_dir: dep })
         );
-
-        fs::remove_dir_all(root).expect("temp workspace can be removed");
     }
 }

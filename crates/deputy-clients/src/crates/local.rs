@@ -215,28 +215,22 @@ async fn parse_local_manifest(path: &Path) -> Option<LocalMetadata> {
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        fs,
-        time::{SystemTime, UNIX_EPOCH},
-    };
+    use std::fs;
 
+    use tempfile::tempdir;
     use tokio::runtime::Builder;
 
     use super::*;
 
     #[test]
     fn gets_workspace_package_metadata() {
-        let millis = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("system clock is after unix epoch")
-            .as_millis();
-        let root = std::env::temp_dir().join(format!("deputy-workspace-metadata-{millis}"));
-        let member = root.join("member");
+        let root = tempdir().expect("temp workspace can be created");
+        let member = root.path().join("member");
         let member_src = member.join("src");
 
         fs::create_dir_all(&member_src).expect("temp workspace can be created");
         fs::write(
-            root.join("Cargo.toml"),
+            root.path().join("Cargo.toml"),
             r#"
 [workspace]
 members = ["member"]
@@ -283,7 +277,5 @@ serde = { workspace = true, features = ["rc"] }
                 .as_ref()
                 .is_some_and(|s| s.starts_with("registry+"))
         );
-
-        fs::remove_dir_all(root).expect("temp workspace can be removed");
     }
 }

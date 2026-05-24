@@ -32,3 +32,6 @@ deputy-versioning = { path = "../deputy-versioning" }
 version = "0.13"
 default-features = false
 features = ["rustls", "gzip"]
+
+[dev-dependencies]
+tempfile = "3.27"

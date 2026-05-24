@@ -29,3 +29,6 @@ async-language-server = { workspace = true }
 deputy-clients = { path = "../deputy-clients" }
 deputy-parser = { path = "../deputy-parser" }
 deputy-versioning = { path = "../deputy-versioning" }
+
+[dev-dependencies]
+tempfile = "3.27"
