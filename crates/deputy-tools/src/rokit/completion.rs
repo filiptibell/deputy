@@ -119,7 +119,7 @@ async fn complete_version(
     };
 
     let valid_vec = version
-        .extract_completion_versions(metadatas.into_iter())
+        .extract_completion_versions(metadatas)
         .into_iter()
         .take(MAXIMUM_TOOLS_SHOWN)
         .enumerate()

@@ -71,7 +71,7 @@ async fn complete_version(
     let version_trimmed = version.trim_start_matches('v');
 
     let items = version_trimmed
-        .extract_completion_versions(versions.items.into_iter())
+        .extract_completion_versions(versions.items)
         .into_iter()
         .take(MAXIMUM_VERSIONS_SHOWN)
         .enumerate()

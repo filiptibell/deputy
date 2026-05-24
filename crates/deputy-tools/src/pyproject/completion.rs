@@ -141,7 +141,7 @@ async fn complete_version(
     let versions = metadata.versions();
     let valid_vec = version
         .as_ref()
-        .extract_completion_versions(versions.into_iter())
+        .extract_completion_versions(versions)
         .into_iter()
         .take(MAXIMUM_PACKAGES_SHOWN)
         .enumerate()
