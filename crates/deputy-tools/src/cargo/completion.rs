@@ -17,8 +17,8 @@ use deputy_versioning::Versioned;
 use crate::cargo::{
     constants::{CratesIoPackage, top_crates_io_packages_prefixed},
     util::{
-        get_features, get_local_metadata, get_workspace_dependency_metadata,
-        get_workspace_local_metadata,
+        WorkspaceDependencyResolution, get_features, get_local_metadata,
+        get_workspace_local_metadata, resolve_workspace_dependency,
     },
 };
 
@@ -69,7 +69,12 @@ pub async fn get_cargo_completions(
         if ts_range_contains_lsp_position(feat_node.range(), pos) {
             debug!("Completing features: {dep:?}");
 
-            let workspace_meta = get_workspace_dependency_metadata(clients, doc, &dep).await;
+            let workspace_meta = match resolve_workspace_dependency(clients, doc, &dep).await {
+                WorkspaceDependencyResolution::Resolved(metadata) => Some(metadata),
+                WorkspaceDependencyResolution::NotWorkspace
+                | WorkspaceDependencyResolution::Missing { .. }
+                | WorkspaceDependencyResolution::Unavailable => None,
+            };
             let known_features = if let Some(path) = dep.path_text(doc) {
                 get_local_metadata(clients, doc.url(), &path)
                     .await

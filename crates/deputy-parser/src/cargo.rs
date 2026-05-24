@@ -6,9 +6,11 @@ use std::{
 use async_language_server::{
     lsp_types::Position,
     server::Document,
-    tree_sitter::Node as TsNode,
+    tree_sitter::{Node as TsNode, Parser},
     tree_sitter_utils::{find_ancestor, find_child, ts_range_contains_lsp_position},
 };
+
+use crate::TOML_LANGUAGE;
 
 use super::utils::{key_part_nodes, key_parts_with, unquote};
 
@@ -117,6 +119,99 @@ where
         key_parts_with(key, node_text)
     } else {
         Vec::new()
+    }
+}
+
+#[must_use]
+pub fn manifest_has_workspace(text: &str) -> bool {
+    let Some(tree) = parse_toml(text) else {
+        return false;
+    };
+
+    manifest_has_workspace_inner(Some(tree.root_node()), &text_fn(text))
+}
+
+fn manifest_has_workspace_inner<F>(root: Option<TsNode>, node_text: &F) -> bool
+where
+    F: Fn(TsNode) -> String,
+{
+    let Some(root) = root else { return false };
+
+    let mut cursor = root.walk();
+    root.children(&mut cursor).any(|top_level| {
+        table_key_parts_inner(top_level, node_text)
+            .first()
+            .is_some_and(|part| part == "workspace")
+    })
+}
+
+#[must_use]
+pub fn workspace_dependency_names_from_text(text: &str) -> Vec<String> {
+    let Some(tree) = parse_toml(text) else {
+        return Vec::new();
+    };
+
+    workspace_dependency_names_inner(Some(tree.root_node()), &text_fn(text))
+}
+
+fn workspace_dependency_names_inner<F>(root: Option<TsNode<'_>>, node_text: &F) -> Vec<String>
+where
+    F: Fn(TsNode) -> String,
+{
+    let Some(root) = root else { return Vec::new() };
+
+    let mut cursor = root.walk();
+    let mut names = HashSet::new();
+
+    for top_level in root.children(&mut cursor) {
+        let parts = table_key_parts_inner(top_level, node_text);
+        if parts.len() == 2 && parts[0] == "workspace" && parts[1] == "dependencies" {
+            let mut top_level_cursor = top_level.walk();
+            for child in top_level.children(&mut top_level_cursor) {
+                if child.kind() == "pair"
+                    && let Some(name) = workspace_dependency_name(child, node_text)
+                {
+                    names.insert(name);
+                }
+            }
+        } else if parts.len() == 3 && parts[0] == "workspace" && parts[1] == "dependencies" {
+            names.insert(parts[2].clone());
+        }
+    }
+
+    let mut names = names.into_iter().collect::<Vec<_>>();
+    names.sort();
+    names
+}
+
+fn workspace_dependency_name<F>(pair: TsNode, node_text: &F) -> Option<String>
+where
+    F: Fn(TsNode) -> String,
+{
+    if let Some(name) = dotted_dependency_name(pair, node_text) {
+        return Some(name);
+    }
+
+    let key = pair.named_child(0)?;
+    let parts = key_parts_with(key, node_text);
+    if parts.len() == 1 {
+        parts.into_iter().next()
+    } else {
+        None
+    }
+}
+
+fn parse_toml(text: &str) -> Option<async_language_server::tree_sitter::Tree> {
+    let mut parser = Parser::new();
+    parser.set_language(&TOML_LANGUAGE.into()).ok()?;
+    parser.parse(text, None)
+}
+
+fn text_fn(text: &str) -> impl Fn(TsNode<'_>) -> String + '_ {
+    move |node| {
+        node.utf8_text(text.as_bytes())
+            .expect("node text is valid utf-8")
+            .to_string()
     }
 }
 
@@ -471,17 +566,12 @@ impl CargoDependency<'_> {
 
 #[cfg(test)]
 mod tests {
-    use async_language_server::tree_sitter::{Node, Parser, Tree};
+    use async_language_server::tree_sitter::{Node, Tree};
 
     use super::*;
-    use crate::TOML_LANGUAGE;
 
     fn parse(text: &str) -> Tree {
-        let mut parser = Parser::new();
-        parser
-            .set_language(&TOML_LANGUAGE.into())
-            .expect("toml language is valid");
-        parser.parse(text, None).expect("toml parses")
+        parse_toml(text).expect("toml parses")
     }
 
     fn node_text(text: &str, node: Node<'_>) -> String {
@@ -492,6 +582,40 @@ mod tests {
 
     fn text_fn(text: &str) -> impl Fn(Node<'_>) -> String + '_ {
         move |node| node_text(text, node)
+    }
+
+    #[test]
+    fn finds_workspace_dependency_names() {
+        let text = r#"
+[workspace]
+
+[workspace.dependencies]
+serde = "1.0.0"
+tokio.version = "1.0.0"
+"quoted-name" = { version = "1.0.0" }
+
+[workspace.dependencies.anyhow]
+version = "1.0.0"
+"#;
+
+        let names = workspace_dependency_names_from_text(text);
+        assert_eq!(names, vec!["anyhow", "quoted-name", "serde", "tokio"]);
+    }
+
+    #[test]
+    fn detects_workspace_manifest() {
+        assert!(manifest_has_workspace(
+            r"
+[workspace]
+members = []
+"
+        ));
+        assert!(!manifest_has_workspace(
+            r#"
+[package]
+name = "member"
+"#
+        ));
     }
 
     #[test]

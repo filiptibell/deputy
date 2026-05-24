@@ -19,7 +19,7 @@ pub fn key_part_nodes(node: TsNode<'_>) -> Vec<TsNode<'_>> {
     } else if node.kind() == "dotted_key" {
         let mut cursor = node.walk();
         node.children(&mut cursor)
-            .filter(|child| matches!(child.kind(), "bare_key" | "quoted_key"))
+            .flat_map(key_part_nodes)
             .collect()
     } else {
         Vec::new()

@@ -11,7 +11,7 @@ use deputy_parser::cargo;
 use crate::shared::MarkdownBuilder;
 
 use super::Clients;
-use super::util::get_workspace_dependency_metadata;
+use super::util::{WorkspaceDependencyResolution, resolve_workspace_dependency};
 
 pub async fn get_cargo_hover(
     clients: &Clients,
@@ -22,7 +22,12 @@ pub async fn get_cargo_hover(
         return Ok(None);
     };
 
-    let workspace_meta = get_workspace_dependency_metadata(clients, doc, &dep).await;
+    let workspace_meta = match resolve_workspace_dependency(clients, doc, &dep).await {
+        WorkspaceDependencyResolution::Resolved(metadata) => Some(metadata),
+        WorkspaceDependencyResolution::NotWorkspace
+        | WorkspaceDependencyResolution::Missing { .. }
+        | WorkspaceDependencyResolution::Unavailable => None,
+    };
     let (mut dependency_name, mut dependency_version) = dep.text(doc);
     if let Some(workspace_meta) = workspace_meta.as_ref() {
         dependency_name.clone_from(&workspace_meta.name);

@@ -61,7 +61,7 @@ impl Server for DeputyLanguageServer {
                 ..Default::default()
             })),
             diagnostic_provider: Some(DiagnosticServerCapabilities::Options(DiagnosticOptions {
-                inter_file_dependencies: false,
+                inter_file_dependencies: true,
                 workspace_diagnostics: false,
                 ..Default::default()
             })),

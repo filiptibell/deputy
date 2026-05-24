@@ -18,8 +18,8 @@ use crate::shared::{CodeActionMetadata, ResolveContext, did_you_mean};
 
 use super::Clients;
 use super::util::{
-    get_features, get_local_metadata, get_workspace_dependency_metadata,
-    get_workspace_local_metadata,
+    WorkspaceDependencyResolution, get_features, get_local_metadata, get_workspace_local_metadata,
+    resolve_workspace_dependency,
 };
 
 pub async fn get_cargo_diagnostics(
@@ -30,7 +30,16 @@ pub async fn get_cargo_diagnostics(
     let Some(dep) = cargo::parse_dependency(doc, node) else {
         return Ok(Vec::new());
     };
-    let workspace_meta = get_workspace_dependency_metadata(clients, doc, &dep).await;
+    let workspace_meta = match resolve_workspace_dependency(clients, doc, &dep).await {
+        WorkspaceDependencyResolution::Resolved(metadata) => Some(metadata),
+        WorkspaceDependencyResolution::Missing { name } => {
+            return Ok(vec![get_cargo_diagnostics_missing_workspace_dependency(
+                &dep, &name,
+            )]);
+        }
+        WorkspaceDependencyResolution::NotWorkspace
+        | WorkspaceDependencyResolution::Unavailable => None,
+    };
 
     // For path dependencies, check version and features
     // against the local crate instead of the crates.io registry
@@ -110,6 +119,19 @@ pub async fn get_cargo_diagnostics(
         diagnostics.extend(get_cargo_diagnostics_features(doc, &dep, &known_features));
     }
     Ok(diagnostics)
+}
+
+fn get_cargo_diagnostics_missing_workspace_dependency(
+    dep: &CargoDependency<'_>,
+    name: &str,
+) -> Diagnostic {
+    Diagnostic {
+        source: Some(String::from("Cargo")),
+        range: ts_range_to_lsp_range(dep.name.range()),
+        message: format!("No workspace dependency exists with the name `{name}`"),
+        severity: Some(DiagnosticSeverity::ERROR),
+        ..Default::default()
+    }
 }
 
 fn get_cargo_diagnostics_local_version(
