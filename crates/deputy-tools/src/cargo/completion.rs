@@ -10,16 +10,17 @@ use async_language_server::{
 };
 use tracing::debug;
 
-use deputy_clients::Clients;
+use deputy_clients::{Clients, crates::models::WorkspaceDependencyMetadata};
 use deputy_parser::{cargo, utils::unquote};
 use deputy_versioning::Versioned;
 
 use crate::cargo::{
-    constants::CratesIoPackage,
-    util::{get_features, get_local_metadata},
+    constants::{CratesIoPackage, top_crates_io_packages_prefixed},
+    util::{
+        get_features, get_local_metadata, get_workspace_dependency_metadata,
+        get_workspace_local_metadata,
+    },
 };
-
-use super::constants::top_crates_io_packages_prefixed;
 
 const MAXIMUM_PACKAGES_SHOWN: usize = 64;
 const MINIMUM_PACKAGES_BEFORE_FETCH: usize = 16; // Less than 16 packages found statically = fetch dynamically
@@ -68,12 +69,27 @@ pub async fn get_cargo_completions(
         if ts_range_contains_lsp_position(feat_node.range(), pos) {
             debug!("Completing features: {dep:?}");
 
+            let workspace_meta = get_workspace_dependency_metadata(clients, doc, &dep).await;
             let known_features = if let Some(path) = dep.path_text(doc) {
                 get_local_metadata(clients, doc.url(), &path)
                     .await
                     .map(|m| m.features)
+            } else if let Some(workspace_meta) = workspace_meta
+                .as_ref()
+                .filter(|metadata| metadata.is_path())
+            {
+                get_workspace_local_metadata(clients, workspace_meta)
+                    .await
+                    .map(|m| m.features)
+            } else if workspace_meta
+                .as_ref()
+                .is_some_and(WorkspaceDependencyMetadata::is_git)
+            {
+                None
             } else if let Some(version) = &version {
                 get_features(clients, &name, version).await
+            } else if let Some(workspace_meta) = workspace_meta.as_ref() {
+                get_features(clients, &workspace_meta.name, &workspace_meta.req).await
             } else {
                 None
             };

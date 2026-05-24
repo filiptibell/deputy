@@ -1,6 +1,7 @@
-use async_language_server::lsp_types::Url;
+use async_language_server::{lsp_types::Url, server::Document};
 
-use deputy_clients::crates::models::LocalMetadata;
+use deputy_clients::crates::models::{LocalMetadata, WorkspaceDependencyMetadata};
+use deputy_parser::cargo::CargoDependency;
 use deputy_versioning::{VersionReq, Versioned};
 
 use super::Clients;
@@ -53,4 +54,31 @@ pub async fn get_local_metadata(
     };
 
     clients.crates.get_local_metadata(manifest_dir).await
+}
+
+pub async fn get_workspace_dependency_metadata(
+    clients: &Clients,
+    doc: &Document,
+    dep: &CargoDependency<'_>,
+) -> Option<WorkspaceDependencyMetadata> {
+    if !dep.is_workspace() {
+        return None;
+    }
+
+    let manifest_path = doc.url().to_file_path().ok()?;
+    let (name, _) = dep.text(doc);
+    clients
+        .crates
+        .get_workspace_package_metadata(&manifest_path)
+        .await?
+        .dependency(&name)
+        .cloned()
+}
+
+pub async fn get_workspace_local_metadata(
+    clients: &Clients,
+    metadata: &WorkspaceDependencyMetadata,
+) -> Option<LocalMetadata> {
+    let path = metadata.path.as_deref()?;
+    clients.crates.get_local_metadata(path).await
 }

@@ -7,7 +7,7 @@ use async_language_server::{
 };
 use tracing::debug;
 
-use deputy_clients::crates::models::{IndexMetadata, LocalMetadata};
+use deputy_clients::crates::models::{IndexMetadata, LocalMetadata, WorkspaceDependencyMetadata};
 use deputy_parser::{
     cargo::{self, CargoDependency},
     utils::unquote,
@@ -17,7 +17,10 @@ use deputy_versioning::{VersionReq, VersionReqExt, Versioned};
 use crate::shared::{CodeActionMetadata, ResolveContext, did_you_mean};
 
 use super::Clients;
-use super::util::{get_features, get_local_metadata};
+use super::util::{
+    get_features, get_local_metadata, get_workspace_dependency_metadata,
+    get_workspace_local_metadata,
+};
 
 pub async fn get_cargo_diagnostics(
     clients: &Clients,
@@ -27,6 +30,7 @@ pub async fn get_cargo_diagnostics(
     let Some(dep) = cargo::parse_dependency(doc, node) else {
         return Ok(Vec::new());
     };
+    let workspace_meta = get_workspace_dependency_metadata(clients, doc, &dep).await;
 
     // For path dependencies, check version and features
     // against the local crate instead of the crates.io registry
@@ -44,13 +48,39 @@ pub async fn get_cargo_diagnostics(
         return Ok(diagnostics);
     }
 
-    // Git dependencies are not checked against crates.io
-    // FUTURE: Implement proper resolution for git dependencies?
-    if dep.git_text(doc).is_some() {
+    if let Some(workspace_meta) = workspace_meta.as_ref() {
+        if workspace_meta.is_path() {
+            let Some(local_meta) = get_workspace_local_metadata(clients, workspace_meta).await
+            else {
+                return Ok(Vec::new());
+            };
+            let mut diagnostics = Vec::new();
+            diagnostics.extend(get_cargo_diagnostics_local_version(doc, &dep, &local_meta));
+            diagnostics.extend(get_cargo_diagnostics_features(
+                doc,
+                &dep,
+                &local_meta.features,
+            ));
+            return Ok(diagnostics);
+        }
+    } else if dep.is_workspace() {
         return Ok(Vec::new());
     }
 
-    let (name, _) = dep.text(doc);
+    // Git dependencies are not checked against crates.io
+    // FUTURE: Implement proper resolution for git dependencies?
+    if dep.git_text(doc).is_some()
+        || workspace_meta
+            .as_ref()
+            .is_some_and(WorkspaceDependencyMetadata::is_git)
+    {
+        return Ok(Vec::new());
+    }
+
+    let (name, version) = dep.text(doc);
+    let name = workspace_meta
+        .as_ref()
+        .map_or(name, |metadata| metadata.name.clone());
     let metas = match clients.crates.get_sparse_index_crate_metadatas(&name).await {
         Ok(v) => v,
         Err(e) => {
@@ -67,13 +97,15 @@ pub async fn get_cargo_diagnostics(
         }
     };
 
-    let (name, version) = dep.text(doc);
+    let version = version.or_else(|| workspace_meta.map(|metadata| metadata.req));
     let Some(version) = version else {
         return Ok(Vec::new());
     };
 
     let mut diagnostics = Vec::new();
-    diagnostics.extend(get_cargo_diagnostics_version(doc, &dep, &version, &metas));
+    if dep.version.is_some() {
+        diagnostics.extend(get_cargo_diagnostics_version(doc, &dep, &version, &metas));
+    }
     if let Some(known_features) = get_features(clients, &name, &version).await {
         diagnostics.extend(get_cargo_diagnostics_features(doc, &dep, &known_features));
     }

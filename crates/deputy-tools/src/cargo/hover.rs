@@ -11,6 +11,7 @@ use deputy_parser::cargo;
 use crate::shared::MarkdownBuilder;
 
 use super::Clients;
+use super::util::get_workspace_dependency_metadata;
 
 pub async fn get_cargo_hover(
     clients: &Clients,
@@ -21,7 +22,12 @@ pub async fn get_cargo_hover(
         return Ok(None);
     };
 
-    let (dependency_name, dependency_version) = dep.text(doc);
+    let workspace_meta = get_workspace_dependency_metadata(clients, doc, &dep).await;
+    let (mut dependency_name, mut dependency_version) = dep.text(doc);
+    if let Some(workspace_meta) = workspace_meta.as_ref() {
+        dependency_name.clone_from(&workspace_meta.name);
+        dependency_version = Some(workspace_meta.req.clone());
+    }
 
     // Add basic hover information with version and name
     trace!("Hovering: {dependency_name} version {dependency_version:?}");
@@ -33,7 +39,13 @@ pub async fn get_cargo_hover(
 
     // Skip crates.io lookup for git and path dependencies
     // FUTURE: Implement resolution for git and path dependencies?
-    if dep.git_text(doc).is_some() || dep.path_text(doc).is_some() {
+    if dep.git_text(doc).is_some()
+        || dep.path_text(doc).is_some()
+        || workspace_meta
+            .as_ref()
+            .is_some_and(|metadata| metadata.is_git() || metadata.is_path())
+        || dep.is_workspace() && workspace_meta.is_none()
+    {
         return Ok(Some(Hover {
             range: Some(ts_range_to_lsp_range(node.range())),
             contents: HoverContents::Markup(MarkupContent {

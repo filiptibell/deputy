@@ -211,6 +211,7 @@ where
         let mut package = None;
         let mut path = None;
         let mut git = None;
+        let mut workspace = None;
         if value.kind() == "string" {
             version = Some(value);
         } else if value.kind() == "inline_table" {
@@ -231,6 +232,9 @@ where
             package = pairs.remove("package");
             path = pairs.remove("path");
             git = pairs.remove("git");
+            workspace = pairs
+                .remove("workspace")
+                .filter(|v| is_true(&node_text(*v)));
         }
 
         // aliased_serde = { package = "serde" }
@@ -238,7 +242,7 @@ where
             name = package;
         }
 
-        if version.is_none() && path.is_none() && git.is_none() {
+        if version.is_none() && path.is_none() && git.is_none() && workspace.is_none() {
             return None; // Not a valid package
         }
 
@@ -248,6 +252,7 @@ where
             features,
             path,
             git,
+            workspace,
         })
     } else if pair_or_table.kind() == "table" {
         // alias is last part in [dependencies."abcdef"."ghijkl".name]
@@ -272,6 +277,9 @@ where
         let package = pairs.remove("package");
         let path = pairs.remove("path");
         let git = pairs.remove("git");
+        let workspace = pairs
+            .remove("workspace")
+            .filter(|v| is_true(&node_text(*v)));
 
         // [dependencies.aliased_serde]
         // package = "serde"
@@ -279,7 +287,7 @@ where
             name = package;
         }
 
-        if version.is_none() && path.is_none() && git.is_none() {
+        if version.is_none() && path.is_none() && git.is_none() && workspace.is_none() {
             return None; // Not a valid package
         }
 
@@ -289,6 +297,7 @@ where
             features,
             path,
             git,
+            workspace,
         })
     } else {
         None
@@ -311,6 +320,7 @@ where
     let mut package = None;
     let mut path = None;
     let mut git = None;
+    let mut workspace = None;
 
     if let Some(table) = pair.parent().filter(|p| p.kind() == "table") {
         let mut cursor = table.walk();
@@ -330,6 +340,7 @@ where
                 "package" => package = Some(field.value),
                 "path" => path = Some(field.value),
                 "git" => git = Some(field.value),
+                "workspace" if is_true(&node_text(field.value)) => workspace = Some(field.value),
                 _ => {}
             }
         }
@@ -340,6 +351,7 @@ where
             "package" => package = Some(current.value),
             "path" => path = Some(current.value),
             "git" => git = Some(current.value),
+            "workspace" if is_true(&node_text(current.value)) => workspace = Some(current.value),
             _ => {}
         }
     }
@@ -349,7 +361,7 @@ where
         name = package;
     }
 
-    if version.is_none() && path.is_none() && git.is_none() {
+    if version.is_none() && path.is_none() && git.is_none() && workspace.is_none() {
         return None; // Not a valid package
     }
 
@@ -359,6 +371,7 @@ where
         features,
         path,
         git,
+        workspace,
     })
 }
 
@@ -390,7 +403,14 @@ where
 }
 
 fn is_dependency_field(field: &str) -> bool {
-    matches!(field, "version" | "features" | "package" | "path" | "git")
+    matches!(
+        field,
+        "version" | "features" | "package" | "path" | "git" | "workspace"
+    )
+}
+
+fn is_true(value: &str) -> bool {
+    value == "true"
 }
 
 #[derive(Debug, Clone)]
@@ -408,6 +428,7 @@ pub struct CargoDependency<'tree> {
     pub features: Option<TsNode<'tree>>,
     pub path: Option<TsNode<'tree>>,
     pub git: Option<TsNode<'tree>>,
+    pub workspace: Option<TsNode<'tree>>,
 }
 
 impl CargoDependency<'_> {
@@ -426,6 +447,11 @@ impl CargoDependency<'_> {
     #[must_use]
     pub fn git_text(&self, doc: &Document) -> Option<String> {
         self.git.map(|g| unquote(doc.node_text(g)))
+    }
+
+    #[must_use]
+    pub fn is_workspace(&self) -> bool {
+        self.workspace.is_some()
     }
 
     #[must_use]
@@ -489,6 +515,76 @@ your-other-package.path = "path/to/package-root"
                 .as_deref(),
             Some("path/to/package-root")
         );
+    }
+
+    #[test]
+    fn parses_workspace_dependency_from_inline_table() {
+        let text = r#"
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
+"#;
+
+        let tree = parse(text);
+        let nodes = find_all_dependencies_inner(Some(tree.root_node()), &text_fn(text));
+
+        assert_eq!(nodes.len(), 1);
+
+        let dep = parse_dependency_inner(nodes[0], &text_fn(text)).unwrap();
+        assert_eq!(unquote(node_text(text, dep.name)), "serde");
+        assert!(dep.version.is_none());
+        assert!(dep.is_workspace());
+
+        let features = dep
+            .feature_nodes()
+            .into_iter()
+            .map(|node| unquote(node_text(text, node)))
+            .collect::<Vec<_>>();
+        assert_eq!(features, vec!["derive"]);
+    }
+
+    #[test]
+    fn parses_workspace_dependency_from_table() {
+        let text = r#"
+[dependencies.serde]
+workspace = true
+features = ["derive"]
+"#;
+
+        let tree = parse(text);
+        let nodes = find_all_dependencies_inner(Some(tree.root_node()), &text_fn(text));
+
+        assert_eq!(nodes.len(), 1);
+
+        let dep = parse_dependency_inner(nodes[0], &text_fn(text)).unwrap();
+        assert_eq!(unquote(node_text(text, dep.name)), "serde");
+        assert!(dep.version.is_none());
+        assert!(dep.is_workspace());
+    }
+
+    #[test]
+    fn parses_workspace_dependency_from_dotted_key() {
+        let text = r#"
+[dependencies]
+serde.workspace = true
+serde.features = ["derive"]
+"#;
+
+        let tree = parse(text);
+        let nodes = find_all_dependencies_inner(Some(tree.root_node()), &text_fn(text));
+
+        assert_eq!(nodes.len(), 1);
+
+        let dep = parse_dependency_inner(nodes[0], &text_fn(text)).unwrap();
+        assert_eq!(unquote(node_text(text, dep.name)), "serde");
+        assert!(dep.version.is_none());
+        assert!(dep.is_workspace());
+
+        let features = dep
+            .feature_nodes()
+            .into_iter()
+            .map(|node| unquote(node_text(text, node)))
+            .collect::<Vec<_>>();
+        assert_eq!(features, vec!["derive"]);
     }
 
     #[test]

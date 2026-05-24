@@ -1,6 +1,8 @@
 use crate::shared::{RequestCacheMap, RequestResult};
 
-use super::models::{CrateDataMulti, CrateDataSingle, IndexMetadata, LocalMetadata};
+use super::models::{
+    CrateDataMulti, CrateDataSingle, IndexMetadata, LocalMetadata, WorkspacePackageMetadata,
+};
 
 #[derive(Debug, Clone)]
 pub(super) struct CratesCache {
@@ -8,6 +10,7 @@ pub(super) struct CratesCache {
     pub crate_datas: RequestCacheMap<RequestResult<CrateDataSingle>>,
     pub crate_search: RequestCacheMap<RequestResult<CrateDataMulti>>,
     pub local_metadatas: RequestCacheMap<Option<LocalMetadata>>,
+    pub workspace_package_metadatas: RequestCacheMap<Option<WorkspacePackageMetadata>>,
 }
 
 impl CratesCache {
@@ -17,6 +20,7 @@ impl CratesCache {
             crate_datas: RequestCacheMap::new_mins(240, 120),
             crate_search: RequestCacheMap::new_mins(480, 240),
             local_metadatas: RequestCacheMap::new_secs(5, 5),
+            workspace_package_metadatas: RequestCacheMap::new_secs(5, 5),
         }
     }
 }
