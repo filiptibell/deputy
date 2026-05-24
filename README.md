@@ -75,6 +75,17 @@ Extensions can also be built and installed from source:
   - The specified tool / package / version does not exist
 - Quick actions on diagnostics - update to newest version
 
+## Command Line
+
+Deputy can also run diagnostics over a workspace without starting an editor:
+
+```bash
+deputy analyze
+```
+
+By default, this checks the current directory for supported manifests and prints diagnostics with source snippets.
+Error diagnostics will cause the command to exit with a non-zero status code, making it suitable for CI.
+
 ## Screenshots
 
 ### Hovers

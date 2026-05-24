@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+Deputy can now run diagnostics over a workspace from the command line using `deputy analyze`!
+This makes it possible to check supported manifests without opening an editor, with source snippets and CI-friendly exit codes for error diagnostics.
+
 ### Added
 
 - Added `deputy analyze` for running workspace diagnostics from the command line
