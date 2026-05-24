@@ -249,6 +249,42 @@ serde = "1.0"
     }
 
     #[test]
+    fn checks_dotted_workspace_dependency_existence_from_disk() {
+        let millis = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system clock is after unix epoch")
+            .as_millis();
+        let root = std::env::temp_dir().join(format!("deputy-dotted-workspace-deps-{millis}"));
+        let member = root.join("member");
+
+        fs::create_dir_all(&member).expect("temp workspace can be created");
+        fs::write(
+            root.join("Cargo.toml"),
+            r#"
+[workspace]
+members = ["member"]
+
+dependencies.foo.version = "*"
+dependencies.foo.package = "rand"
+"#,
+        )
+        .expect("workspace manifest can be written");
+        let manifest_path = member.join("Cargo.toml");
+        fs::write(&manifest_path, "").expect("member manifest can be written");
+
+        assert_eq!(
+            workspace_dependency_exists(&manifest_path, "foo"),
+            Some(true)
+        );
+        assert_eq!(
+            workspace_dependency_exists(&manifest_path, "rand"),
+            Some(false)
+        );
+
+        fs::remove_dir_all(root).expect("temp workspace can be removed");
+    }
+
+    #[test]
     fn resolves_local_dependency_paths_from_disk() {
         let millis = SystemTime::now()
             .duration_since(UNIX_EPOCH)

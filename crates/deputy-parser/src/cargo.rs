@@ -122,6 +122,14 @@ where
     }
 }
 
+fn check_workspace_table_inner<F>(node: TsNode, node_text: &F) -> bool
+where
+    F: Fn(TsNode) -> String,
+{
+    let parts = table_key_parts_inner(node, node_text);
+    parts.len() == 1 && parts[0] == "workspace"
+}
+
 #[must_use]
 pub fn manifest_has_workspace(text: &str) -> bool {
     let Some(tree) = parse_toml(text) else {
@@ -174,6 +182,16 @@ where
                     names.insert(name);
                 }
             }
+        } else if check_workspace_table_inner(top_level, node_text) {
+            let mut top_level_cursor = top_level.walk();
+            for child in top_level.children(&mut top_level_cursor) {
+                if child.kind() == "pair"
+                    && let Some(name) =
+                        workspace_dependency_name_from_workspace_table(child, node_text)
+                {
+                    names.insert(name);
+                }
+            }
         } else if parts.len() == 3 && parts[0] == "workspace" && parts[1] == "dependencies" {
             names.insert(parts[2].clone());
         }
@@ -196,6 +214,19 @@ where
     let parts = key_parts_with(key, node_text);
     if parts.len() == 1 {
         parts.into_iter().next()
+    } else {
+        None
+    }
+}
+
+fn workspace_dependency_name_from_workspace_table<F>(pair: TsNode, node_text: &F) -> Option<String>
+where
+    F: Fn(TsNode) -> String,
+{
+    let key = pair.named_child(0)?;
+    let parts = key_parts_with(key, node_text);
+    if parts.len() == 3 && parts[0] == "dependencies" && is_dependency_field(&parts[2]) {
+        Some(parts[1].clone())
     } else {
         None
     }
@@ -248,6 +279,19 @@ where
                     }
                 }
             }
+        } else if check_workspace_table_inner(top_level, node_text) {
+            // dependencies.name.version = "x.y.z" in [workspace]
+            let mut top_level_cursor = top_level.walk();
+            let mut dotted_deps = HashSet::new();
+            for child in top_level.children(&mut top_level_cursor) {
+                if child.kind() == "pair"
+                    && let Some(dep_name) =
+                        workspace_dependency_name_from_workspace_table(child, node_text)
+                    && dotted_deps.insert(dep_name)
+                {
+                    deps.push(child);
+                }
+            }
         } else if check_dependencies_table_single_inner(top_level, node_text).is_some() {
             // [dependencies.name] or [workspace.dependencies.name] etc
             deps.push(top_level);
@@ -265,6 +309,16 @@ pub fn find_dependency_at(doc: &Document, pos: Position) -> Option<TsNode<'_>> {
     {
         // [dependencies.name] or [workspace.dependencies.name] etc
         Some(table)
+    } else if let Some(table) = find_ancestor(node, |a| {
+        check_workspace_table_inner(a, &|node| doc.node_text(node))
+    }) {
+        // dependencies.name.version = "x.y.z" in [workspace]
+        find_child(table, |c| {
+            c.kind() == "pair"
+                && workspace_dependency_name_from_workspace_table(c, &|node| doc.node_text(node))
+                    .is_some()
+                && ts_range_contains_lsp_position(c.range(), pos)
+        })
     } else if let Some(table) =
         find_ancestor(node, |a| check_dependencies_table_multi(doc, a).is_some())
     {
@@ -487,11 +541,21 @@ where
     let key = pair.named_child(0)?;
     let value = pair.named_child(1)?;
     let parts = key_parts_with(key, node_text);
+    let key_nodes = key_part_nodes(key);
+
+    if parts.len() == 3 && parts[0] == "dependencies" && is_dependency_field(&parts[2]) {
+        return Some(DottedDependencyField {
+            name: key_nodes.get(1).copied()?,
+            key: parts[2].clone(),
+            value,
+        });
+    }
+
     if parts.len() != 2 || !is_dependency_field(&parts[1]) {
         return None;
     }
     Some(DottedDependencyField {
-        name: key_part_nodes(key).first().copied()?,
+        name: key_nodes.first().copied()?,
         key: parts[1].clone(),
         value,
     })
@@ -603,6 +667,58 @@ version = "1.0.0"
     }
 
     #[test]
+    fn finds_named_workspace_dependency_from_dotted_keys() {
+        let text = r#"
+[workspace.dependencies]
+foo.version = "*"
+foo.package = "rand"
+
+[dependencies]
+foo.workspace = true
+"#;
+
+        let names = workspace_dependency_names_from_text(text);
+        assert_eq!(names, vec!["foo"]);
+    }
+
+    #[test]
+    fn finds_workspace_dependency_from_workspace_table_dotted_keys() {
+        let text = r#"
+[workspace]
+members = ["."]
+
+dependencies.foo.version = "*"
+dependencies.foo.package = "rand"
+"#;
+
+        let names = workspace_dependency_names_from_text(text);
+        assert_eq!(names, vec!["foo"]);
+    }
+
+    #[test]
+    fn finds_named_workspace_dependency_from_table() {
+        let text = r#"
+[workspace.dependencies.foo]
+version = "*"
+package = "rand"
+"#;
+
+        let names = workspace_dependency_names_from_text(text);
+        assert_eq!(names, vec!["foo"]);
+    }
+
+    #[test]
+    fn finds_workspace_dependency_from_table() {
+        let text = r#"
+[workspace.dependencies.rand]
+version = "*"
+"#;
+
+        let names = workspace_dependency_names_from_text(text);
+        assert_eq!(names, vec!["rand"]);
+    }
+
+    #[test]
     fn detects_workspace_manifest() {
         assert!(manifest_has_workspace(
             r"
@@ -638,6 +754,54 @@ your-other-package.path = "path/to/package-root"
                 .map(|node| unquote(node_text(text, node)))
                 .as_deref(),
             Some("path/to/package-root")
+        );
+    }
+
+    #[test]
+    fn parses_named_workspace_dependency_from_dotted_keys() {
+        let text = r#"
+[workspace.dependencies]
+foo.version = "*"
+foo.package = "rand"
+"#;
+
+        let tree = parse(text);
+        let nodes = find_all_dependencies_inner(Some(tree.root_node()), &text_fn(text));
+
+        assert_eq!(nodes.len(), 1);
+
+        let dep = parse_dependency_inner(nodes[0], &text_fn(text)).unwrap();
+        assert_eq!(unquote(node_text(text, dep.name)), "rand");
+        assert_eq!(
+            dep.version
+                .map(|node| unquote(node_text(text, node)))
+                .as_deref(),
+            Some("*")
+        );
+    }
+
+    #[test]
+    fn parses_workspace_dependency_from_workspace_table_dotted_keys() {
+        let text = r#"
+[workspace]
+members = ["."]
+
+dependencies.foo.version = "*"
+dependencies.foo.package = "rand"
+"#;
+
+        let tree = parse(text);
+        let nodes = find_all_dependencies_inner(Some(tree.root_node()), &text_fn(text));
+
+        assert_eq!(nodes.len(), 1);
+
+        let dep = parse_dependency_inner(nodes[0], &text_fn(text)).unwrap();
+        assert_eq!(unquote(node_text(text, dep.name)), "rand");
+        assert_eq!(
+            dep.version
+                .map(|node| unquote(node_text(text, node)))
+                .as_deref(),
+            Some("*")
         );
     }
 
