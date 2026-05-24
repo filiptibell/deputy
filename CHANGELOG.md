@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Improved Go module autocomplete, hovers, and version diagnostics using the new official [pkg.go.dev API](https://pkg.go.dev/api)
 
+### Fixed
+
+- Fixed valid dotted keys in Cargo dependency tables being interpreted as package names
+
 ## `0.7.0` - February 10th, 2026
 
 ### Added

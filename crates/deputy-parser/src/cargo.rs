@@ -1,4 +1,7 @@
-use std::{collections::HashMap, str::FromStr};
+use std::{
+    collections::{HashMap, HashSet},
+    str::FromStr,
+};
 
 use async_language_server::{
     lsp_types::Position,
@@ -7,7 +10,7 @@ use async_language_server::{
     tree_sitter_utils::{find_ancestor, find_child, ts_range_contains_lsp_position},
 };
 
-use super::utils::{table_key_parts, unquote};
+use super::utils::{key_part_nodes, key_parts_with, unquote};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DependencyKind {
@@ -29,7 +32,14 @@ impl FromStr for DependencyKind {
 }
 
 fn check_dependencies_table_multi(doc: &Document, node: TsNode) -> Option<DependencyKind> {
-    let parts = table_key_parts(doc, node);
+    check_dependencies_table_multi_inner(node, &|node| doc.node_text(node))
+}
+
+fn check_dependencies_table_multi_inner<F>(node: TsNode, node_text: &F) -> Option<DependencyKind>
+where
+    F: Fn(TsNode) -> String,
+{
+    let parts = table_key_parts_inner(node, node_text);
 
     let part = if parts.first().is_some_and(|p| p == "workspace") {
         if parts.len() != 2 {
@@ -58,7 +68,17 @@ fn check_dependencies_table_single(
     doc: &Document,
     node: TsNode,
 ) -> Option<(DependencyKind, String)> {
-    let parts = table_key_parts(doc, node);
+    check_dependencies_table_single_inner(node, &|node| doc.node_text(node))
+}
+
+fn check_dependencies_table_single_inner<F>(
+    node: TsNode,
+    node_text: &F,
+) -> Option<(DependencyKind, String)>
+where
+    F: Fn(TsNode) -> String,
+{
+    let parts = table_key_parts_inner(node, node_text);
 
     let (part0, part1) = if parts.first().is_some_and(|p| p == "workspace") {
         if parts.len() != 3 {
@@ -87,25 +107,53 @@ fn check_dependencies_table_single(
     }
 }
 
+fn table_key_parts_inner<F>(node: TsNode, node_text: &F) -> Vec<String>
+where
+    F: Fn(TsNode) -> String,
+{
+    if node.kind() == "table"
+        && let Some(key) = node.named_child(0)
+    {
+        key_parts_with(key, node_text)
+    } else {
+        Vec::new()
+    }
+}
+
 #[must_use]
 pub fn find_all_dependencies(doc: &Document) -> Vec<TsNode<'_>> {
-    let Some(root) = doc.node_at_root() else {
-        return Vec::new();
-    };
+    find_all_dependencies_inner(doc.node_at_root(), &|node| doc.node_text(node))
+}
+
+fn find_all_dependencies_inner<'tree, F>(
+    root: Option<TsNode<'tree>>,
+    node_text: &F,
+) -> Vec<TsNode<'tree>>
+where
+    F: Fn(TsNode) -> String,
+{
+    let Some(root) = root else { return Vec::new() };
 
     let mut cursor = root.walk();
     let mut deps = Vec::new();
 
     for top_level in root.children(&mut cursor) {
-        if check_dependencies_table_multi(doc, top_level).is_some() {
+        if check_dependencies_table_multi_inner(top_level, node_text).is_some() {
             // [dependencies] or [workspace.dependencies] etc
             let mut top_level_cursor = top_level.walk();
+            let mut dotted_deps = HashSet::new();
             for child in top_level.children(&mut top_level_cursor) {
                 if child.kind() == "pair" {
-                    deps.push(child);
+                    if let Some(dep_name) = dotted_dependency_name(child, node_text) {
+                        if dotted_deps.insert(dep_name) {
+                            deps.push(child);
+                        }
+                    } else {
+                        deps.push(child);
+                    }
                 }
             }
-        } else if check_dependencies_table_single(doc, top_level).is_some() {
+        } else if check_dependencies_table_single_inner(top_level, node_text).is_some() {
             // [dependencies.name] or [workspace.dependencies.name] etc
             deps.push(top_level);
         }
@@ -139,7 +187,21 @@ pub fn parse_dependency<'tree>(
     doc: &Document,
     pair_or_table: TsNode<'tree>,
 ) -> Option<CargoDependency<'tree>> {
+    parse_dependency_inner(pair_or_table, &|node| doc.node_text(node))
+}
+
+fn parse_dependency_inner<'tree, F>(
+    pair_or_table: TsNode<'tree>,
+    node_text: &F,
+) -> Option<CargoDependency<'tree>>
+where
+    F: Fn(TsNode) -> String,
+{
     if pair_or_table.kind() == "pair" {
+        if let Some(dep) = parse_dotted_dependency(pair_or_table, node_text) {
+            return Some(dep);
+        }
+
         let mut name = pair_or_table.named_child(0)?;
         let value = pair_or_table.named_child(1)?;
 
@@ -158,7 +220,10 @@ pub fn parse_dependency<'tree>(
                 if child.kind() == "pair" {
                     let key = child.named_child(0)?;
                     let value = child.named_child(1)?;
-                    pairs.insert(doc.node_text(key), value);
+                    let parts = key_parts_with(key, node_text);
+                    if parts.len() == 1 {
+                        pairs.insert(parts[0].clone(), value);
+                    }
                 }
             }
             version = pairs.remove("version");
@@ -195,7 +260,10 @@ pub fn parse_dependency<'tree>(
             if child.kind() == "pair" {
                 let key = child.named_child(0)?;
                 let value = child.named_child(1)?;
-                pairs.insert(doc.node_text(key), value);
+                let parts = key_parts_with(key, node_text);
+                if parts.len() == 1 {
+                    pairs.insert(parts[0].clone(), value);
+                }
             }
         }
 
@@ -225,6 +293,111 @@ pub fn parse_dependency<'tree>(
     } else {
         None
     }
+}
+
+fn parse_dotted_dependency<'tree, F>(
+    pair: TsNode<'tree>,
+    node_text: &F,
+) -> Option<CargoDependency<'tree>>
+where
+    F: Fn(TsNode) -> String,
+{
+    let current = dotted_dependency_field(pair, node_text)?;
+    let dep_name = unquote(node_text(current.name));
+
+    let mut name = current.name;
+    let mut version = None;
+    let mut features = None;
+    let mut package = None;
+    let mut path = None;
+    let mut git = None;
+
+    if let Some(table) = pair.parent().filter(|p| p.kind() == "table") {
+        let mut cursor = table.walk();
+        for child in table.children(&mut cursor) {
+            if child.kind() != "pair" {
+                continue;
+            }
+            let Some(field) = dotted_dependency_field(child, node_text) else {
+                continue;
+            };
+            if unquote(node_text(field.name)) != dep_name {
+                continue;
+            }
+            match field.key.as_str() {
+                "version" => version = Some(field.value),
+                "features" => features = Some(field.value),
+                "package" => package = Some(field.value),
+                "path" => path = Some(field.value),
+                "git" => git = Some(field.value),
+                _ => {}
+            }
+        }
+    } else {
+        match current.key.as_str() {
+            "version" => version = Some(current.value),
+            "features" => features = Some(current.value),
+            "package" => package = Some(current.value),
+            "path" => path = Some(current.value),
+            "git" => git = Some(current.value),
+            _ => {}
+        }
+    }
+
+    // aliased_serde.package = "serde"
+    if let Some(package) = package {
+        name = package;
+    }
+
+    if version.is_none() && path.is_none() && git.is_none() {
+        return None; // Not a valid package
+    }
+
+    Some(CargoDependency {
+        name,
+        version,
+        features,
+        path,
+        git,
+    })
+}
+
+fn dotted_dependency_name<F>(pair: TsNode, node_text: &F) -> Option<String>
+where
+    F: Fn(TsNode) -> String,
+{
+    dotted_dependency_field(pair, node_text).map(|field| unquote(node_text(field.name)))
+}
+
+fn dotted_dependency_field<'tree, F>(
+    pair: TsNode<'tree>,
+    node_text: &F,
+) -> Option<DottedDependencyField<'tree>>
+where
+    F: Fn(TsNode) -> String,
+{
+    let key = pair.named_child(0)?;
+    let value = pair.named_child(1)?;
+    let parts = key_parts_with(key, node_text);
+    if parts.len() != 2 || !is_dependency_field(&parts[1]) {
+        return None;
+    }
+    Some(DottedDependencyField {
+        name: key_part_nodes(key).first().copied()?,
+        key: parts[1].clone(),
+        value,
+    })
+}
+
+fn is_dependency_field(field: &str) -> bool {
+    matches!(field, "version" | "features" | "package" | "path" | "git")
+}
+
+#[derive(Debug, Clone)]
+struct DottedDependencyField<'tree> {
+    name: TsNode<'tree>,
+    value: TsNode<'tree>,
+    key: String,
 }
 
 #[allow(dead_code)]
@@ -267,5 +440,107 @@ impl CargoDependency<'_> {
             }
         }
         nodes
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use async_language_server::tree_sitter::{Node, Parser, Tree};
+
+    use super::*;
+    use crate::TOML_LANGUAGE;
+
+    fn parse(text: &str) -> Tree {
+        let mut parser = Parser::new();
+        parser
+            .set_language(&TOML_LANGUAGE.into())
+            .expect("toml language is valid");
+        parser.parse(text, None).expect("toml parses")
+    }
+
+    fn node_text(text: &str, node: Node<'_>) -> String {
+        node.utf8_text(text.as_bytes())
+            .expect("node text is valid utf-8")
+            .to_string()
+    }
+
+    fn text_fn(text: &str) -> impl Fn(Node<'_>) -> String + '_ {
+        move |node| node_text(text, node)
+    }
+
+    #[test]
+    fn parses_path_dependency_from_dotted_key() {
+        let text = r#"
+[dependencies]
+your-other-package.path = "path/to/package-root"
+"#;
+
+        let tree = parse(text);
+        let nodes = find_all_dependencies_inner(Some(tree.root_node()), &text_fn(text));
+
+        assert_eq!(nodes.len(), 1);
+
+        let dep = parse_dependency_inner(nodes[0], &text_fn(text)).unwrap();
+        assert_eq!(unquote(node_text(text, dep.name)), "your-other-package");
+        assert!(dep.version.is_none());
+        assert_eq!(
+            dep.path
+                .map(|node| unquote(node_text(text, node)))
+                .as_deref(),
+            Some("path/to/package-root")
+        );
+    }
+
+    #[test]
+    fn groups_dotted_dependency_fields() {
+        let text = r#"
+[dependencies]
+serde.version = "1.0.0"
+serde.features = ["derive"]
+"#;
+
+        let tree = parse(text);
+        let nodes = find_all_dependencies_inner(Some(tree.root_node()), &text_fn(text));
+
+        assert_eq!(nodes.len(), 1);
+
+        let dep = parse_dependency_inner(nodes[0], &text_fn(text)).unwrap();
+        assert_eq!(unquote(node_text(text, dep.name)), "serde");
+        assert_eq!(
+            dep.version
+                .map(|node| unquote(node_text(text, node)))
+                .as_deref(),
+            Some("1.0.0")
+        );
+
+        let features = dep
+            .feature_nodes()
+            .into_iter()
+            .map(|node| unquote(node_text(text, node)))
+            .collect::<Vec<_>>();
+        assert_eq!(features, vec!["derive"]);
+    }
+
+    #[test]
+    fn parses_renamed_dependency_from_dotted_key() {
+        let text = r#"
+[dependencies]
+aliased_serde.package = "serde"
+aliased_serde.version = "1.0.0"
+"#;
+
+        let tree = parse(text);
+        let nodes = find_all_dependencies_inner(Some(tree.root_node()), &text_fn(text));
+
+        assert_eq!(nodes.len(), 1);
+
+        let dep = parse_dependency_inner(nodes[0], &text_fn(text)).unwrap();
+        assert_eq!(unquote(node_text(text, dep.name)), "serde");
+        assert_eq!(
+            dep.version
+                .map(|node| unquote(node_text(text, node)))
+                .as_deref(),
+            Some("1.0.0")
+        );
     }
 }
