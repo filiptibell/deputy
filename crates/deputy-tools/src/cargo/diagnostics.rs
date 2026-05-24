@@ -18,8 +18,8 @@ use crate::shared::{CodeActionMetadata, ResolveContext, did_you_mean};
 
 use super::Clients;
 use super::util::{
-    WorkspaceDependencyResolution, get_features, get_local_metadata, get_workspace_local_metadata,
-    resolve_workspace_dependency,
+    LocalDependencyResolution, WorkspaceDependencyResolution, get_features,
+    get_workspace_local_metadata, resolve_local_dependency, resolve_workspace_dependency,
 };
 
 pub async fn get_cargo_diagnostics(
@@ -44,8 +44,19 @@ pub async fn get_cargo_diagnostics(
     // For path dependencies, check version and features
     // against the local crate instead of the crates.io registry
     if let Some(path) = dep.path_text(doc) {
-        let Some(local_meta) = get_local_metadata(clients, doc.url(), &path).await else {
-            return Ok(Vec::new());
+        let local_meta = match resolve_local_dependency(clients, doc.url(), &path).await {
+            LocalDependencyResolution::Resolved(metadata) => metadata,
+            LocalDependencyResolution::MissingPath => {
+                return Ok(vec![get_cargo_diagnostics_missing_path_dependency(
+                    &dep, &path,
+                )]);
+            }
+            LocalDependencyResolution::MissingManifest => {
+                return Ok(vec![get_cargo_diagnostics_missing_path_manifest(
+                    &dep, &path,
+                )]);
+            }
+            LocalDependencyResolution::Unavailable => return Ok(Vec::new()),
         };
         let mut diagnostics = Vec::new();
         diagnostics.extend(get_cargo_diagnostics_local_version(doc, &dep, &local_meta));
@@ -132,6 +143,37 @@ fn get_cargo_diagnostics_missing_workspace_dependency(
         severity: Some(DiagnosticSeverity::ERROR),
         ..Default::default()
     }
+}
+
+fn get_cargo_diagnostics_missing_path_dependency(
+    dep: &CargoDependency<'_>,
+    path: &str,
+) -> Diagnostic {
+    Diagnostic {
+        source: Some(String::from("Cargo")),
+        range: path_diagnostic_range(dep),
+        message: format!("No local dependency exists at path `{path}`"),
+        severity: Some(DiagnosticSeverity::ERROR),
+        ..Default::default()
+    }
+}
+
+fn get_cargo_diagnostics_missing_path_manifest(
+    dep: &CargoDependency<'_>,
+    path: &str,
+) -> Diagnostic {
+    Diagnostic {
+        source: Some(String::from("Cargo")),
+        range: path_diagnostic_range(dep),
+        message: format!("No Cargo.toml exists for local dependency at path `{path}`"),
+        severity: Some(DiagnosticSeverity::ERROR),
+        ..Default::default()
+    }
+}
+
+fn path_diagnostic_range(dep: &CargoDependency<'_>) -> async_language_server::lsp_types::Range {
+    let path = dep.path.expect("path node must exist");
+    ts_range_to_lsp_range(path.range())
 }
 
 fn get_cargo_diagnostics_local_version(

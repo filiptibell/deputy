@@ -45,20 +45,82 @@ pub async fn get_local_metadata(
     doc_url: &Url,
     relative_path: &str,
 ) -> Option<LocalMetadata> {
+    let LocalDependencyPathResolution::Resolved { manifest_dir } =
+        resolve_local_dependency_path(doc_url, relative_path)?
+    else {
+        return None;
+    };
+
+    clients.crates.get_local_metadata(&manifest_dir).await
+}
+
+#[derive(Debug, Clone)]
+pub enum LocalDependencyResolution {
+    Resolved(LocalMetadata),
+    MissingPath,
+    MissingManifest,
+    Unavailable,
+}
+
+pub async fn resolve_local_dependency(
+    clients: &Clients,
+    doc_url: &Url,
+    relative_path: &str,
+) -> LocalDependencyResolution {
+    match resolve_local_dependency_path(doc_url, relative_path) {
+        Some(LocalDependencyPathResolution::Resolved { manifest_dir }) => clients
+            .crates
+            .get_local_metadata(&manifest_dir)
+            .await
+            .map_or(LocalDependencyResolution::Unavailable, |metadata| {
+                LocalDependencyResolution::Resolved(metadata)
+            }),
+        Some(LocalDependencyPathResolution::MissingPath) => LocalDependencyResolution::MissingPath,
+        Some(LocalDependencyPathResolution::MissingManifest) => {
+            LocalDependencyResolution::MissingManifest
+        }
+        None => LocalDependencyResolution::Unavailable,
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum LocalDependencyPathResolution {
+    Resolved { manifest_dir: PathBuf },
+    MissingPath,
+    MissingManifest,
+}
+
+fn resolve_local_dependency_path(
+    doc_url: &Url,
+    relative_path: &str,
+) -> Option<LocalDependencyPathResolution> {
     let doc_path = doc_url.to_file_path().ok()?;
     let doc_dir = doc_path.parent()?;
 
     let dep_path = doc_dir.join(relative_path);
-    let manifest_dir = if dep_path
+    if dep_path
         .extension()
         .is_some_and(|e| e.eq_ignore_ascii_case("toml"))
     {
-        dep_path.parent()?
-    } else {
-        dep_path.as_path()
-    };
+        if dep_path.is_file() {
+            let manifest_dir = dep_path.parent()?.canonicalize().ok()?;
+            return Some(LocalDependencyPathResolution::Resolved { manifest_dir });
+        }
+        return Some(LocalDependencyPathResolution::MissingManifest);
+    }
 
-    clients.crates.get_local_metadata(manifest_dir).await
+    if !dep_path.exists() {
+        return Some(LocalDependencyPathResolution::MissingPath);
+    }
+
+    let manifest_path = dep_path.join("Cargo.toml");
+    if !manifest_path.is_file() {
+        return Some(LocalDependencyPathResolution::MissingManifest);
+    }
+
+    Some(LocalDependencyPathResolution::Resolved {
+        manifest_dir: dep_path.canonicalize().ok()?,
+    })
 }
 
 #[derive(Debug, Clone)]
@@ -181,6 +243,44 @@ serde = "1.0"
         assert_eq!(
             workspace_dependency_exists(&manifest_path, "serde"),
             Some(true)
+        );
+
+        fs::remove_dir_all(root).expect("temp workspace can be removed");
+    }
+
+    #[test]
+    fn resolves_local_dependency_paths_from_disk() {
+        let millis = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system clock is after unix epoch")
+            .as_millis();
+        let root = std::env::temp_dir().join(format!("deputy-local-deps-{millis}"));
+        let member = root.join("member");
+        let dep = root.join("dep");
+
+        fs::create_dir_all(&member).expect("temp member can be created");
+        let manifest_path = member.join("Cargo.toml");
+        fs::write(&manifest_path, "").expect("member manifest can be written");
+        let manifest_url = Url::from_file_path(&manifest_path).expect("manifest path is absolute");
+
+        assert_eq!(
+            resolve_local_dependency_path(&manifest_url, "../dep"),
+            Some(LocalDependencyPathResolution::MissingPath)
+        );
+
+        fs::create_dir_all(&dep).expect("temp dependency can be created");
+        assert_eq!(
+            resolve_local_dependency_path(&manifest_url, "../dep"),
+            Some(LocalDependencyPathResolution::MissingManifest)
+        );
+
+        fs::write(dep.join("Cargo.toml"), "").expect("dependency manifest can be written");
+        let dep = dep
+            .canonicalize()
+            .expect("dependency path can be canonicalized");
+        assert_eq!(
+            resolve_local_dependency_path(&manifest_url, "../dep"),
+            Some(LocalDependencyPathResolution::Resolved { manifest_dir: dep })
         );
 
         fs::remove_dir_all(root).expect("temp workspace can be removed");

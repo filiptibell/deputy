@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed valid dotted keys in Cargo dependency tables being interpreted as package names
 - Fixed undefined Cargo workspace dependencies not being reported as errors
+- Fixed missing Cargo path dependencies not being reported as errors
 
 ## `0.7.0` - February 10th, 2026
 
