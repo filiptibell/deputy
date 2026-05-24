@@ -16,6 +16,7 @@ workspace = true
 anyhow = "1.0"
 
 clap = { version = "4.4", features = ["derive", "env"] }
+miette = { version = "7.6", features = ["fancy-no-backtrace"] }
 
 tokio = { version = "1.45", features = ["rt", "macros"] }
 tracing = "0.1"

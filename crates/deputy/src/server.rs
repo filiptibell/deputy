@@ -7,7 +7,9 @@ use async_language_server::{
         FullDocumentDiagnosticReport, Hover, HoverParams, HoverProviderCapability,
         RelatedFullDocumentDiagnosticReport, ServerCapabilities, ServerInfo,
     },
-    server::{DocumentMatcher, Server, ServerResult, ServerState},
+    server::{
+        DocumentMatcher, Server, ServerOptions, ServerResult, ServerState, WorkspaceDiagnostics,
+    },
 };
 
 use deputy_clients::Clients;
@@ -45,6 +47,11 @@ impl Server for DeputyLanguageServer {
             name: env!("CARGO_PKG_NAME").to_string(),
             version: Some(env!("CARGO_PKG_VERSION").to_string()),
         })
+    }
+
+    fn server_options(&self) -> ServerOptions {
+        // FUTURE: Enable this when we have a clean settings/configuration story for Deputy
+        ServerOptions::default().with_workspace_diagnostics(WorkspaceDiagnostics::disabled())
     }
 
     fn server_capabilities(_: ClientCapabilities) -> Option<ServerCapabilities> {

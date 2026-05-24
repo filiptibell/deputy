@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added `deputy analyze` for running workspace diagnostics from the command line
 - Added diagnostics for deprecated and retracted Go module versions in `go.mod`
 
 ### Changed

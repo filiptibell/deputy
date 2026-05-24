@@ -7,16 +7,26 @@ const IS_DEBUG: bool = true;
 #[cfg(not(debug_assertions))]
 const IS_DEBUG: bool = false;
 
-pub fn setup_tracing() {
-    let tracing_filter = EnvFilter::builder()
-        .with_default_directive(if IS_DEBUG {
-            LevelFilter::DEBUG.into()
-        } else {
-            LevelFilter::INFO.into()
-        })
-        .from_env_lossy()
-        .add_directive("tower_lsp=warn".parse().unwrap())
-        .add_directive("tower=info".parse().unwrap());
+pub fn setup_tracing(quiet: bool) {
+    let default_directive = if quiet {
+        LevelFilter::OFF.into()
+    } else if IS_DEBUG {
+        LevelFilter::DEBUG.into()
+    } else {
+        LevelFilter::INFO.into()
+    };
+    let mut tracing_filter = EnvFilter::builder()
+        .with_default_directive(default_directive)
+        .from_env_lossy();
+
+    if !quiet {
+        tracing_filter = tracing_filter
+            .add_directive("async_language_server=warn".parse().unwrap())
+            .add_directive("globset=warn".parse().unwrap())
+            .add_directive("ignore=warn".parse().unwrap())
+            .add_directive("tower_lsp=warn".parse().unwrap())
+            .add_directive("tower=info".parse().unwrap());
+    }
 
     tracing_subscriber::fmt()
         .compact()
